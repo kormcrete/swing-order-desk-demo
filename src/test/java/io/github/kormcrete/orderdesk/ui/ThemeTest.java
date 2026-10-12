@@ -1,0 +1,101 @@
+package io.github.kormcrete.orderdesk.ui;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTable;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import javax.swing.border.TitledBorder;
+import javax.swing.table.DefaultTableModel;
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ThemeTest {
+
+    @AfterEach
+    void backToLight() {
+        Edt.run(Theme::light);
+    }
+
+    @Test
+    void orderDeskKeysFollowEveryThemeSwitch() {
+        Edt.run(() -> {
+            Theme.light();
+            assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x6e6e6e));
+            assertThat(UIManager.getColor(Theme.CARD_BACKGROUND)).isEqualTo(new Color(0xfafafa));
+            assertThat(UIManager.getColor("TableHeader.background")).isEqualTo(UIManager.getColor("Panel.background"));
+            assertThat(UIManager.getInt("Table.rowHeight")).isEqualTo(26);
+
+            Theme.dark();
+            assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x8a8a8a));
+            assertThat(UIManager.getColor(Theme.CARD_BACKGROUND)).isEqualTo(new Color(0x404345));
+            // the light header colour must not outlive the switch
+            assertThat(UIManager.getColor("TableHeader.background")).isNotEqualTo(new Color(0xf2f2f2));
+            assertThat(UIManager.getInt("Table.rowHeight")).isEqualTo(26);
+
+            Theme.light();
+            assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x6e6e6e));
+        });
+    }
+
+    @Test
+    void shownComponentsTakeTheNewThemesColours() {
+        Edt.run(() -> {
+            Theme.light();
+            JLabel hint = Ui.hint("Select a product first");
+            JTable table = Ui.table(new DefaultTableModel(1, 2));
+            JPanel panel = new JPanel();
+            panel.add(hint);
+            panel.add(Ui.scroll(table));
+            assertThat(hint.getForeground()).isEqualTo(new Color(0x6e6e6e));   // $OrderDesk.muted resolves
+
+            Theme.dark();
+            SwingUtilities.updateComponentTreeUI(panel);   // what FlatLaf.updateUI does for every window
+            assertThat(hint.getForeground()).isEqualTo(new Color(0x8a8a8a));
+            assertThat(table.getTableHeader().getBackground()).isEqualTo(UIManager.getColor("TableHeader.background"));
+            assertThat(table.getTableHeader().getBackground()).isNotEqualTo(new Color(0xf2f2f2));
+        });
+    }
+
+    @Test
+    void eachReviewSectionKeepsItsTitledBorder() {
+        Edt.run(() -> {
+            ReviewStep review = new ReviewStep(step -> { });
+            List<String> titles = new ArrayList<>();
+            collectTitles(review, titles);
+            // the driver scopes each Edit by its section: section:Delivery address, section:Shipping, section:Payment
+            assertThat(titles).containsExactly("Delivery address", "Shipping", "Payment");
+        });
+    }
+
+    @Test
+    void aDialogDetailIsASecondSmallerGreyLine() {
+        Edt.run(() -> {
+            assertThat(Dialogs.content("Discard this new order?", null)).isEqualTo("Discard this new order?");
+            JPanel panel = (JPanel) Dialogs.content("Place order for €37.20?", "Order for Ada Shop Ltd, 13 items.");
+            JLabel message = (JLabel) panel.getComponent(0);
+            JLabel detail = (JLabel) panel.getComponent(1);
+            assertThat(message.getText()).isEqualTo("Place order for €37.20?");
+            assertThat(detail.getText()).isEqualTo("Order for Ada Shop Ltd, 13 items.");
+            assertThat(detail.getForeground()).isEqualTo(UIManager.getColor(Theme.MUTED));
+            assertThat(detail.getFont().getSize2D()).isLessThan(message.getFont().getSize2D());
+        });
+    }
+
+    private static void collectTitles(Container container, List<String> out) {
+        for (Component c : container.getComponents()) {
+            if (c instanceof JPanel && ((JPanel) c).getBorder() instanceof TitledBorder) {
+                out.add(((TitledBorder) ((JPanel) c).getBorder()).getTitle());
+            }
+            if (c instanceof Container) collectTitles((Container) c, out);
+        }
+    }
+}
