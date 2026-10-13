@@ -10,6 +10,8 @@ if [ "$(uname)" = Linux ] && [ -z "${DISPLAY:-}" ]; then
   Xvfb :99 -screen 0 1600x1000x24 > target/xvfb.log 2>&1 &
   XVFB=$!
   export DISPLAY=:99
+  for i in $(seq 1 50); do [ -e /tmp/.X11-unix/X99 ] && break; sleep 0.2; done   # the app needs the display up
+  if [ ! -e /tmp/.X11-unix/X99 ]; then echo "Xvfb did not start:"; cat target/xvfb.log; exit 1; fi
 fi
 java -javaagent:"$AGENT"=port="$PORT" -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar > target/app.log 2>&1 &
 APP=$!
