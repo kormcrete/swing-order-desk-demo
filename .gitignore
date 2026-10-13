@@ -19,8 +19,5 @@ GEMINI.md
 .agent/
 .mcp.json
 
-# local IntelliJ run configs
-.run/
-
 # swing-ui-agent local credentials, logs and settings
 .swing-ui-agent/

@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="UI tests" type="JUnit" factoryName="JUnit">
+    <module name="swing-order-desk-demo" />
+    <option name="TEST_OBJECT" value="tags" />
+    <option name="TAGS" value="ui" />
+    <tags>
+      <tag value="ui" />
+    </tags>
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

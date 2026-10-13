@@ -27,8 +27,6 @@
         <flatlaf.version>3.7.2</flatlaf.version>
         <miglayout.version>5.3</miglayout.version>
         <swing-ui-agent.version>0.1.0-SNAPSHOT</swing-ui-agent.version>
-        <!-- the agent's port for the UI tests (*UiIT); the app is started with -javaagent:...=port=8770 -->
-        <swingui.port>8770</swingui.port>
     </properties>
 
     <dependencies>
@@ -188,8 +186,9 @@
     </build>
 
     <profiles>
-        <!-- mvn -Pui verify: also the UI tests (*UiIT), against Order Desk already running with the agent on
-             ${swingui.port} (.github/scripts/ui-tests.sh starts it). Without -Pui the build stays unit-only and headless. -->
+        <!-- mvn -Pui verify: also the UI tests (*UiIT), against Order Desk already running with the agent named in
+             src/test/resources/junit-platform.properties (.github/scripts/ui-tests.sh starts it). Without -Pui the
+             build stays unit-only and headless. -->
         <profile>
             <id>ui</id>
             <build>
@@ -202,9 +201,6 @@
                             <includes>
                                 <include>**/*UiIT.java</include>
                             </includes>
-                            <systemPropertyVariables>
-                                <swingui.port>${swingui.port}</swingui.port>
-                            </systemPropertyVariables>
                         </configuration>
                         <executions>
                             <execution>

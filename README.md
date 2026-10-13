@@ -1,69 +1,88 @@
 # Order Desk
 
-The demo app of [swing-ui-agent](https://github.com/kormcrete/swing-ui-agent). Order Desk is a small Swing order desk
-where a shop employee takes an order for a customer: pick the customer, add products to the cart, check out (address,
-shipping, payment, review) and place the order. It has the parts real Swing business apps have, such as closable
-tabs, sortable tables, a tree, popup menus, a wizard dialog with rules, a background task and a file chooser, so a
-coding agent has real work to drive and check. Java 8, FlatLaf, MigLayout. All customers, products and orders are
-invented, and everything lives in memory: each start begins with the same data.
+The demo app of [swing-ui-agent](https://github.com/kormcrete/swing-ui-agent): a small Swing order desk where a shop
+employee takes an order for a customer, made for a coding agent to drive and test. It has the parts real Swing
+business apps have:
+
+- closable tabs and a status bar;
+- sortable, filterable tables, and a cart with an editable quantity spinner;
+- a category tree, popup and context menus, keyboard shortcuts;
+- a four-step checkout wizard with rules (credit limit, missing postal code, shipping and payment options);
+- a background task, confirm dialogs, a file chooser, and a light and a dark theme.
+
+Java 8, FlatLaf, MigLayout. Customers, products and orders are invented and live in memory: each start begins with the
+same data.
+
+**Status:** the app is complete; swing-ui-agent, which it demonstrates, is pre-release (`0.1.0-SNAPSHOT`).
 
 ![Order Desk: the Orders tab](docs/order-desk.png)
 
+**Tour and recorded test on the site: https://kormcrete.github.io/swing-ui-agent/demo/tour/**
+
 ## Build
 
-swing-ui-agent is not on Maven Central yet, so clone both repositories side by side and install it first:
+swing-ui-agent is not on Maven Central yet. Clone both repositories side by side and install it first:
 
 ```bash
 git clone https://github.com/kormcrete/swing-ui-agent.git
 git clone https://github.com/kormcrete/swing-order-desk-demo.git
 (cd swing-ui-agent && mvn -B install -DskipTests)
+cd swing-order-desk-demo && mvn -B package
 ```
 
-Then build Order Desk:
+## Run it in IntelliJ
+
+Open the folder in IntelliJ. Its run configurations are ready to use:
+
+- **Order Desk:** the app with the agent on port 8770.
+- **Order Desk · record:** the same, with the palette for recording a test yourself (`inspector=on`).
+- **UI tests:** every `@UiTest` class (JUnit tag `ui`), against the running app. The gutter icons work too.
+- **All tests:** the unit tests (tag `!ui`), no app needed.
+
+To record a test: run **Order Desk · record**, press **● Record** in the palette, use the app, add checks with
+**Check**, press **Done**, then **Export…** to write the JUnit class into `src/test/java`. Step by step:
+https://kormcrete.github.io/swing-ui-agent/start/intellij/
+
+## Start it from a shell
 
 ```bash
-cd swing-order-desk-demo
-mvn -B package
+java -javaagent:target/swing-ui-agent-agent.jar=port=8770 -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar
 ```
 
-This writes `target/order-desk.jar` (the app, runnable) and copies the agent to `target/swing-ui-agent-agent.jar`.
-The build runs on Java 8 in CI.
+- `-javaagent:…` lets a coding agent, or the UI tests, drive the app on port 8770. Without it, Order Desk is a normal
+  app.
+- `-Dorderdesk.today=2026-10-12` fixes the date the app uses, so every run looks the same.
+- Add `,inspector=on` after the port for the recording palette.
 
-## Start
+## Drive it with a coding agent
 
-```bash
-java -javaagent:target/swing-ui-agent-agent.jar=port=8765 -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar
-```
-
-`-javaagent:…` lets a coding agent drive the app on port 8765; without it Order Desk is a normal app.
-`-Dorderdesk.today=2026-10-12` fixes the date the app uses for new orders and the card expiry check, so every run
-looks the same. Leave it out to use today's date.
-
-## Drive it with your coding agent
-
-Your coding agent drives the running app through the agent jar's command line, one call per step, and reads the
-answers as JSON:
+Your coding agent drives the running app through the agent jar's command line, one call per step:
 
 ```bash
-java -jar target/swing-ui-agent-agent.jar --port 8765 <tool> '<json>'
-```
-
-`tools` lists the tools and `tools <name>` shows one tool's arguments. Three calls to start with:
-
-```bash
-UI="java -jar target/swing-ui-agent-agent.jar --port 8765"
-
-# what is on screen: the main window, three levels down, without table rows
+UI="java -jar target/swing-ui-agent-agent.jar --port 8770"
 $UI snapshot '{"window":"main","depth":3,"compact":true}'
-
-# open the ▾ menu next to New order, then start a new order for Ada Shop Ltd
 $UI click '{"target":{"role":"button","name":"New order for a recent customer"}}'
 $UI pick '{"path":["Ada Shop Ltd"]}'
 ```
 
-Point your agent at the skills in swing-ui-agent's
-[`skills/`](https://github.com/kormcrete/swing-ui-agent/tree/main/skills) folder: they explain how to drive a Swing
-app, how to turn what you see into a target, and how to record a UI test.
+Give your agent the skills in swing-ui-agent's
+[`skills/`](https://github.com/kormcrete/swing-ui-agent/tree/main/skills) folder first. With Claude Code:
+https://kormcrete.github.io/swing-ui-agent/start/claude-code/
+
+## The recorded tests
+
+[`PlaceOrderUiIT`](src/test/java/io/github/kormcrete/orderdesk/PlaceOrderUiIT.java) takes an order for Ada Shop Ltd
+from File ▸ New order through checkout to the placed order, with a 2x screenshot after each step.
+[`CartTotalsUiIT`](src/test/java/io/github/kormcrete/orderdesk/CartTotalsUiIT.java) fills Ada's cart with 3 × A4
+paper and 10 × Gel pen, checks a line total and the €31.32 total, and discards the cart; the swing-ui-agent home page
+plays its recording and replay.
+
+- **Made by an agent:** it drove the app through the command line and exported the tests; a person reviewed them.
+- **Run them:** with the app running, use **UI tests** in IntelliJ or `mvn -B -Pui verify`. The tests find the agent
+  through `src/test/resources/junit-platform.properties`. `mvn -B verify` runs only the unit tests.
+- **In CI:** the `build` workflow runs them under Xvfb and uploads the screenshots as the `ui-screenshots` artifact.
+
+Walkthrough: https://kormcrete.github.io/swing-ui-agent/demo/recorded-test/
 
 ## Things to try
 

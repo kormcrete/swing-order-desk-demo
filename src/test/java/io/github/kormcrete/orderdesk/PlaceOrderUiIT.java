@@ -20,14 +20,18 @@ class PlaceOrderUiIT {
     @Test
     void placesAnOrderForAda(Client ui) {
         ui.menu("File", "New order");
+
         assertThat(ui.tab("New order")).isSelected();
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/01-new-order.png", 2);
+
         ui.tab("New order").field("Customer").type("Ada");
         ui.press("Enter");
+
         assertThat(ui.tab("New order · Ada Shop Ltd")).isSelected();
         assertThat(ui.tab("New order · Ada Shop Ltd")
                 .label("Account · Invoice 30 days · Credit limit €2,000.00").contains()).isVisible();
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/02-customer.png", 2);
+
         ui.tab("New order · Ada Shop Ltd").table().row("Product", "A4 paper, 500 sheets").cell("SKU").click();
         ui.tab("New order · Ada Shop Ltd").button("Add to cart").click();
         ui.tab("New order · Ada Shop Ltd").table().row("Product", "Gel pen, black").cell("SKU").click();
@@ -36,28 +40,39 @@ class PlaceOrderUiIT {
                 .type("3", null, Boolean.TRUE);
         ui.tab("New order · Ada Shop Ltd").table().row("Product", "Gel pen, black").cell("Qty")
                 .type("10", null, Boolean.TRUE);
+
         assertThat(ui.tab("New order · Ada Shop Ltd").label("€26.70")).isVisible();
         assertThat(ui.tab("New order · Ada Shop Ltd").label("−€0.60")).isVisible();
         assertThat(ui.tab("New order · Ada Shop Ltd").label("€5.22")).isVisible();
         assertThat(ui.tab("New order · Ada Shop Ltd").label("€31.32")).isVisible();
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/03-cart.png", 2);
+
         ui.tab("New order · Ada Shop Ltd").button("Checkout…").click();
+
         assertThat(ui.dialog().field("Postal code")).hasValue("10119");
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/04-address.png", 2);
+
         ui.dialog().button("Next").click();
+
         assertThat(ui.dialog().radio("Standard · 3–5 business days")).isChecked();
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/05-shipping.png", 2);
+
         ui.dialog().button("Next").click();
+
         assertThat(ui.dialog().label("Enter the PO number")).isVisible();
         assertThat(ui.dialog().button("Next")).isDisabled();
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/06-payment.png", 2);
+
         ui.dialog().field("PO number").type("PO-7781");
         ui.dialog().button("Next").click();
+
         assertThat(ui.dialog().label("€37.20")).isVisible();
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/07-review.png", 2);
+
         ui.dialog().button("Place order").click();
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/08-confirm.png", 2);
         ui.answer("Place order");
+
         // the number is the app's next one: wait for the status bar to name the order whose tab is selected, so a
         // rerun against a running app passes too (the last run's "Order … placed" shows until this one replaces it)
         String order = eventually("the status bar naming the new order", Duration.ofMillis(8000L), () -> {
@@ -67,7 +82,9 @@ class PlaceOrderUiIT {
         }, number -> number != null);
         assertThat(ui.tab(order)).isSelected();
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/09-placed.png", 2);
+
         ui.tab("Orders").click();
+
         assertThat(ui.tab("Orders").table().cell("Status")).hasCell(row("Order", order), "Status", "Placed");
         assertThat(ui.tab("Orders").table().cell("Status")).hasCell(row("Order", order), "Total", "€37.20");
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/10-orders-after.png", 2);

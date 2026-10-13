@@ -1,0 +1,15 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="All tests" type="JUnit" factoryName="JUnit">
+    <module name="swing-order-desk-demo" />
+    <option name="TEST_OBJECT" value="tags" />
+    <option name="TAGS" value="!ui" />
+    <tags>
+      <tag value="!ui" />
+    </tags>
+    <option name="VM_PARAMETERS" value="-Djava.awt.headless=true" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

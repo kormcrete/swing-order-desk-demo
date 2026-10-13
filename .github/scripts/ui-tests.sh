@@ -24,4 +24,4 @@ for i in $(seq 1 60); do
   sleep 1
 done
 
-mvn -B -Pui -Dswingui.port="$PORT" failsafe:integration-test failsafe:verify
+mvn -B -Pui -Dswingui.agents="127.0.0.1:$PORT" failsafe:integration-test failsafe:verify
