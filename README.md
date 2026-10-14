@@ -1,4 +1,7 @@
-# Order Desk
+<!-- TODO: product letter (none drawn yet); 96 px image above the title -->
+# order desk
+
+[by kormcrete](https://github.com/kormcrete)
 
 The demo app of [swing-ui-agent](https://github.com/kormcrete/swing-ui-agent): a small Swing order desk where a shop
 employee takes an order for a customer, made for a coding agent to drive and test. It has the parts real Swing
