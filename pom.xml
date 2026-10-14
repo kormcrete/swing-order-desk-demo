@@ -214,5 +214,61 @@
                 </plugins>
             </build>
         </profile>
+        <!-- mvn -Pwindows package: also target/windows/Kormcrete Order Desk.exe, the launcher of the Windows download
+             (packaging/windows/build-windows.ps1 puts it next to the bundled JRE and the jars). Built on Windows. -->
+        <profile>
+            <id>windows</id>
+            <properties>
+                <release.version>${project.version}</release.version>
+                <exe.version>0.0.0.0</exe.version>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.akathist.maven.plugins.launch4j</groupId>
+                        <artifactId>launch4j-maven-plugin</artifactId>
+                        <version>2.7.0</version>
+                        <executions>
+                            <execution>
+                                <id>exe</id>
+                                <phase>package</phase>
+                                <goals><goal>launch4j</goal></goals>
+                                <configuration>
+                                    <headerType>gui</headerType>
+                                    <outfile>${project.build.directory}/windows/Kormcrete Order Desk.exe</outfile>
+                                    <dontWrapJar>true</dontWrapJar>
+                                    <jar>app\order-desk.jar</jar>
+                                    <!-- relative paths (jre, app\...) start from the .exe's folder -->
+                                    <chdir>.</chdir>
+                                    <errTitle>Kormcrete Order Desk</errTitle>
+                                    <icon>${project.basedir}/packaging/icons/kormcrete-order-desk.ico</icon>
+                                    <jre>
+                                        <!-- only the bundled Zulu JRE 8 (no minVersion: never a system Java) -->
+                                        <path>jre</path>
+                                        <requiresJdk>false</requiresJdk>
+                                        <requires64Bit>true</requires64Bit>
+                                        <opts>
+                                            <!-- quoted: the log path has spaces; Launch4j expands %LOCALAPPDATA% -->
+                                            <opt>"-javaagent:app\swing-ui-agent-agent.jar=port=8770,log=%LOCALAPPDATA%\Kormcrete Order Desk\agent.log"</opt>
+                                        </opts>
+                                    </jre>
+                                    <versionInfo>
+                                        <fileVersion>${exe.version}</fileVersion>
+                                        <txtFileVersion>${release.version}</txtFileVersion>
+                                        <fileDescription>Kormcrete Order Desk</fileDescription>
+                                        <copyright>kormcrete and the swing-order-desk-demo contributors</copyright>
+                                        <productVersion>${exe.version}</productVersion>
+                                        <txtProductVersion>${release.version}</txtProductVersion>
+                                        <productName>Kormcrete Order Desk</productName>
+                                        <internalName>kormcrete-order-desk</internalName>
+                                        <originalFilename>Kormcrete Order Desk.exe</originalFilename>
+                                    </versionInfo>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
     </profiles>
 </project>
