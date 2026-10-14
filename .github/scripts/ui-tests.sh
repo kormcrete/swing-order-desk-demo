@@ -16,7 +16,7 @@ if [ "${1:-}" != --attach ]; then
     for i in $(seq 1 50); do [ -e /tmp/.X11-unix/X99 ] && break; sleep 0.2; done   # the app needs the display up
     if [ ! -e /tmp/.X11-unix/X99 ]; then echo "Xvfb did not start:"; cat target/xvfb.log; exit 1; fi
   fi
-  java -javaagent:"$AGENT"=port="$PORT" -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar > target/app.log 2>&1 &
+  java -javaagent:"$AGENT"=port="$PORT",palette=off -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar > target/app.log 2>&1 &
   APP=$!
   trap 'kill "$APP" 2>/dev/null || true; if [ -n "${XVFB:-}" ]; then kill "$XVFB" 2>/dev/null || true; fi' EXIT
 fi

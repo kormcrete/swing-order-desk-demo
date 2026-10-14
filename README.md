@@ -65,12 +65,12 @@ cd swing-order-desk-demo && mvn -B package
 
 Open the folder in IntelliJ. Its run configurations are ready to use:
 
-- **Order Desk:** the app with the agent on port 8770.
-- **Order Desk · record:** the same, with the palette for recording a test yourself (`inspector=on`).
+- **Order Desk:** the app with the agent on port 8770 and the palette (the bar for recording a test yourself;
+  `palette=off` leaves it out for agent-only runs).
 - **UI tests:** every `@UiTest` class (JUnit tag `ui`), against the running app. The gutter icons work too.
 - **All tests:** the unit tests (tag `!ui`), no app needed.
 
-To record a test: run **Order Desk · record**, press **● Record** in the palette, use the app, add checks with
+To record a test: run **Order Desk**, press **● Record** in the palette, use the app, add checks with
 **Check**, press **Done**, then **Export…** to write the JUnit class into `src/test/java`. Step by step:
 https://kormcrete.github.io/swing-ui-agent/start/intellij/
 
@@ -83,7 +83,7 @@ java -javaagent:target/swing-ui-agent-agent.jar=port=8770 -Dorderdesk.today=2026
 - `-javaagent:…` lets a coding agent, or the UI tests, drive the app on port 8770. Without it, Order Desk is a normal
   app.
 - `-Dorderdesk.today=2026-10-12` fixes the date the app uses, so every run looks the same.
-- Add `,inspector=on` after the port for the recording palette.
+- The palette (recording bar) is on by default; add `,palette=off` after the port for agent-only runs.
 
 ## Drive it with a coding agent
 
