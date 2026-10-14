@@ -42,6 +42,7 @@ public final class MainWindow extends JFrame implements Workspace {
 
     private MainWindow(Store store) {
         super("Order Desk");
+        setIconImages(AppIcon.images());
         this.store = store;
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
