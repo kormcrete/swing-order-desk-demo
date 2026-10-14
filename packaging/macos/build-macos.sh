@@ -33,6 +33,8 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Java" "$APP/Contents/Resources"
 sed "s/@VERSION@/$VERSION/g" packaging/macos/Info.plist > "$APP/Contents/Info.plist"
 install -m 755 packaging/macos/kormcrete-order-desk "$APP/Contents/MacOS/kormcrete-order-desk"
 ditto "$JRE" "$APP/Contents/Java/jre"
+# the JRE ships some read-only files: writable, so xattr -dr com.apple.quarantine (the README) runs without errors
+chmod -R u+w "$APP/Contents/Java/jre"
 cp target/order-desk.jar target/swing-ui-agent-agent.jar "$APP/Contents/Java/"
 cp packaging/icons/kormcrete-order-desk.icns "$APP/Contents/Resources/"
 # ad-hoc signature: not trusted by Gatekeeper, but Apple Silicon reports an unsigned bundle as "damaged"

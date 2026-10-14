@@ -32,9 +32,13 @@ port 8770.
 
 The downloads are not signed yet, so the first launch takes a few extra clicks:
 
-- **macOS:** open the `.dmg`, drag **Kormcrete Order Desk** to Applications and open it. When macOS says it cannot
-  verify the app: on macOS 15, open *System Settings → Privacy & Security* and click **Open Anyway**; on macOS 14 and
-  earlier, right-click the app and choose **Open**.
+- **macOS:** open the `.dmg` and drag **Kormcrete Order Desk** to Applications. The app is not notarized by Apple yet,
+  so macOS refuses to open it ("Apple could not verify…"). Clear the download mark once, in Terminal, then open it:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/Kormcrete Order Desk.app"
+  ```
+
 - **Windows:** unzip, open the **Kormcrete Order Desk** folder and run **Kormcrete Order Desk.exe**. If SmartScreen
   stops it, click **More info → Run anyway**.
 
