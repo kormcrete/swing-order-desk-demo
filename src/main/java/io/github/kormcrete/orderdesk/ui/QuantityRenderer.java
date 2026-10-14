@@ -20,7 +20,8 @@ final class QuantityRenderer extends JSpinner implements TableCellRenderer {
     @Override
     public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
                                                    int row, int column) {
-        setValue(value);
+        // a screen reader's call (JTable's accessibility) passes null: the spinner refuses anything but a number
+        if (value instanceof Number) setValue(value);
         boolean overStock = ((CartTableModel) table.getModel()).lineAt(table.convertRowIndexToModel(row)).overStock();
         putClientProperty(FlatClientProperties.OUTLINE, overStock ? FlatClientProperties.OUTLINE_ERROR : null);
         return this;

@@ -62,6 +62,18 @@ class CartPanelTest {
     }
 
     @Test
+    void screenReadersCanReadTheQtyCell() {
+        // a screen reader asks the table for its cells; Swing then calls each renderer with a null value
+        Edt.run(() -> {
+            cart.add(product("PAP-A4-500"), 3);
+            panel.refresh();
+            assertThat(panel.table().getAccessibleContext().getAccessibleChild(1)).isNotNull();
+            panel.table().setRowSelectionInterval(0, 0);
+            assertThat(cart.lines().get(0).quantity()).isEqualTo(3);
+        });
+    }
+
+    @Test
     void stockMessageAndTotals() {
         Edt.run(() -> {
             cart.add(product("DSK-STAPLER"), 1);
