@@ -253,6 +253,11 @@
                                             <opt>"-javaagent:app\swing-ui-agent-agent.jar=port=8770,log=%LOCALAPPDATA%\Kormcrete Order Desk\agent.log"</opt>
                                         </opts>
                                     </jre>
+                                    <messages>
+                                        <!-- run from inside the zip view: no jre folder next to the .exe -->
+                                        <jreNotFoundErr>Unzip the whole Kormcrete Order Desk folder first, then run Kormcrete Order Desk.exe from it.</jreNotFoundErr>
+                                        <jreVersionErr>Unzip the whole Kormcrete Order Desk folder first, then run Kormcrete Order Desk.exe from it.</jreVersionErr>
+                                    </messages>
                                     <versionInfo>
                                         <fileVersion>${exe.version}</fileVersion>
                                         <txtFileVersion>${release.version}</txtFileVersion>

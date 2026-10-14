@@ -47,6 +47,8 @@ claude mcp add --transport http order-desk http://127.0.0.1:8770/mcp
 Other MCP clients: [MCP clients](https://kormcrete.github.io/swing-ui-agent/agents/mcp-clients/). If your agent cannot
 connect, another app may be using port 8770; the agent's log says so: `~/Library/Logs/Kormcrete Order Desk/agent.log`
 (macOS), `%LOCALAPPDATA%\Kormcrete Order Desk\agent.log` (Windows).
+If the app does not open at all on macOS, the reason is in `~/Library/Logs/Kormcrete Order Desk/order-desk.log`
+(for example an Intel Mac with the Apple Silicon download).
 
 ## Build
 

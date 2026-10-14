@@ -129,7 +129,7 @@ jobs:
           com.akathist.maven.plugins.launch4j:launch4j-maven-plugin:2.7.0:launch4j@exe
       - name: Build the .zip
         shell: pwsh
-        run: packaging/windows/build-windows.ps1 '${{ steps.jre.outputs.path }}' target/dist
+        run: ./packaging/windows/build-windows.ps1 '${{ steps.jre.outputs.path }}' target/dist
       - name: Check the download
         run: .github/scripts/check-download.sh target/dist/kormcrete-order-desk-windows-x64.zip
       - name: Keep the download
