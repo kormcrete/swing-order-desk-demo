@@ -1,0 +1,171 @@
+name: release
+
+# The downloads: Kormcrete Order Desk for macOS (.dmg, Apple Silicon and Intel) and Windows (.zip), each with Zulu
+# JRE 8 and the agent on port 8770. Every run checks the packaged app with the UI tests; a vX.Y.Z tag also publishes
+# a GitHub Release. Pull requests that touch the packaging run the checks.
+on:
+  push:
+    tags: ['v*']
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - 'pom.xml'
+      - 'src/main/**'
+      - '.github/scripts/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    name: macOS downloads
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out swing-ui-agent
+        uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-ui-agent
+          path: swing-ui-agent
+      - name: Version
+        run: .github/scripts/release-version.sh >> "$GITHUB_ENV"
+      - name: Zulu JRE 8, Apple Silicon
+        id: jre-arm64
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '8'
+          java-package: jre
+          architecture: aarch64
+      - name: Zulu JRE 8, Intel
+        id: jre-x64
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '8'
+          java-package: jre
+          architecture: x64
+      - name: JDK 8 for the build
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '8'
+          cache: maven
+      - name: Install swing-ui-agent
+        run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and test
+        run: mvn -B verify
+      - name: Build the .dmg files
+        run: |
+          packaging/macos/build-macos.sh "${{ steps.jre-arm64.outputs.path }}" arm64 "$VERSION" target/dist
+          packaging/macos/build-macos.sh "${{ steps.jre-x64.outputs.path }}" x64 "$VERSION" target/dist
+      - name: Check the Apple Silicon download
+        run: .github/scripts/check-download.sh target/dist/kormcrete-order-desk-macos-arm64.dmg
+      - name: Keep the downloads
+        uses: actions/upload-artifact@v7
+        with:
+          name: downloads-macos
+          path: target/dist/*.dmg
+          if-no-files-found: error
+      - name: Keep the check's screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-macos
+          path: |
+            target/ui-screenshots/
+            target/ui-failures/
+            target/failsafe-reports/
+          if-no-files-found: ignore
+
+  windows:
+    name: Windows download
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check out swing-ui-agent
+        uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-ui-agent
+          path: swing-ui-agent
+      - name: Version
+        run: .github/scripts/release-version.sh >> "$GITHUB_ENV"
+      - name: Zulu JRE 8, x64
+        id: jre
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '8'
+          java-package: jre
+          architecture: x64
+      - name: JDK 17 for Launch4j
+        id: jdk17
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '17'
+      - name: JDK 8 for the build
+        uses: actions/setup-java@v6
+        with:
+          distribution: zulu
+          java-version: '8'
+          cache: maven
+      - name: Install swing-ui-agent
+        run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and test
+        run: mvn -B verify
+      # launch4j-maven-plugin 2.7.0 runs on Java 17: only its goal runs there, the jars stay the Java 8 build
+      - name: Make the .exe
+        env:
+          JAVA_HOME: ${{ steps.jdk17.outputs.path }}
+        run: >-
+          mvn -B -Pwindows -Drelease.version="$VERSION" -Dexe.version="$VERSION.0"
+          com.akathist.maven.plugins.launch4j:launch4j-maven-plugin:2.7.0:launch4j@exe
+      - name: Build the .zip
+        shell: pwsh
+        run: packaging/windows/build-windows.ps1 '${{ steps.jre.outputs.path }}' target/dist
+      - name: Check the download
+        run: .github/scripts/check-download.sh target/dist/kormcrete-order-desk-windows-x64.zip
+      - name: Keep the download
+        uses: actions/upload-artifact@v7
+        with:
+          name: downloads-windows
+          path: target/dist/*.zip
+          if-no-files-found: error
+      - name: Keep the check's screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: check-windows
+          path: |
+            target/ui-screenshots/
+            target/ui-failures/
+            target/failsafe-reports/
+          if-no-files-found: ignore
+
+  release:
+    name: GitHub Release
+    if: github.ref_type == 'tag'
+    needs: [macos, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: downloads-*
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME" dist/*
+          --title "Kormcrete Order Desk ${GITHUB_REF_NAME#v}"
+          --notes-file packaging/release-notes.md

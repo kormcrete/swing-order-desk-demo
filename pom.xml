@@ -215,7 +215,8 @@
             </build>
         </profile>
         <!-- mvn -Pwindows package: also target/windows/Kormcrete Order Desk.exe, the launcher of the Windows download
-             (packaging/windows/build-windows.ps1 puts it next to the bundled JRE and the jars). Built on Windows. -->
+             (packaging/windows/build-windows.ps1 puts it next to the bundled JRE and the jars). Built on Windows.
+             The Launch4j plugin needs Maven on Java 17: release.yml builds on Java 8, then runs only its goal on 17. -->
         <profile>
             <id>windows</id>
             <properties>
