@@ -19,6 +19,35 @@ same data.
 
 **Tour and recorded test on the site: https://kormcrete.github.io/swing-ui-agent/demo/tour/**
 
+## Download
+
+Try it without building anything: each download includes Java (Zulu JRE 8) and starts Order Desk with the agent on
+port 8770.
+
+| Your computer | Download |
+|---|---|
+| Mac with Apple Silicon (M1 and later) | [kormcrete-order-desk-macos-arm64.dmg](https://github.com/kormcrete/swing-order-desk-demo/releases/latest/download/kormcrete-order-desk-macos-arm64.dmg) |
+| Mac with Intel | [kormcrete-order-desk-macos-x64.dmg](https://github.com/kormcrete/swing-order-desk-demo/releases/latest/download/kormcrete-order-desk-macos-x64.dmg) |
+| Windows (x64) | [kormcrete-order-desk-windows-x64.zip](https://github.com/kormcrete/swing-order-desk-demo/releases/latest/download/kormcrete-order-desk-windows-x64.zip) |
+
+The downloads are not signed yet, so the first launch takes a few extra clicks:
+
+- **macOS:** open the `.dmg`, drag **Kormcrete Order Desk** to Applications and open it. When macOS says it cannot
+  verify the app: on macOS 15, open *System Settings → Privacy & Security* and click **Open Anyway**; on macOS 14 and
+  earlier, right-click the app and choose **Open**.
+- **Windows:** unzip, open the **Kormcrete Order Desk** folder and run **Kormcrete Order Desk.exe**. If SmartScreen
+  stops it, click **More info → Run anyway**.
+
+Then connect your coding agent while the app runs:
+
+```bash
+claude mcp add --transport http order-desk http://127.0.0.1:8770/mcp
+```
+
+Other MCP clients: [MCP clients](https://kormcrete.github.io/swing-ui-agent/agents/mcp-clients/). If your agent cannot
+connect, another app may be using port 8770; the agent's log says so: `~/Library/Logs/Kormcrete Order Desk/agent.log`
+(macOS), `%LOCALAPPDATA%\Kormcrete Order Desk\agent.log` (Windows).
+
 ## Build
 
 swing-ui-agent is not on Maven Central yet. Clone both repositories side by side and install it first:
