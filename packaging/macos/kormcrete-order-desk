@@ -1,0 +1,13 @@
+#!/bin/sh
+# Kormcrete Order Desk: the bundled Java 8 runs Order Desk with the swing-ui-agent agent on port 8770. In
+# ~/Library/Logs/Kormcrete Order Desk: agent.log (the agent's lines) and order-desk.log (the app's console). Paths
+# come from this script's own location, so the app also runs from a read-only or translocated folder.
+CONTENTS="$(cd "$(dirname "$0")/.." && pwd)"
+JAVA="$CONTENTS/Java"
+LOGS="$HOME/Library/Logs/Kormcrete Order Desk"
+mkdir -p "$LOGS"
+exec "$JAVA/jre/bin/java" \
+  -Xdock:name="Kormcrete Order Desk" \
+  -Xdock:icon="$CONTENTS/Resources/kormcrete-order-desk.icns" \
+  -javaagent:"$JAVA/swing-ui-agent-agent.jar=port=8770,log=$LOGS/agent.log" \
+  -jar "$JAVA/order-desk.jar" > "$LOGS/order-desk.log" 2>&1
