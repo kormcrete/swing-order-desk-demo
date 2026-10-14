@@ -11,6 +11,7 @@ on:
       - 'packaging/**'
       - 'pom.xml'
       - 'src/main/**'
+      - 'src/test/**'
       - '.github/scripts/**'
       - '.github/workflows/release.yml'
   workflow_dispatch:
@@ -150,7 +151,7 @@ jobs:
 
   release:
     name: GitHub Release
-    if: github.ref_type == 'tag'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [macos, windows]
     runs-on: ubuntu-latest
     permissions:
