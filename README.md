@@ -119,7 +119,7 @@ https://kormcrete.github.io/swing-ui-agent/start/record-together/
 A recorded test is a JSON file in `uitest/`, one step per action with its checks under it, exact visible values only.
 Nobody writes it by hand: a person shows it with the palette, or the agent records it from words.
 
-<!-- TODO Task 25: name and link Order Desk's uitest/place-order.json and its RecordedUiIT runner here. -->
+<!-- TODO Task 25: name and link uitest/place-order.json, uitest/cart-totals.json (the swing-ui-agent home page plays it) and the RecordedUiIT runner here. -->
 
 - **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
   it (`run_recorded_test`).
