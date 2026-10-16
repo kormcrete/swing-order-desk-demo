@@ -65,14 +65,20 @@ swing-ui-agent is not on Maven Central yet. Clone both repositories side by side
 git clone https://github.com/kormcrete/swing-ui-agent.git
 git clone https://github.com/kormcrete/swing-order-desk-demo.git
 (cd swing-ui-agent && mvn -B install -DskipTests)
-cd swing-order-desk-demo && mvn -B package
+cd swing-order-desk-demo
+mvn -B -f order-desk-plugin/pom.xml install
+mvn -B package
 ```
+
+`order-desk-plugin/` is Order Desk's plugin, its own small Maven project: a vocabulary of the app's steps ("Add Gel
+pen, black to the cart"). The app's tests use it, so install it before `mvn package`. See
+[The vocabulary plugin](#the-vocabulary-plugin).
 
 ## Run it in IntelliJ
 
 Open the folder in IntelliJ. Its run configurations are ready to use:
 
-- **Order Desk:** the app with the agent on port 8770 and the palette (the bar for recording and replaying tests
+- **Order Desk:** the app with the agent on port 8770, the vocabulary plugin and the palette (the bar for recording and replaying tests
   yourself; `palette=off` leaves it out for agent-only runs). It sets the date the recorded tests expect.
 - **UI tests:** the recorded tests in `uitest/` (through `RecordedUiIT`) and the Java tests, against the running app
   (JUnit tag `ui`). The gutter icons work too.
@@ -89,12 +95,14 @@ https://kormcrete.github.io/swing-ui-agent/start/intellij/
 ## Start it from a shell
 
 ```bash
-java -javaagent:target/swing-ui-agent-agent.jar=port=8770 -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar
+java -javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plugin/target/classes -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar
 ```
 
 - `-javaagent:…` lets a coding agent, or the UI tests, drive the app on port 8770. Without it, Order Desk is a normal
   app.
 - `-Dorderdesk.today=2026-10-12` fixes the date the app uses, so every run looks the same.
+- `plugins=order-desk-plugin/target/classes` loads the vocabulary plugin (after `mvn -f order-desk-plugin/pom.xml
+  install`). It is optional for driving and recording; the recorded test `uitest/cart-with-steps.json` needs it.
 - The palette (recording bar) is on by default; add `,palette=off` after the port for agent-only runs.
 
 ## Drive it with a coding agent
@@ -141,6 +149,24 @@ IntelliJ configuration **Order Desk** does).
 - **In Maven and CI:** [`RecordedUiIT`](src/test/java/io/github/kormcrete/orderdesk/RecordedUiIT.java), one small
   JUnit class, runs every file in `uitest/` against the running app:
   https://kormcrete.github.io/swing-ui-agent/start/recorded-tests/
+
+## The vocabulary plugin
+
+`order-desk-plugin/` names the app's own steps once: `openNewOrder`, `addToCart`, `setQuantity`, `addQtyToCart`,
+`checkoutWithPo`, `placeOrder`, `openOrder` and the check `cartTotalIs`. It drives the app through the agent's client
+only, so it needs no app classes.
+
+- **The agent** runs a step in one call, for example "Add 10 × Gel pen, black to the cart".
+- **A recording** folds the clicks that make a step into it, so a person's recorded test reads in the app's words:
+  [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json) is Ada's cart (the same as `cart-totals`) in `do`
+  steps. It needs the plugin to run: start the app with `plugins=…` as above.
+- **A Java test** calls the same code as a method: `CartTotalsUiIT` uses `addQtyToCart(ui, "Gel pen, black", 10)`.
+- **One place per name:** each name the app shows (a button, a column, a tab) is written once, in `OrderDeskSteps`.
+
+In IntelliJ, after you edit `OrderDeskSteps`, install the plugin (`mvn -f order-desk-plugin/pom.xml install`) or import
+`order-desk-plugin/pom.xml` as a second Maven project before you run `CartTotalsUiIT` from the gutter; otherwise it
+uses the last installed jar. How it works:
+https://kormcrete.github.io/swing-ui-agent/plugins/vocabulary/
 
 ### Java tests, for more checks
 
