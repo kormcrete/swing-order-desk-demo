@@ -76,7 +76,8 @@ pen, black to the cart"). The app's tests use it, so install it before `mvn pack
 
 ## Run it in IntelliJ
 
-Open the folder in IntelliJ. Its run configurations are ready to use:
+Install swing-ui-agent and the plugin first, as in [Build](#build) (`mvn -B -f order-desk-plugin/pom.xml install`: the
+app's tests use it), then open the folder in IntelliJ. Its run configurations are ready to use:
 
 - **Order Desk:** the app with the agent on port 8770, the vocabulary plugin and the palette (the bar for recording and replaying tests
   yourself; `palette=off` leaves it out for agent-only runs). It sets the date the recorded tests expect.
@@ -131,16 +132,19 @@ https://kormcrete.github.io/swing-ui-agent/start/record-together/
 A recorded test is a JSON file in `uitest/`, one step per action with its checks under it, exact visible values only.
 Nobody writes it by hand: a person shows it with the palette, or the agent records it from words.
 
-Order Desk ships two, both recorded by an agent and named in plain words:
+Order Desk ships three, all recorded and named in plain words:
 
 - [`uitest/place-order.json`](uitest/place-order.json): a new order for Ada Shop Ltd, from File ▸ New order through
   the four checkout steps to the placed order (17 steps). It checks what is predictable: the totals, the review total
   €37.20, the placed order's receipt and the PO line. The order number is not checked; it is the app's next one.
 - [`uitest/cart-totals.json`](uitest/cart-totals.json): Ada's cart with 3 × A4 paper and 10 × Gel pen, checking the
   line total, subtotal, volume discount, VAT and the €31.32 total (11 steps). The swing-ui-agent home page plays it.
+- [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json): the same cart in the plugin's own steps (`do` steps,
+  7 steps); it needs the plugin: start the app with `plugins=…` (see [The vocabulary plugin](#the-vocabulary-plugin)).
 
 The receipt check holds a date, so start the app the way this README does, with `-Dorderdesk.today=2026-10-12` (the
-IntelliJ configuration **Order Desk** does).
+IntelliJ configuration **Order Desk** does). The downloads do not set that date (nor load the plugin): against one,
+`place-order` fails at its receipt check and `cart-with-steps` is refused; `cart-totals` passes.
 
 - **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
   it (`run_recorded_test`).
@@ -178,7 +182,8 @@ through checkout and reads the new order's number, with a 2x screenshot after ea
 paper and 10 × Gel pen, checks a line total and the €31.32 total, and discards the cart (the swing-ui-agent home page
 plays the same steps).
 
-- **Run them:** with the app running, use **UI tests** in IntelliJ or `mvn -B -Pui verify`. The tests find the agent
+- **Run them:** with the app running (built as in [Build](#build), plugin installed), use **UI tests** in IntelliJ or
+  `mvn -B -Pui verify`. The tests find the agent
   through `src/test/resources/junit-platform.properties`. `mvn -B verify` runs only the unit tests.
 - **In CI:** the `build` workflow runs them under Xvfb and uploads the screenshots as the `ui-screenshots` artifact.
 
