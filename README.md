@@ -17,7 +17,7 @@ same data.
 
 ![Order Desk: the Orders tab](docs/order-desk.png)
 
-**Tour and recorded test on the site: https://kormcrete.github.io/swing-ui-agent/demo/tour/**
+**Tour and recorded tests on the site: https://kormcrete.github.io/swing-ui-agent/demo/tour/**
 
 ## Download
 
@@ -72,14 +72,18 @@ cd swing-order-desk-demo && mvn -B package
 
 Open the folder in IntelliJ. Its run configurations are ready to use:
 
-- **Order Desk:** the app with the agent on port 8770 and the palette (the bar for recording a test yourself;
-  `palette=off` leaves it out for agent-only runs).
-- **UI tests:** every `@UiTest` class (JUnit tag `ui`), against the running app. The gutter icons work too.
+- **Order Desk:** the app with the agent on port 8770 and the palette (the bar for recording and replaying tests
+  yourself; `palette=off` leaves it out for agent-only runs). It sets the date the recorded tests expect.
+- **UI tests:** the recorded tests in `uitest/` (through `RecordedUiIT`) and the Java tests, against the running app
+  (JUnit tag `ui`). The gutter icons work too.
 - **All tests:** the unit tests (tag `!ui`), no app needed.
 
-To record a test: run **Order Desk**, press **● Record** in the palette, use the app, add checks with
-**Check**, press **Done**, then **Export…** to save it as a recorded test (a JSON file, nothing to compile). The same
-panel can write a JUnit class into `src/test/java` instead. Step by step:
+To replay a recorded test: run **Order Desk**, press **Load recorded test…** in the palette, pick `place-order` and
+press **▶ Run**. To run them all as JUnit tests, run **UI tests** with the app up.
+
+To record one yourself: press **● Record** in the palette, use the app, add checks with **Check**, press **Done**,
+then **Export…** to save it as a recorded test (a JSON file, nothing to compile). The same panel can write a JUnit
+class into `src/test/java` instead. Step by step:
 https://kormcrete.github.io/swing-ui-agent/start/intellij/
 
 ## Start it from a shell
@@ -119,13 +123,23 @@ https://kormcrete.github.io/swing-ui-agent/start/record-together/
 A recorded test is a JSON file in `uitest/`, one step per action with its checks under it, exact visible values only.
 Nobody writes it by hand: a person shows it with the palette, or the agent records it from words.
 
-<!-- TODO Task 25: name and link uitest/place-order.json, uitest/cart-totals.json (the swing-ui-agent home page plays it) and the RecordedUiIT runner here. -->
+Order Desk ships two, both recorded by an agent and named in plain words:
+
+- [`uitest/place-order.json`](uitest/place-order.json): a new order for Ada Shop Ltd, from File ▸ New order through
+  the four checkout steps to the placed order (17 steps). It checks what is predictable: the totals, the review total
+  €37.20, the placed order's receipt and the PO line. The order number is not checked; it is the app's next one.
+- [`uitest/cart-totals.json`](uitest/cart-totals.json): Ada's cart with 3 × A4 paper and 10 × Gel pen, checking the
+  line total, subtotal, volume discount, VAT and the €31.32 total (11 steps). The swing-ui-agent home page plays it.
+
+The receipt check holds a date, so start the app the way this README does, with `-Dorderdesk.today=2026-10-12` (the
+IntelliJ configuration **Order Desk** does).
 
 - **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
   it (`run_recorded_test`).
 - **Fix one:** in the palette's **Steps**, replay, redo from a step, delete a step or give it a sentence, then save it
   back.
-- **In Maven and CI:** one small JUnit class runs every file in `uitest/` against the running app:
+- **In Maven and CI:** [`RecordedUiIT`](src/test/java/io/github/kormcrete/orderdesk/RecordedUiIT.java), one small
+  JUnit class, runs every file in `uitest/` against the running app:
   https://kormcrete.github.io/swing-ui-agent/start/recorded-tests/
 
 ### Java tests, for more checks
@@ -142,7 +156,9 @@ plays the same steps).
   through `src/test/resources/junit-platform.properties`. `mvn -B verify` runs only the unit tests.
 - **In CI:** the `build` workflow runs them under Xvfb and uploads the screenshots as the `ui-screenshots` artifact.
 
-Walkthrough: https://kormcrete.github.io/swing-ui-agent/demo/recorded-test/
+The same order as a recorded test and as a Java test, side by side:
+https://kormcrete.github.io/swing-ui-agent/demo/two-files/. The Java test step by step:
+https://kormcrete.github.io/swing-ui-agent/demo/recorded-test/
 
 ## Things to try
 
