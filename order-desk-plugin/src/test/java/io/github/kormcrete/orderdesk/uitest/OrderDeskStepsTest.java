@@ -82,7 +82,7 @@ class OrderDeskStepsTest {
                 + "{'action':'answer','button':'Place order'}]"));
         // the number comes from the app: a trace has no answer, which is why the vocabulary gives placeOrder a match
         assertThat(read).isNotNull();
-        assertThat(verbs.notDerivable()).isEqualTo("the body reads the app (read), which a trace cannot answer");
+        assertThat(verbs.derivable()).isFalse();
     }
 
     @Test

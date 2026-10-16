@@ -57,7 +57,7 @@
     },
     {
       "action" : "do",
-      "say" : "Check out with PO PO-7781",
+      "say" : "Check out with PO number PO-7781",
       "step" : "order-desk:checkoutWithPo",
       "params" : {
         "po" : "PO-7781"

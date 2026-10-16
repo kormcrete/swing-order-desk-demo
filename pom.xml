@@ -27,6 +27,7 @@
         <flatlaf.version>3.7.2</flatlaf.version>
         <miglayout.version>5.3</miglayout.version>
         <swing-ui-agent.version>0.1.0-SNAPSHOT</swing-ui-agent.version>
+        <order-desk-plugin.version>0.1.0-SNAPSHOT</order-desk-plugin.version>
     </properties>
 
     <dependencies>
@@ -71,7 +72,7 @@
                  install first); the Java UI tests call them typed, e.g. OrderDeskSteps.addToCart(ui, "Gel pen, black") -->
             <groupId>io.github.kormcrete</groupId>
             <artifactId>order-desk-plugin</artifactId>
-            <version>${project.version}</version>
+            <version>${order-desk-plugin.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

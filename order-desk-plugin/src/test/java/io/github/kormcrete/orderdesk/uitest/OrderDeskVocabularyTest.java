@@ -12,12 +12,14 @@ import io.github.kormcrete.swingui.vocab.Pattern;
 import io.github.kormcrete.swingui.vocab.PatternCompiler;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -41,7 +43,7 @@ class OrderDeskVocabularyTest {
                 "addToCart: Add {product} to the cart",
                 "setQuantity: Set the quantity of {product} to {qty}",
                 "addQtyToCart: Add {qty} × {product} to the cart",
-                "checkoutWithPo: Check out with PO {po}",
+                "checkoutWithPo: Check out with PO number {po}",
                 "placeOrder: Place the order",
                 "openOrder: Open order {order}",
                 "cartTotalIs: The cart total is {total}");
@@ -93,6 +95,33 @@ class OrderDeskVocabularyTest {
         assertThat(run("placeOrder")).isEqualTo(traced(OrderDeskSteps::placeOrder));
         assertThat(run("openOrder", "order", "ORD-1640")).isEqualTo(traced(ui -> OrderDeskSteps.openOrder(ui, "ORD-1640")));
         assertThat(run("cartTotalIs", "total", "€31.32")).isEqualTo(traced(ui -> OrderDeskSteps.cartTotalIs(ui, "€31.32")));
+    }
+
+    @Test
+    void everyWrittenPatternNamesWhatItsBodyClicks() throws IOException {
+        // a written pattern (match) and the body take their names from OrderDeskSteps' constants; this pins that a
+        // rename there reaches both: each entry's fixed parts equal the body's step at the same place
+        int checked = 0;
+        for (DomainStep s : steps) {
+            if (s.match().isEmpty() || s.match().get(0).contains("\"use\"")) continue;
+            Map<String, String> values = new HashMap<String, String>();
+            for (DomainStep.Param p : s.params()) values.put(p.name(), "{" + p.name() + "}");
+            JsonNode body = run(s.id(), values);
+            assertThat(body.size()).as(s.id() + " steps").isGreaterThanOrEqualTo(s.match().size());
+            for (int i = 0; i < s.match().size(); i++) {
+                JsonNode entry = JSON.readTree(s.match().get(i));
+                assertThat(fixedParts(entry, body.get(i))).as(s.id() + " match " + (i + 1) + " vs " + body.get(i)).isEmpty();
+                checked++;
+            }
+        }
+        assertThat(checked).isEqualTo(7);   // addToCart 2, placeOrder 2, openOrder 2, cartTotalIs 1
+    }
+
+    @Test
+    void aNameIsPlainPatternText() {
+        assertThat(OrderDeskVocabulary.text("Save *all*")).isEqualTo("\"Save \\\\*all\\\\*\"");
+        assertThat(OrderDeskVocabulary.prefix("tab:New order")).isEqualTo("\"tab:New order*\"");
+        assertThat(OrderDeskVocabulary.key("Line \"total\"")).isEqualTo("\"Line \\\"total\\\"\"");
     }
 
     // ---- folding: a person's steps as the recorder saw them (the element's scope, role and every cell of its row)
@@ -204,8 +233,12 @@ class OrderDeskVocabularyTest {
 
     /** The steps {@code id}'s body takes with these values (name, value, ...), on a Client that reaches no app. */
     private JsonNode run(String id, String... values) {
-        final Map<String, String> v = new HashMap<String, String>();
+        Map<String, String> v = new HashMap<String, String>();
         for (int i = 0; i < values.length; i += 2) v.put(values[i], values[i + 1]);
+        return run(id, v);
+    }
+
+    private JsonNode run(String id, final Map<String, String> v) {
         Params params = new Params() {
             @Override public String text(String name) { return v.get(name); }
             @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
@@ -217,10 +250,47 @@ class OrderDeskVocabularyTest {
         TracingVerbs verbs = new TracingVerbs();
         try {
             body.run(new Client(verbs, verbs.app(), "trace"));
-        } catch (RuntimeException | AssertionError e) {
-            // placeOrder reads the new number, which a trace cannot answer: its steps up to there count
+        } catch (RuntimeException e) {
+            // placeOrder reads the new number, which a trace cannot answer: its steps up to there count; any other
+            // throw is a broken body
+            if (verbs.derivable()) throw e;
         }
+        assertThat(verbs.steps()).as("the body's steps").isNotEmpty();
         return JSON.valueToTree(verbs.steps());
+    }
+
+    /**
+     * Where a pattern entry's fixed parts differ from a body step: every field the entry has, except {@code optional},
+     * must be in the step and equal, unless the entry's text holds a {@code {param}} or a {@code *} (it matches more).
+     */
+    private static List<String> fixedParts(JsonNode entry, JsonNode step) {
+        List<String> diffs = new ArrayList<String>();
+        fixedParts("", entry, step, diffs);
+        return diffs;
+    }
+
+    private static void fixedParts(String at, JsonNode entry, JsonNode step, List<String> diffs) {
+        if (entry.isObject()) {
+            Iterator<Map.Entry<String, JsonNode>> it = entry.fields();
+            while (it.hasNext()) {
+                Map.Entry<String, JsonNode> f = it.next();
+                if (at.isEmpty() && f.getKey().equals("optional")) continue;
+                JsonNode s = step == null ? null : step.get(f.getKey());
+                if (s == null && f.getValue().isTextual() && open(f.getValue().asText())) continue;
+                if (s == null) diffs.add(at + "/" + f.getKey() + " missing");
+                else fixedParts(at + "/" + f.getKey(), f.getValue(), s, diffs);
+            }
+        } else if (entry.isArray()) {
+            if (step.size() != entry.size()) diffs.add(at + " " + entry + " vs " + step);
+            else for (int i = 0; i < entry.size(); i++) fixedParts(at + "/" + i, entry.get(i), step.get(i), diffs);
+        } else if (!entry.equals(step) && !(entry.isTextual() && open(entry.asText()))) {
+            diffs.add(at + " " + entry + " vs " + step);
+        }
+    }
+
+    /** Text that matches more than itself. */
+    private static boolean open(String text) {
+        return text.contains("{") || text.contains("*");
     }
 
     private interface Body {
