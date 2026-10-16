@@ -78,7 +78,8 @@ Open the folder in IntelliJ. Its run configurations are ready to use:
 - **All tests:** the unit tests (tag `!ui`), no app needed.
 
 To record a test: run **Order Desk**, press **● Record** in the palette, use the app, add checks with
-**Check**, press **Done**, then **Export…** to write the JUnit class into `src/test/java`. Step by step:
+**Check**, press **Done**, then **Export…** to save it as a recorded test (a JSON file, nothing to compile). The same
+panel can write a JUnit class into `src/test/java` instead. Step by step:
 https://kormcrete.github.io/swing-ui-agent/start/intellij/
 
 ## Start it from a shell
@@ -94,28 +95,49 @@ java -javaagent:target/swing-ui-agent-agent.jar=port=8770 -Dorderdesk.today=2026
 
 ## Drive it with a coding agent
 
-Your coding agent drives the running app through the agent jar's command line, one call per step:
+Tell your coding agent what the test does, in words; it drives the running app, records each step and check, names
+the steps in plain words and saves a recorded test. You can watch the steps appear in the palette and undo what you do
+not like. Underneath, it calls the agent jar's command line, one call per step:
 
 ```bash
 UI="java -jar target/swing-ui-agent-agent.jar --port 8770"
-$UI snapshot '{"window":"main","depth":3,"compact":true}'
-$UI click '{"target":{"role":"button","name":"New order for a recent customer"}}'
-$UI pick '{"path":["Ada Shop Ltd"]}'
+$UI session '{"op":"reset"}'
+$UI menu '{"path":["File","New order"]}'
+$UI type '{"target":{"role":"text","name":"Customer"},"text":"Ada"}'
+$UI press '{"keys":"Enter"}'
+# … the steps, and expect checks of what is on screen …
+$UI export_recorded_test '{"name":"ada-new-order"}'
 ```
 
 Give your agent the skills in swing-ui-agent's
 [`skills/`](https://github.com/kormcrete/swing-ui-agent/tree/main/skills) folder first. With Claude Code:
-https://kormcrete.github.io/swing-ui-agent/start/claude-code/
+https://kormcrete.github.io/swing-ui-agent/start/claude-code/. Recording together, step by step:
+https://kormcrete.github.io/swing-ui-agent/start/record-together/
 
 ## The recorded tests
 
-[`PlaceOrderUiIT`](src/test/java/io/github/kormcrete/orderdesk/PlaceOrderUiIT.java) takes an order for Ada Shop Ltd
-from File ▸ New order through checkout to the placed order, with a 2x screenshot after each step.
-[`CartTotalsUiIT`](src/test/java/io/github/kormcrete/orderdesk/CartTotalsUiIT.java) fills Ada's cart with 3 × A4
-paper and 10 × Gel pen, checks a line total and the €31.32 total, and discards the cart; the swing-ui-agent home page
-plays its recording and replay.
+A recorded test is a JSON file in `uitest/`, one step per action with its checks under it, exact visible values only.
+Nobody writes it by hand: a person shows it with the palette, or the agent records it from words.
 
-- **Made by an agent:** it drove the app through the command line and exported the tests; a person reviewed them.
+<!-- TODO Task 25: name and link Order Desk's uitest/place-order.json and its RecordedUiIT runner here. -->
+
+- **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
+  it (`run_recorded_test`).
+- **Fix one:** in the palette's **Steps**, replay, redo from a step, delete a step or give it a sentence, then save it
+  back.
+- **In Maven and CI:** one small JUnit class runs every file in `uitest/` against the running app:
+  https://kormcrete.github.io/swing-ui-agent/start/recorded-tests/
+
+### Java tests, for more checks
+
+When a test needs to read a value that changes per run, or check something the screen does not show, the agent writes
+a Java test instead. Order Desk has two, made by an agent and reviewed by a person:
+[`PlaceOrderUiIT`](src/test/java/io/github/kormcrete/orderdesk/PlaceOrderUiIT.java) takes an order for Ada Shop Ltd
+through checkout and reads the new order's number, with a 2x screenshot after each step;
+[`CartTotalsUiIT`](src/test/java/io/github/kormcrete/orderdesk/CartTotalsUiIT.java) fills Ada's cart with 3 × A4
+paper and 10 × Gel pen, checks a line total and the €31.32 total, and discards the cart (the swing-ui-agent home page
+plays the same steps).
+
 - **Run them:** with the app running, use **UI tests** in IntelliJ or `mvn -B -Pui verify`. The tests find the agent
   through `src/test/resources/junit-platform.properties`. `mvn -B verify` runs only the unit tests.
 - **In CI:** the `build` workflow runs them under Xvfb and uploads the screenshots as the `ui-screenshots` artifact.
@@ -123,6 +145,8 @@ plays its recording and replay.
 Walkthrough: https://kormcrete.github.io/swing-ui-agent/demo/recorded-test/
 
 ## Things to try
+
+Ask your agent to do one of these, or record it as a test with the palette or the agent:
 
 - ▾ next to New order, then Ada Shop Ltd: a New order tab with Ada's account terms next to the Customer field.
 - Add 3 × A4 paper and 10 × Gel pen, black: the 5% volume discount appears and the cart total is €31.32.
