@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Runs the UI tests (*UiIT) the way CI does: Order Desk starts with the swing-ui-agent agent, the tests drive it.
-# Needs a built target/ (mvn verify). On Linux without a display it starts a virtual one (Xvfb).
+# Needs a built target/ (mvn verify) and order-desk-plugin/target/ (mvn -f order-desk-plugin/pom.xml install).
+# On Linux without a display it starts a virtual one (Xvfb).
 # --attach: start nothing, test the Order Desk already running with the agent on $SWINGUI_PORT (a download).
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PORT="${SWINGUI_PORT:-8770}"
 AGENT=target/swing-ui-agent-agent.jar
+PLUGIN=order-desk-plugin/target/classes   # Order Desk's domain steps, for the recorded tests' do steps
 APP=
 
 if [ "${1:-}" != --attach ]; then
@@ -16,7 +18,7 @@ if [ "${1:-}" != --attach ]; then
     for i in $(seq 1 50); do [ -e /tmp/.X11-unix/X99 ] && break; sleep 0.2; done   # the app needs the display up
     if [ ! -e /tmp/.X11-unix/X99 ]; then echo "Xvfb did not start:"; cat target/xvfb.log; exit 1; fi
   fi
-  java -javaagent:"$AGENT"=port="$PORT",palette=off -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar > target/app.log 2>&1 &
+  java -javaagent:"$AGENT"=port="$PORT",palette=off,plugins="$PLUGIN" -Dorderdesk.today=2026-10-12 -jar target/order-desk.jar > target/app.log 2>&1 &
   APP=$!
   trap 'kill "$APP" 2>/dev/null || true; if [ -n "${XVFB:-}" ]; then kill "$XVFB" 2>/dev/null || true; fi' EXIT
 fi

@@ -66,6 +66,14 @@
             <version>${swing-ui-agent.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <!-- Order Desk's domain steps (order-desk-plugin/, its own Maven project: mvn -f order-desk-plugin/pom.xml
+                 install first); the Java UI tests call them typed, e.g. OrderDeskSteps.addToCart(ui, "Gel pen, black") -->
+            <groupId>io.github.kormcrete</groupId>
+            <artifactId>order-desk-plugin</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

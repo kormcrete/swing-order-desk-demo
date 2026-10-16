@@ -2,11 +2,12 @@
   <configuration default="false" name="Order Desk" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="io.github.kormcrete.orderdesk.OrderDesk" />
     <module name="swing-order-desk-demo" />
-    <option name="VM_PARAMETERS" value="-javaagent:target/swing-ui-agent-agent.jar=port=8770 -Dorderdesk.today=2026-10-12" />
+    <option name="VM_PARAMETERS" value="-javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plugin/target/classes -Dorderdesk.today=2026-10-12" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
     <method v="2">
       <option name="Make" enabled="true" />
       <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/pom.xml" goal="dependency:copy@agent-jar" />
+      <option name="Maven.BeforeRunTask" enabled="true" file="$PROJECT_DIR$/order-desk-plugin/pom.xml" goal="compile" />
     </method>
   </configuration>
 </component>

@@ -28,6 +28,8 @@ jobs:
           cache: maven
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
+        run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
         run: mvn -B verify
       - name: UI tests (Order Desk with the agent, on a virtual display)
@@ -40,6 +42,7 @@ jobs:
           path: |
             target/surefire-reports/
             target/failsafe-reports/
+            order-desk-plugin/target/surefire-reports/
           if-no-files-found: ignore
       - name: Keep UI screenshots
         if: always()

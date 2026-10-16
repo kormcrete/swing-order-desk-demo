@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Order Desk's swing-ui-agent plugin: the app's domain steps ("Add Gel pen, black to the cart"). Its own Maven
+         project beside the app: it drives the UI through the agent's Client only and names the app class as a string
+         (plugin.properties), so it needs no app classes. Build and install it before the app's tests:
+         mvn -f order-desk-plugin/pom.xml install -->
+    <groupId>io.github.kormcrete</groupId>
+    <artifactId>order-desk-plugin</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>Order Desk plugin</name>
+    <description>Order Desk's domain steps for swing-ui-agent, and the typed calls its Java UI tests make.</description>
+    <url>https://github.com/kormcrete/swing-order-desk-demo</url>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.deploy.skip>true</maven.deploy.skip>
+        <junit-jupiter.version>5.8.2</junit-jupiter.version>
+        <assertj.version>3.22.0</assertj.version>
+        <swing-ui-agent.version>0.1.0-SNAPSHOT</swing-ui-agent.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <!-- provided: the agent jar the app runs with supplies these classes; the plugin jar leaves them out -->
+            <groupId>io.github.kormcrete</groupId>
+            <artifactId>swing-ui-agent</artifactId>
+            <version>${swing-ui-agent.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit-jupiter.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>${project.basedir}/..</directory>
+                <targetPath>META-INF</targetPath>
+                <includes>
+                    <include>LICENSE</include>
+                    <include>NOTICE</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.22.2</version>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- the tests trace the steps: no app, no display -->
+                        <java.awt.headless>true</java.awt.headless>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.2.0</version>
+            </plugin>
+        </plugins>
+    </build>
+</project>

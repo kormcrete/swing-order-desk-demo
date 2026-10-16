@@ -1,0 +1,100 @@
+{
+  "version" : 3,
+  "name" : "cart-with-steps",
+  "description" : "The cart-totals cart for Ada Shop Ltd in Order Desk's domain steps (do steps of order-desk-plugin): A4 paper x3 and Gel pen x10, the cart total, checkout with a PO to the review total, then cancel and discard",
+  "start" : "reset",
+  "requires" : [
+    "order-desk"
+  ],
+  "steps" : [
+    {
+      "action" : "do",
+      "say" : "Open a new order for Ada Shop Ltd",
+      "step" : "order-desk:openNewOrder",
+      "params" : {
+        "customer" : "Ada Shop Ltd"
+      },
+      "checks" : [
+        {
+          "say" : "The New order tab for Ada Shop Ltd is selected",
+          "target" : {
+            "role" : "tab",
+            "name" : "New order · Ada Shop Ltd"
+          },
+          "state" : [
+            "selected"
+          ]
+        }
+      ]
+    },
+    {
+      "action" : "do",
+      "say" : "Add 3 × A4 paper, 500 sheets to the cart",
+      "step" : "order-desk:addQtyToCart",
+      "params" : {
+        "product" : "A4 paper, 500 sheets",
+        "qty" : "3"
+      }
+    },
+    {
+      "action" : "do",
+      "say" : "Add 10 × Gel pen, black to the cart",
+      "step" : "order-desk:addQtyToCart",
+      "params" : {
+        "product" : "Gel pen, black",
+        "qty" : "10"
+      },
+      "checks" : [
+        {
+          "action" : "do",
+          "say" : "The cart total is €31.32",
+          "step" : "order-desk:cartTotalIs",
+          "params" : {
+            "total" : "€31.32"
+          }
+        }
+      ]
+    },
+    {
+      "action" : "do",
+      "say" : "Check out with PO PO-7781",
+      "step" : "order-desk:checkoutWithPo",
+      "params" : {
+        "po" : "PO-7781"
+      },
+      "checks" : [
+        {
+          "say" : "The order total with shipping is €37.20",
+          "target" : {
+            "window" : "dialog",
+            "role" : "label",
+            "name" : "Total"
+          },
+          "text" : "€37.20"
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Cancel the checkout",
+      "target" : {
+        "window" : "dialog",
+        "role" : "button",
+        "name" : "Cancel"
+      }
+    },
+    {
+      "action" : "menu",
+      "say" : "Close the order tab",
+      "path" : [
+        "File",
+        "Close tab"
+      ]
+    },
+    {
+      "action" : "answer",
+      "say" : "Discard the order",
+      "button" : "Discard"
+    }
+  ]
+}
