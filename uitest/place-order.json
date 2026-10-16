@@ -1,0 +1,333 @@
+{
+  "version" : 2,
+  "name" : "place-order",
+  "description" : "A new order for Ada Shop Ltd, from File ▸ New order through checkout to the placed order",
+  "start" : "reset",
+  "steps" : [
+    {
+      "action" : "menu",
+      "say" : "Open a new order",
+      "path" : [
+        "File",
+        "New order"
+      ]
+    },
+    {
+      "action" : "type",
+      "say" : "Type “Ada” into Customer",
+      "target" : {
+        "role" : "text",
+        "name" : "Customer"
+      },
+      "text" : "Ada"
+    },
+    {
+      "action" : "press",
+      "say" : "Press Enter to pick Ada Shop Ltd",
+      "keys" : "Enter",
+      "checks" : [
+        {
+          "say" : "The New order tab for Ada Shop Ltd is selected",
+          "target" : {
+            "role" : "tab",
+            "name" : "New order · Ada Shop Ltd"
+          },
+          "state" : [
+            "selected"
+          ]
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Select A4 paper, 500 sheets",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "A4 paper, 500 sheets"
+        },
+        "column" : "SKU"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Add the A4 paper to the cart",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "button",
+        "name" : "Add to cart"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Select Gel pen, black",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "Gel pen, black"
+        },
+        "column" : "SKU"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Add the gel pen to the cart",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "button",
+        "name" : "Add to cart"
+      }
+    },
+    {
+      "action" : "type",
+      "say" : "Order 3 packs of A4 paper",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "A4 paper, 500 sheets"
+        },
+        "column" : "Qty"
+      },
+      "text" : "3",
+      "commit" : true
+    },
+    {
+      "action" : "type",
+      "say" : "Order 10 gel pens",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "Gel pen, black"
+        },
+        "column" : "Qty"
+      },
+      "text" : "10",
+      "commit" : true,
+      "checks" : [
+        {
+          "say" : "The cart subtotal is €26.70",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Subtotal"
+          },
+          "text" : "€26.70"
+        },
+        {
+          "say" : "The volume discount is −€0.60",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Volume discount"
+          },
+          "text" : "−€0.60"
+        },
+        {
+          "say" : "The VAT is €5.22",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "VAT (20%)"
+          },
+          "text" : "€5.22"
+        },
+        {
+          "say" : "The cart total is €31.32",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Total"
+          },
+          "text" : "€31.32"
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Start the checkout",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "button",
+        "name" : "Checkout…"
+      },
+      "checks" : [
+        {
+          "say" : "The postal code is 10119",
+          "target" : {
+            "window" : "dialog",
+            "role" : "text",
+            "name" : "Postal code"
+          },
+          "value" : "10119"
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Keep the delivery address",
+      "target" : {
+        "window" : "dialog",
+        "role" : "button",
+        "name" : "Next"
+      },
+      "checks" : [
+        {
+          "say" : "Standard shipping is chosen",
+          "target" : {
+            "window" : "dialog",
+            "role" : "radio",
+            "name" : "Standard · 3–5 business days"
+          },
+          "state" : [
+            "checked"
+          ]
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Keep standard shipping",
+      "target" : {
+        "window" : "dialog",
+        "role" : "button",
+        "name" : "Next"
+      },
+      "checks" : [
+        {
+          "say" : "The payment step asks for the PO number",
+          "target" : {
+            "window" : "dialog",
+            "role" : "label",
+            "name" : "Enter the PO number"
+          },
+          "state" : [
+            "!disabled"
+          ]
+        },
+        {
+          "say" : "Next waits for the PO number",
+          "target" : {
+            "window" : "dialog",
+            "role" : "button",
+            "name" : "Next"
+          },
+          "state" : [
+            "disabled"
+          ]
+        }
+      ]
+    },
+    {
+      "action" : "type",
+      "say" : "Type the PO number PO-7781",
+      "target" : {
+        "window" : "dialog",
+        "role" : "text",
+        "name" : "PO number"
+      },
+      "text" : "PO-7781"
+    },
+    {
+      "action" : "click",
+      "say" : "Go on to the review",
+      "target" : {
+        "window" : "dialog",
+        "role" : "button",
+        "name" : "Next"
+      },
+      "checks" : [
+        {
+          "say" : "The review total is €37.20",
+          "target" : {
+            "window" : "dialog",
+            "role" : "label",
+            "name" : "Total"
+          },
+          "text" : "€37.20"
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Place the order",
+      "target" : {
+        "window" : "dialog",
+        "role" : "button",
+        "name" : "Place order"
+      }
+    },
+    {
+      "action" : "answer",
+      "say" : "Confirm the order",
+      "button" : "Place order"
+    },
+    {
+      "action" : "click",
+      "say" : "Open the Orders tab",
+      "target" : {
+        "role" : "tab",
+        "name" : "Orders"
+      },
+      "checks" : [
+        {
+          "say" : "The Orders list has at least 14 orders",
+          "target" : {
+            "role" : "table"
+          },
+          "rows" : {
+            "op" : "gte",
+            "value" : 14
+          }
+        },
+        {
+          "say" : "ORD-1640 is Placed",
+          "target" : {
+            "role" : "table",
+            "row" : {
+              "Order" : "ORD-1640"
+            },
+            "column" : "Status"
+          },
+          "text" : "Placed"
+        },
+        {
+          "say" : "ORD-1640 totals €37.20",
+          "target" : {
+            "role" : "table",
+            "row" : {
+              "Order" : "ORD-1640"
+            },
+            "column" : "Total"
+          },
+          "text" : "€37.20"
+        }
+      ]
+    }
+  ]
+}

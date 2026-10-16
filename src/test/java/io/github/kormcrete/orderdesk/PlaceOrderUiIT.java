@@ -41,10 +41,10 @@ class PlaceOrderUiIT {
         ui.tab("New order · Ada Shop Ltd").table().row("Product", "Gel pen, black").cell("Qty")
                 .type("10", null, Boolean.TRUE);
 
-        assertThat(ui.tab("New order · Ada Shop Ltd").label("€26.70")).isVisible();
-        assertThat(ui.tab("New order · Ada Shop Ltd").label("−€0.60")).isVisible();
-        assertThat(ui.tab("New order · Ada Shop Ltd").label("€5.22")).isVisible();
-        assertThat(ui.tab("New order · Ada Shop Ltd").label("€31.32")).isVisible();
+        assertThat(ui.tab("New order · Ada Shop Ltd").label("Subtotal")).hasText("€26.70");
+        assertThat(ui.tab("New order · Ada Shop Ltd").label("Volume discount")).hasText("−€0.60");
+        assertThat(ui.tab("New order · Ada Shop Ltd").label("VAT (20%)")).hasText("€5.22");
+        assertThat(ui.tab("New order · Ada Shop Ltd").label("Total")).hasText("€31.32");
         ui.inWindow("main").saveScreenshot("PlaceOrderUiIT/03-cart.png", 2);
 
         ui.tab("New order · Ada Shop Ltd").button("Checkout…").click();
@@ -66,7 +66,7 @@ class PlaceOrderUiIT {
         ui.dialog().field("PO number").type("PO-7781");
         ui.dialog().button("Next").click();
 
-        assertThat(ui.dialog().label("€37.20")).isVisible();
+        assertThat(ui.dialog().label("Total")).hasText("€37.20");
         ui.inWindow("dialog").saveScreenshot("PlaceOrderUiIT/07-review.png", 2);
 
         ui.dialog().button("Place order").click();

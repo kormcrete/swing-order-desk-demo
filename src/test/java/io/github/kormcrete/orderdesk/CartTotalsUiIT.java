@@ -33,7 +33,7 @@ class CartTotalsUiIT {
 
         assertThat(ui.tab("New order · Ada Shop Ltd").table().cell("Line total"))
                 .hasCell(row("Product", "A4 paper, 500 sheets"), "Line total", "€14.70");
-        assertThat(ui.tab("New order · Ada Shop Ltd").label("€31.32")).hasText("€31.32");
+        assertThat(ui.tab("New order · Ada Shop Ltd").label("Total")).hasText("€31.32");
 
         // discard the cart: a rerun, or PlaceOrderUiIT next, opens its own "New order · Ada Shop Ltd" tab
         ui.menu("File", "Close tab");

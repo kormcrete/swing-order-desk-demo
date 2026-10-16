@@ -1,0 +1,197 @@
+{
+  "version" : 2,
+  "name" : "cart-totals",
+  "description" : "A cart for Ada Shop Ltd: A4 paper x3 and Gel pen x10, with its line total, subtotal, volume discount, VAT and total",
+  "start" : "reset",
+  "steps" : [
+    {
+      "action" : "menu",
+      "say" : "Open a new order",
+      "path" : [
+        "File",
+        "New order"
+      ]
+    },
+    {
+      "action" : "type",
+      "say" : "Type “Ada” into Customer",
+      "target" : {
+        "role" : "text",
+        "name" : "Customer"
+      },
+      "text" : "Ada"
+    },
+    {
+      "action" : "press",
+      "say" : "Press Enter to pick Ada Shop Ltd",
+      "keys" : "Enter",
+      "checks" : [
+        {
+          "say" : "The New order tab for Ada Shop Ltd is selected",
+          "target" : {
+            "role" : "tab",
+            "name" : "New order · Ada Shop Ltd"
+          },
+          "state" : [
+            "selected"
+          ]
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Select A4 paper, 500 sheets",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "A4 paper, 500 sheets"
+        },
+        "column" : "SKU"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Add the A4 paper to the cart",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "button",
+        "name" : "Add to cart"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Select Gel pen, black",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "Gel pen, black"
+        },
+        "column" : "SKU"
+      }
+    },
+    {
+      "action" : "click",
+      "say" : "Add the gel pen to the cart",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "button",
+        "name" : "Add to cart"
+      }
+    },
+    {
+      "action" : "type",
+      "say" : "Order 3 packs of A4 paper",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "A4 paper, 500 sheets"
+        },
+        "column" : "Qty"
+      },
+      "text" : "3",
+      "commit" : true
+    },
+    {
+      "action" : "type",
+      "say" : "Order 10 gel pens",
+      "target" : {
+        "scope" : [
+          "tab:New order · Ada Shop Ltd"
+        ],
+        "role" : "table",
+        "row" : {
+          "Product" : "Gel pen, black"
+        },
+        "column" : "Qty"
+      },
+      "text" : "10",
+      "commit" : true,
+      "checks" : [
+        {
+          "say" : "The A4 paper line comes to €14.70",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "table",
+            "row" : {
+              "Product" : "A4 paper, 500 sheets"
+            },
+            "column" : "Line total"
+          },
+          "text" : "€14.70"
+        },
+        {
+          "say" : "The cart subtotal is €26.70",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Subtotal"
+          },
+          "text" : "€26.70"
+        },
+        {
+          "say" : "The volume discount is −€0.60",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Volume discount"
+          },
+          "text" : "−€0.60"
+        },
+        {
+          "say" : "The VAT is €5.22",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "VAT (20%)"
+          },
+          "text" : "€5.22"
+        },
+        {
+          "say" : "The cart total is €31.32",
+          "target" : {
+            "scope" : [
+              "tab:New order · Ada Shop Ltd"
+            ],
+            "role" : "label",
+            "name" : "Total"
+          },
+          "text" : "€31.32"
+        }
+      ]
+    },
+    {
+      "action" : "menu",
+      "say" : "Close the order tab",
+      "path" : [
+        "File",
+        "Close tab"
+      ]
+    },
+    {
+      "action" : "answer",
+      "say" : "Discard the order",
+      "button" : "Discard"
+    }
+  ]
+}
