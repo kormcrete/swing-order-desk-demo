@@ -80,7 +80,7 @@ Install swing-ui-agent and the plugin first, as in [Build](#build) (`mvn -B -f o
 app's tests use it), then open the folder in IntelliJ. Its run configurations are ready to use:
 
 - **Order Desk:** the app with the agent on port 8770, the vocabulary plugin and the palette (the bar for recording and replaying tests
-  yourself; `palette=off` leaves it out for agent-only runs). It sets the date the recorded tests expect.
+  yourself; `palette=off` leaves it out for agent-only runs). It fixes the date, so every run looks the same.
 - **UI tests:** the recorded tests in `uitest/` (through `RecordedUiIT`) and the Java tests, against the running app
   (JUnit tag `ui`). The gutter icons work too.
 - **All tests:** the unit tests (tag `!ui`), no app needed.
@@ -136,15 +136,15 @@ Order Desk ships three, all recorded and named in plain words:
 
 - [`uitest/place-order.json`](uitest/place-order.json): a new order for Ada Shop Ltd, from File ▸ New order through
   the four checkout steps to the placed order (17 steps). It checks what is predictable: the totals, the review total
-  €37.20, the placed order's receipt and the PO line. The order number is not checked; it is the app's next one.
+  €37.20, that the order is Placed, its invoice total and the PO line. The order number and the date are not checked;
+  they are the app's next one and today.
 - [`uitest/cart-totals.json`](uitest/cart-totals.json): Ada's cart with 3 × A4 paper and 10 × Gel pen, checking the
   line total, subtotal, volume discount, VAT and the €31.32 total (11 steps). The swing-ui-agent home page plays it.
 - [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json): the same cart in the plugin's own steps (`do` steps,
   7 steps); it needs the plugin: start the app with `plugins=…` (see [The vocabulary plugin](#the-vocabulary-plugin)).
 
-The receipt check holds a date, so start the app the way this README does, with `-Dorderdesk.today=2026-10-12` (the
-IntelliJ configuration **Order Desk** does). The downloads do not set that date (nor load the plugin): against one,
-`place-order` fails at its receipt check and `cart-with-steps` is refused; `cart-totals` passes.
+The downloads load no plugin: against one, `cart-with-steps` is refused and the other two pass, on any date. The
+`release` workflow checks every download that way: the Java tests and the recorded tests that need no plugin.
 
 - **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
   it (`run_recorded_test`).

@@ -3,14 +3,18 @@
 # Needs a built target/ (mvn verify) and order-desk-plugin/target/ (mvn -f order-desk-plugin/pom.xml install).
 # On Linux without a display it starts a virtual one (Xvfb).
 # --attach: start nothing, test the Order Desk already running with the agent on $SWINGUI_PORT (a download).
+# Other arguments go to Maven, e.g. -Dswingui.recordedDir=<folder>: the recorded tests to run.
+# Usage: ui-tests.sh [--attach] [maven args...]
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 PORT="${SWINGUI_PORT:-8770}"
 AGENT=target/swing-ui-agent-agent.jar
 PLUGIN=order-desk-plugin/target/classes   # Order Desk's domain steps, for the recorded tests' do steps
 APP=
+ATTACH=
+if [ "${1:-}" = --attach ]; then ATTACH=1; shift; fi
 
-if [ "${1:-}" != --attach ]; then
+if [ -z "$ATTACH" ]; then
   if [ "$(uname)" = Linux ] && [ -z "${DISPLAY:-}" ]; then
     Xvfb :99 -screen 0 1600x1000x24 > target/xvfb.log 2>&1 &
     XVFB=$!
@@ -34,4 +38,4 @@ for i in $(seq 1 60); do
   sleep 1
 done
 
-mvn -B -Pui -Dswingui.agents="127.0.0.1:$PORT" failsafe:integration-test failsafe:verify
+mvn -B -Pui -Dswingui.agents="127.0.0.1:$PORT" "$@" failsafe:integration-test failsafe:verify

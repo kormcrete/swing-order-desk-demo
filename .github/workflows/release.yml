@@ -1,9 +1,9 @@
 name: release
 
 # The downloads: Kormcrete Order Desk for macOS (.dmg, Apple Silicon and Intel) and Windows (.zip), each with Zulu
-# JRE 8, and a Java .zip (the jars and launchers, for your own Java 8+); all start the agent on port 8770. Every run
-# checks the packaged app with the UI tests; a vX.Y.Z tag also publishes a GitHub Release. Pull requests that touch
-# the packaging run the checks.
+# JRE 8, and a Java .zip (the jars and launchers, for your own Java 8+); all start the agent on port 8770, with no
+# plugin. Every run checks the packaged app with the UI tests (the Java ones and the recorded tests that need no
+# plugin); a vX.Y.Z tag also publishes a GitHub Release. Pull requests that touch the packaging run the checks.
 on:
   push:
     tags: ['v*']
@@ -13,6 +13,8 @@ on:
       - 'pom.xml'
       - 'src/main/**'
       - 'src/test/**'
+      - 'uitest/**'
+      - 'order-desk-plugin/**'
       - '.github/scripts/**'
       - '.github/workflows/release.yml'
   workflow_dispatch:
@@ -57,6 +59,8 @@ jobs:
           cache: maven
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
+        run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
         run: mvn -B verify
       - name: Build the .dmg files
@@ -119,6 +123,8 @@ jobs:
           cache: maven
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
+        run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
         run: mvn -B verify
       # launch4j-maven-plugin 2.7.0 runs on Java 17: only its goal runs there, the jars stay the Java 8 build
@@ -174,6 +180,8 @@ jobs:
           cache: maven
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
+        run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
         run: mvn -B verify
       - name: Build the .zip

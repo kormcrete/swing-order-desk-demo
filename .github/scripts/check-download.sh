@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Checks a download the way a user gets it: starts the packaged app (from the mounted .dmg, or the unzipped folder),
 # runs the UI tests against its agent on port 8770, and checks the agent's listening line in its log file (log=), or
-# in the console for the Java zip. Needs a built target/ (mvn verify). macOS: bash. Windows: Git Bash (the runner's
-# "shell: bash"). The Java zip: any OS with a display.
+# in the console for the Java zip. The UI tests: all Java ones, and the recorded tests in uitest/ that need no plugin
+# (no "requires"), as a download starts the agent without Order Desk's plugin. Needs a built target/ (mvn verify).
+# macOS: bash. Windows: Git Bash (the runner's "shell: bash"). The Java zip: any OS with a display.
 # Usage: check-download.sh <kormcrete-order-desk-macos-<arch>.dmg | kormcrete-order-desk-windows-x64.zip
 #                           | kormcrete-order-desk-java.zip>
 set -euo pipefail
@@ -10,6 +11,17 @@ cd "$(dirname "$0")/../.."
 [ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: $0 <.dmg | .zip>" >&2; exit 2; }
 FILE=$1
 NAME="Kormcrete Order Desk"
+
+# a download loads no plugin, so a recorded test with do steps ("requires") would be refused: run the others
+RECORDED=target/download-uitest
+rm -rf "$RECORDED"
+mkdir -p "$RECORDED"
+LEFT_OUT=
+for f in uitest/*.json; do
+  if grep -q '"requires"[[:space:]]*:' "$f"; then LEFT_OUT="$LEFT_OUT $(basename "$f" .json)"; else cp "$f" "$RECORDED/"; fi
+done
+echo "Recorded tests for the download:" $(cd "$RECORDED" && ls | sed 's/\.json$//')
+echo "Left out (they need Order Desk's plugin):${LEFT_OUT:- none}"
 
 case "$FILE" in
   *.dmg)
@@ -52,7 +64,7 @@ case "$FILE" in
   *) echo "usage: $0 <.dmg | .zip>" >&2; exit 2 ;;
 esac
 
-SWINGUI_PORT=8770 .github/scripts/ui-tests.sh --attach
+SWINGUI_PORT=8770 .github/scripts/ui-tests.sh --attach -Dswingui.recordedDir="$RECORDED"
 if ! grep -q "swing-ui-agent listening on http://127.0.0.1:8770/mcp" "$LOG"; then
   echo "the agent's line is missing from $LOG:"
   cat "$LOG" || true
