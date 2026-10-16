@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Checks a download the way a user gets it: starts the packaged app (from the mounted .dmg, or the unzipped folder),
-# runs the UI tests against its agent on port 8770, and checks the agent's listening line in its log file (log=).
-# Needs a built target/ (mvn verify). macOS: bash. Windows: Git Bash (the runner's "shell: bash").
-# Usage: check-download.sh <kormcrete-order-desk-macos-<arch>.dmg | kormcrete-order-desk-windows-x64.zip>
+# runs the UI tests against its agent on port 8770, and checks the agent's listening line in its log file (log=), or
+# in the console for the Java zip. Needs a built target/ (mvn verify). macOS: bash. Windows: Git Bash (the runner's
+# "shell: bash"). The Java zip: any OS with a display.
+# Usage: check-download.sh <kormcrete-order-desk-macos-<arch>.dmg | kormcrete-order-desk-windows-x64.zip
+#                           | kormcrete-order-desk-java.zip>
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 [ $# -eq 1 ] && [ -f "$1" ] || { echo "usage: $0 <.dmg | .zip>" >&2; exit 2; }
@@ -21,6 +23,17 @@ case "$FILE" in
     }
     trap 'echo "--- $LOG"; cat "$LOG" 2>/dev/null || true; stop' EXIT
     open "$VOLUME/$NAME.app"
+    ;;
+  *-java.zip)
+    DIR=$(mktemp -d)
+    unzip -q "$FILE" -d "$DIR"
+    RUN="$DIR/$NAME/order-desk"
+    [ -x "$RUN" ] || { echo "no executable $NAME/order-desk in $FILE" >&2; exit 1; }
+    LOG="$DIR/console.log"
+    # APP_JAVA_HOME: the Java the app runs on (the tests stay on JAVA_HOME)
+    JAVA_HOME="${APP_JAVA_HOME:-${JAVA_HOME:-}}" "$RUN" > "$LOG" 2>&1 &
+    APP=$!
+    trap 'echo "--- $LOG"; cat "$LOG" 2>/dev/null || true; kill "$APP" 2>/dev/null || true' EXIT
     ;;
   *.zip)
     DIR=$(mktemp -d)
