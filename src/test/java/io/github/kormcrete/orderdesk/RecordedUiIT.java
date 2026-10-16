@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestFactory;
 
 import java.util.stream.Stream;
 
-/** Replays every recorded test in {@code uitest/} (place-order, cart-totals) against the running app. */
+/** Replays every recorded test in {@code uitest/} against the running app. */
 @UiTest
 class RecordedUiIT {
 

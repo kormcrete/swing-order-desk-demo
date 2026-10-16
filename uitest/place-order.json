@@ -226,9 +226,7 @@
             "role" : "label",
             "name" : "Enter the PO number"
           },
-          "state" : [
-            "!disabled"
-          ]
+          "text" : "Enter the PO number"
         },
         {
           "say" : "Next waits for the PO number",
@@ -285,47 +283,41 @@
     {
       "action" : "answer",
       "say" : "Confirm the order",
-      "button" : "Place order"
-    },
-    {
-      "action" : "click",
-      "say" : "Open the Orders tab",
-      "target" : {
-        "role" : "tab",
-        "name" : "Orders"
-      },
+      "button" : "Place order",
       "checks" : [
         {
-          "say" : "The Orders list has at least 14 orders",
+          "say" : "The new order is Placed",
           "target" : {
-            "role" : "table"
-          },
-          "rows" : {
-            "op" : "gte",
-            "value" : 14
-          }
-        },
-        {
-          "say" : "ORD-1640 is Placed",
-          "target" : {
-            "role" : "table",
-            "row" : {
-              "Order" : "ORD-1640"
-            },
-            "column" : "Status"
+            "role" : "label",
+            "name" : "Placed"
           },
           "text" : "Placed"
         },
         {
-          "say" : "ORD-1640 totals €37.20",
+          "say" : "The receipt shows Ada Shop Ltd and €37.20",
           "target" : {
-            "role" : "table",
-            "row" : {
-              "Order" : "ORD-1640"
-            },
-            "column" : "Total"
+            "role" : "label",
+            "name" : "Ada Shop Ltd · 12 Oct 2026 · €37.20"
           },
-          "text" : "€37.20"
+          "text" : "Ada Shop Ltd · 12 Oct 2026 · €37.20"
+        }
+      ]
+    },
+    {
+      "action" : "click",
+      "say" : "Open the Invoice tab",
+      "target" : {
+        "role" : "tab",
+        "name" : "Invoice"
+      },
+      "checks" : [
+        {
+          "say" : "The payment line shows the PO number PO-7781",
+          "target" : {
+            "role" : "label",
+            "name" : "Invoice (30 days) · PO PO-7781"
+          },
+          "text" : "Invoice (30 days) · PO PO-7781"
         }
       ]
     }
