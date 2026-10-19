@@ -1,7 +1,6 @@
 package io.github.kormcrete.orderdesk.uitest;
 
 import io.github.kormcrete.swingui.driver.DriverException;
-import io.github.kormcrete.swingui.driver.PendingDialog;
 import io.github.kormcrete.swingui.driver.Reason;
 import io.github.kormcrete.swingui.driver.VerbOutcome;
 import io.github.kormcrete.swingui.driver.Verbs;
@@ -83,12 +82,6 @@ final class OrderDeskApp implements StepHost, AppHooks {
     public void navigate(String target) {
         throw new DriverException(Reason.CAPABILITY_GAP, "Order Desk names no navigate targets: open screens with the menu "
                 + "(File ▸ New order) or a do step (Open a new order for …)");
-    }
-
-    /** The app steps here never wait on a dialog of their own: the reset and close answer what they open. */
-    @Override
-    public PendingDialog openDialog() {
-        return null;
     }
 
     @Override
