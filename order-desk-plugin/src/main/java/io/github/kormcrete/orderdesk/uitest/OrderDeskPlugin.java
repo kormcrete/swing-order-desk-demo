@@ -8,7 +8,8 @@ import io.github.kormcrete.swingui.spi.UiPlugin;
 
 /**
  * Order Desk's swing-ui-agent plugin: the app plugin ({@link OrderDeskApp}: a session reset closes every order tab and
- * shows the Orders list, so tests run one after another on one app) and the vocabulary ({@link OrderDeskVocabulary}).
+ * shows the Orders list, so tests run one after another on one app), what {@code describe_ui} reports
+ * ({@link OrderDeskInventory}) and the vocabulary ({@link OrderDeskVocabulary}).
  * Start the app with
  * {@code -javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plugin/target/classes}.
  */
@@ -18,7 +19,8 @@ public final class OrderDeskPlugin implements UiPlugin {
     public PluginParts start(PluginContext context) {
         Client live = new Client(context.driver().verbs(), new ReadsOnly(), "order-desk-plugin");
         OrderDeskApp app = new OrderDeskApp(context.driver().verbs());
-        return new PluginParts(app, null, app, null, null, null, new OrderDeskVocabulary(live));
+        OrderDeskInventory inventory = new OrderDeskInventory(context.driver().windows()::main);
+        return new PluginParts(app, inventory, app, null, null, null, new OrderDeskVocabulary(live));
     }
 
     /** The choices only read the app: no app steps, logins or hooks. */
