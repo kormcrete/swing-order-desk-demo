@@ -7,8 +7,9 @@ import io.github.kormcrete.swingui.spi.PluginParts;
 import io.github.kormcrete.swingui.spi.UiPlugin;
 
 /**
- * Order Desk's swing-ui-agent plugin: the vocabulary only ({@link OrderDeskVocabulary}). No step host, so a session
- * reset stays the agent's own (pointer home, modal dialogs closed). Start the app with
+ * Order Desk's swing-ui-agent plugin: the app plugin ({@link OrderDeskApp}: a session reset closes every order tab and
+ * shows the Orders list, so tests run one after another on one app) and the vocabulary ({@link OrderDeskVocabulary}).
+ * Start the app with
  * {@code -javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plugin/target/classes}.
  */
 public final class OrderDeskPlugin implements UiPlugin {
@@ -16,7 +17,8 @@ public final class OrderDeskPlugin implements UiPlugin {
     @Override
     public PluginParts start(PluginContext context) {
         Client live = new Client(context.driver().verbs(), new ReadsOnly(), "order-desk-plugin");
-        return new PluginParts(new OrderDeskVocabulary(live));
+        OrderDeskApp app = new OrderDeskApp(context.driver().verbs());
+        return new PluginParts(app, null, app, null, null, null, new OrderDeskVocabulary(live));
     }
 
     /** The choices only read the app: no app steps, logins or hooks. */

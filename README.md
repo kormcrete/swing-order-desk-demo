@@ -70,16 +70,16 @@ mvn -B -f order-desk-plugin/pom.xml install
 mvn -B package
 ```
 
-`order-desk-plugin/` is Order Desk's plugin, its own small Maven project: a vocabulary of the app's steps ("Add Gel
-pen, black to the cart"). The app's tests use it, so install it before `mvn package`. See
-[The vocabulary plugin](#the-vocabulary-plugin).
+`order-desk-plugin/` is Order Desk's plugin, its own small Maven project: its reset (every test starts on the Orders
+list, no order tab open) and a vocabulary of the app's steps ("Add Gel pen, black to the cart"). The app's tests use
+it, so install it before `mvn package`. See [The plugin](#the-plugin).
 
 ## Run it in IntelliJ
 
 Install swing-ui-agent and the plugin first, as in [Build](#build) (`mvn -B -f order-desk-plugin/pom.xml install`: the
 app's tests use it), then open the folder in IntelliJ. Its run configurations are ready to use:
 
-- **Order Desk:** the app with the agent on port 8770, the vocabulary plugin and the palette (the bar for recording and replaying tests
+- **Order Desk:** the app with the agent on port 8770, its plugin and the palette (the bar for recording and replaying tests
   yourself; `palette=off` leaves it out for agent-only runs). It fixes the date, so every run looks the same.
 - **UI tests:** the recorded tests in `uitest/` (through `RecordedUiIT`) and the Java tests, against the running app
   (JUnit tag `ui`). The gutter icons work too.
@@ -102,8 +102,10 @@ java -javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plu
 - `-javaagent:…` lets a coding agent, or the UI tests, drive the app on port 8770. Without it, Order Desk is a normal
   app.
 - `-Dorderdesk.today=2026-10-12` fixes the date the app uses, so every run looks the same.
-- `plugins=order-desk-plugin/target/classes` loads the vocabulary plugin (after `mvn -f order-desk-plugin/pom.xml
-  install`). It is optional for driving and recording; the recorded test `uitest/cart-with-steps.json` needs it.
+- `plugins=order-desk-plugin/target/classes` loads Order Desk's plugin (after `mvn -f order-desk-plugin/pom.xml
+  install`): its reset lets tests run one after another on one app, and `uitest/cart-with-steps.json` needs its
+  vocabulary. Driving and recording work without it; then a reset only closes dialogs, so the recorded tests pass
+  only on a freshly started app.
 - The palette (recording bar) is on by default; add `,palette=off` after the port for agent-only runs.
 
 ## Drive it with a coding agent
@@ -141,7 +143,7 @@ Order Desk ships three, all recorded and named in plain words:
 - [`uitest/cart-totals.json`](uitest/cart-totals.json): Ada's cart with 3 × A4 paper and 10 × Gel pen, checking the
   line total, subtotal, volume discount, VAT and the €31.32 total (11 steps). The swing-ui-agent home page plays it.
 - [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json): the same cart in the plugin's own steps (`do` steps,
-  7 steps); it needs the plugin: start the app with `plugins=…` (see [The vocabulary plugin](#the-vocabulary-plugin)).
+  7 steps); it needs the plugin: start the app with `plugins=…` (see [The plugin](#the-plugin)).
 
 The downloads load no plugin: against one, `cart-with-steps` is refused and the other two pass, on any date. The
 `release` workflow checks every download that way: the Java tests and the recorded tests that need no plugin.
@@ -154,11 +156,15 @@ The downloads load no plugin: against one, `cart-with-steps` is refused and the 
   JUnit class, runs every file in `uitest/` against the running app:
   https://kormcrete.github.io/swing-ui-agent/start/recorded-tests/
 
-## The vocabulary plugin
+## The plugin
 
-`order-desk-plugin/` names the app's own steps once: `openNewOrder`, `addToCart`, `setQuantity`, `addQtyToCart`,
-`checkoutWithPo`, `placeOrder`, `openOrder` and the check `cartTotalIs`. It drives the app through the agent's client
-only, so it needs no app classes.
+`order-desk-plugin/` resets the app for each test and names the app's own steps once: `openNewOrder`, `addToCart`,
+`setQuantity`, `addQtyToCart`, `checkoutWithPo`, `placeOrder`, `openOrder` and the check `cartTotalIs`. It drives the
+app through the agent's client only, so it needs no app classes.
+
+- **The reset** (`OrderDeskApp`) closes every order tab, last first, answers Discard for a new order with something in
+  its cart, and shows the Orders list. Every test, recorded or Java, starts there, whatever the test before it left
+  open. Placed orders stay: each test creates the data it checks.
 
 - **The agent** runs a step in one call, for example "Add 10 × Gel pen, black to the cart".
 - **A recording** folds the clicks that make a step into it, so a person's recorded test reads in the app's words:
