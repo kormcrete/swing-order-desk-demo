@@ -45,6 +45,12 @@ The downloads are not signed yet, so the first launch takes a few extra clicks:
 - **Java zip:** unzip, then run `order-desk` in the **Kormcrete Order Desk** folder (`order-desk.cmd` on Windows). It
   uses `JAVA_HOME` when set, else the `java` on your PATH, and prints the agent's lines in the terminal.
 
+**Run a recorded test right away:** in the bar at the bottom of the window (the palette), press **Load recorded
+test…**. Order Desk's three recorded tests are listed: `place-order`, `cart-totals` and `cart-with-steps`. Pick one and
+press **▶ Run**, with **Step by step** if you want to watch. They run one after another on the same app, each from
+the Orders list. They come with the app and stay as they are: a test you record or change goes into a folder of your
+own (Export… asks for one).
+
 Then connect your coding agent while the app runs:
 
 ```bash
@@ -145,8 +151,8 @@ Order Desk ships three, all recorded and named in plain words:
 - [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json): the same cart in the plugin's own steps (`do` steps,
   7 steps); it needs the plugin: start the app with `plugins=…` (see [The plugin](#the-plugin)).
 
-The downloads load no plugin: against one, `cart-with-steps` is refused and the other two pass, on any date. The
-`release` workflow checks every download that way: the Java tests and the recorded tests that need no plugin.
+The downloads bring these three tests and Order Desk's plugin, so all three run there, on any date and one after
+another. The `release` workflow checks every download that way: the Java tests and every recorded test, twice.
 
 - **Replay one:** press **Load recorded test…** in the palette, pick it and press **▶ Run**, or ask your agent to run
   it (`run_recorded_test`).

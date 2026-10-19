@@ -1,9 +1,9 @@
 name: release
 
 # The downloads: Kormcrete Order Desk for macOS (.dmg, Apple Silicon and Intel) and Windows (.zip), each with Zulu
-# JRE 8, and a Java .zip (the jars and launchers, for your own Java 8+); all start the agent on port 8770, with no
-# plugin. Every run checks the packaged app with the UI tests (the Java ones and the recorded tests that need no
-# plugin); a vX.Y.Z tag also publishes a GitHub Release. Pull requests that touch the packaging run the checks.
+# JRE 8, and a Java .zip (the jars and launchers, for your own Java 8+); all start the agent on port 8770 with Order
+# Desk's plugin and its recorded tests (uitest, read-only). Every run checks the packaged app with the UI tests (the
+# Java ones and every recorded test, twice); a vX.Y.Z tag also publishes a GitHub Release. Pull requests that touch the packaging run the checks.
 on:
   push:
     tags: ['v*']

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Builds "Kormcrete Order Desk.app" and kormcrete-order-desk-macos-<arch>.dmg from target/ (mvn package) and a Zulu
-# JRE 8 for that architecture.
+# Builds "Kormcrete Order Desk.app" and kormcrete-order-desk-macos-<arch>.dmg from target/ (mvn package),
+# order-desk-plugin/target/ (Order Desk's plugin), uitest/ (its recorded tests) and a Zulu JRE 8 for that architecture.
 # Usage: packaging/macos/build-macos.sh <jre-home> <arm64|x64> <version> <out-dir>
 #   <jre-home>: the JRE folder with bin/java and lib/rt.jar, or the .jre/.jdk bundle holding it in Contents/Home.
 set -euo pipefail
@@ -21,8 +21,9 @@ case "$ARCH" in
 esac
 [ -x "$JRE/bin/java" ] && [ -f "$JRE/lib/rt.jar" ] || fail "$JRE is not a Java 8 JRE (needs bin/java and lib/rt.jar)"
 file "$JRE/bin/java" | grep -q "$MACHO" || fail "$JRE/bin/java is not $MACHO: $(file -b "$JRE/bin/java")"
-for f in target/order-desk.jar target/swing-ui-agent-agent.jar packaging/icons/kormcrete-order-desk.icns; do
-  [ -f "$f" ] || fail "missing $f (run mvn -B package first)"
+for f in target/order-desk.jar target/swing-ui-agent-agent.jar order-desk-plugin/target/order-desk-plugin.jar \
+    packaging/icons/kormcrete-order-desk.icns; do
+  [ -f "$f" ] || fail "missing $f (run mvn -B -f order-desk-plugin/pom.xml install and mvn -B package first)"
 done
 
 NAME="Kormcrete Order Desk"
@@ -35,8 +36,10 @@ install -m 755 packaging/macos/kormcrete-order-desk "$APP/Contents/MacOS/kormcre
 ditto "$JRE" "$APP/Contents/Java/jre"
 # the JRE ships some read-only files: writable, so xattr -dr com.apple.quarantine (the README) runs without errors
 chmod -R u+w "$APP/Contents/Java/jre"
-cp target/order-desk.jar target/swing-ui-agent-agent.jar "$APP/Contents/Java/"
+cp target/order-desk.jar target/swing-ui-agent-agent.jar order-desk-plugin/target/order-desk-plugin.jar "$APP/Contents/Java/"
 cp packaging/icons/kormcrete-order-desk.icns "$APP/Contents/Resources/"
+mkdir "$APP/Contents/Resources/uitest"
+cp uitest/*.json "$APP/Contents/Resources/uitest/"
 # ad-hoc signature: not trusted by Gatekeeper, but Apple Silicon reports an unsigned bundle as "damaged"
 codesign --force --deep --sign - "$APP"
 ln -s /Applications "$WORK/dmg/Applications"

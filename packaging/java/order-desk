@@ -1,10 +1,13 @@
 #!/bin/sh
-# Kormcrete Order Desk on your own Java (8 or newer): starts Order Desk with the swing-ui-agent agent on port 8770.
-# Uses $JAVA_HOME/bin/java when JAVA_HOME is set, else the java on your PATH. The agent's lines appear here.
+# Kormcrete Order Desk on your own Java (8 or newer): starts Order Desk with the swing-ui-agent agent on port 8770,
+# Order Desk's plugin and its recorded tests (uitest: the palette's Load recorded test… lists them; they are kept as
+# they are, save your own elsewhere). Uses $JAVA_HOME/bin/java when JAVA_HOME is set, else the java on your PATH. The
+# agent's lines appear here.
 DIR="$(cd "$(dirname "$0")" && pwd)"
 if [ -n "${JAVA_HOME:-}" ]; then JAVA="$JAVA_HOME/bin/java"; else JAVA=java; fi
 if ! command -v "$JAVA" > /dev/null 2>&1; then
   echo "Kormcrete Order Desk needs Java 8 or newer: install it, or set JAVA_HOME." >&2
   exit 1
 fi
-exec "$JAVA" -javaagent:"$DIR/swing-ui-agent-agent.jar=port=8770" -jar "$DIR/order-desk.jar"
+exec "$JAVA" -javaagent:"$DIR/swing-ui-agent-agent.jar=port=8770,plugins=$DIR/order-desk-plugin.jar,recorded=$DIR/uitest,recordedReadOnly=on" \
+  -jar "$DIR/order-desk.jar"

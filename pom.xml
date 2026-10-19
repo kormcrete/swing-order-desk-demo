@@ -258,8 +258,9 @@
                                         <requiresJdk>false</requiresJdk>
                                         <requires64Bit>true</requires64Bit>
                                         <opts>
-                                            <!-- quoted: the log path has spaces; Launch4j expands %LOCALAPPDATA% -->
-                                            <opt>"-javaagent:app\swing-ui-agent-agent.jar=port=8770,log=%LOCALAPPDATA%\Kormcrete Order Desk\agent.log"</opt>
+                                            <!-- quoted: the log path has spaces; Launch4j expands %LOCALAPPDATA%; the plugin and
+                                                 the recorded tests (kept as they are) are under app\ -->
+                                            <opt>"-javaagent:app\swing-ui-agent-agent.jar=port=8770,plugins=app\order-desk-plugin.jar,recorded=app\uitest,recordedReadOnly=on,log=%LOCALAPPDATA%\Kormcrete Order Desk\agent.log"</opt>
                                         </opts>
                                     </jre>
                                     <messages>

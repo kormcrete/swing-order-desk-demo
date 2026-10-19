@@ -54,6 +54,8 @@
     </dependencies>
 
     <build>
+        <!-- a fixed name: the downloads bundle it as order-desk-plugin.jar -->
+        <finalName>order-desk-plugin</finalName>
         <resources>
             <resource>
                 <directory>src/main/resources</directory>

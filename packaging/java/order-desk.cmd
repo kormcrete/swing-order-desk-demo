@@ -1,6 +1,7 @@
 @echo off
-rem Kormcrete Order Desk on your own Java (8 or newer): starts Order Desk with the swing-ui-agent agent on port 8770.
-rem Uses %JAVA_HOME%\bin\java.exe when JAVA_HOME is set, else the java on your PATH. The agent's lines appear here.
+rem Kormcrete Order Desk on your own Java (8 or newer): starts Order Desk with the swing-ui-agent agent on port 8770,
+rem Order Desk's plugin and its recorded tests (uitest, kept as they are). Uses %JAVA_HOME%\bin\java.exe when JAVA_HOME
+rem is set, else the java on your PATH. The agent's lines appear here.
 setlocal
 set "DIR=%~dp0"
 set "JAVA=java"
@@ -11,4 +12,4 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-"%JAVA%" "-javaagent:%DIR%swing-ui-agent-agent.jar=port=8770" -jar "%DIR%order-desk.jar"
+"%JAVA%" "-javaagent:%DIR%swing-ui-agent-agent.jar=port=8770,plugins=%DIR%order-desk-plugin.jar,recorded=%DIR%uitest,recordedReadOnly=on" -jar "%DIR%order-desk.jar"
