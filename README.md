@@ -57,6 +57,12 @@ Then connect your coding agent while the app runs:
 claude mcp add --transport http order-desk http://127.0.0.1:8770/mcp
 ```
 
+and, in Claude Code, give it swing-ui-agent's skills and driver sub-agent from the kormcrete marketplace:
+
+```text
+/plugin install swing-ui-agent --marketplace kormcrete/claude-plugins
+```
+
 Other MCP clients: [MCP clients](https://kormcrete.github.io/swing-ui-agent/agents/mcp-clients/). If your agent cannot
 connect, another app may be using port 8770; the agent's log says so: `~/Library/Logs/Kormcrete Order Desk/agent.log`
 (macOS), `%LOCALAPPDATA%\Kormcrete Order Desk\agent.log` (Windows), the terminal (Java zip).
@@ -130,9 +136,18 @@ $UI press '{"keys":"Enter"}'
 $UI export_recorded_test '{"name":"ada-new-order"}'
 ```
 
-Give your agent the skills in swing-ui-agent's
-[`skills/`](https://github.com/kormcrete/swing-ui-agent/tree/main/skills) folder first. With Claude Code:
-https://kormcrete.github.io/swing-ui-agent/start/claude-code/. Recording together, step by step:
+Give your agent swing-ui-agent's skills first. In Claude Code they come as one plugin from the kormcrete marketplace
+([kormcrete/claude-plugins](https://github.com/kormcrete/claude-plugins)):
+
+```text
+/plugin install swing-ui-agent --marketplace kormcrete/claude-plugins
+```
+
+Update it with `/plugin marketplace update kormcrete`, then `/plugin update swing-ui-agent@kormcrete`. The plugin also
+brings a driver sub-agent: for "go and check" jobs, such as walking the checkout for Café Lumen, confirming a fix or
+running the recorded tests, Claude Code hands the clicking to it on a cheaper model and gets back pass, fail or gap per
+item. Other coding agents copy the files: https://kormcrete.github.io/swing-ui-agent/agents/skills/. With Claude Code,
+step by step: https://kormcrete.github.io/swing-ui-agent/start/claude-code/. Recording together:
 https://kormcrete.github.io/swing-ui-agent/start/record-together/
 
 ## The recorded tests
@@ -205,7 +220,8 @@ https://kormcrete.github.io/swing-ui-agent/demo/recorded-test/
 
 ## Things to try
 
-Ask your agent to do one of these, or record it as a test with the palette or the agent:
+Ask your agent to do one of these (or the driver: "use the driver to check …"), or record it as a test with the palette
+or the agent:
 
 - ▾ next to New order, then Ada Shop Ltd: a New order tab with Ada's account terms next to the Customer field.
 - Add 3 × A4 paper and 10 × Gel pen, black: the 5% volume discount appears and the cart total is €31.32.
