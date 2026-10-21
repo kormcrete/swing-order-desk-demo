@@ -1,5 +1,7 @@
 package io.github.kormcrete.orderdesk.ui;
 
+import com.formdev.flatlaf.FlatLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonLaf;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -14,7 +16,9 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -66,6 +70,42 @@ class ThemeTest {
     }
 
     @Test
+    void lagoonKeepsItsOwnLookAndGetsOnlyTheOrderDeskColours() {
+        Edt.run(() -> {
+            FlatLaf.setup(new FlatLagoonLaf());   // Lagoon as it comes
+            Object rowHeight = UIManager.get("Table.rowHeight");
+            Object buttonMargin = UIManager.get("Button.margin");
+            Object tabForeground = UIManager.get("TabbedPane.foreground");
+
+            Theme.lagoon();
+            assertThat(UIManager.getLookAndFeel()).isInstanceOf(FlatLagoonLaf.class);
+            assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x6e6e6e));
+            assertThat(UIManager.getColor(Theme.CARD_BACKGROUND)).isEqualTo(new Color(0xfafafa));
+            assertThat(UIManager.getColor(Theme.SOFT_BORDER)).isEqualTo(new Color(0xdadada));
+            assertThat(UIManager.get("Table.rowHeight")).isEqualTo(rowHeight);
+            assertThat(UIManager.get("Button.margin")).isEqualTo(buttonMargin);
+            assertThat(UIManager.get("TabbedPane.foreground")).isEqualTo(tabForeground);
+        });
+    }
+
+    @Test
+    void lightAndDarkComeBackCleanAfterLagoon() {
+        String[] keys = {"defaultFont", "Table.rowHeight", "Button.margin", "TabbedPane.foreground",
+                "TabbedPane.tabAreaInsets", "Component.borderColor", "Panel.background", "TableHeader.background"};
+        Edt.run(() -> {
+            for (Runnable theme : new Runnable[] {Theme::light, Theme::dark}) {
+                theme.run();
+                Map<String, Object> before = values(keys);
+                Theme.lagoon();
+                theme.run();
+                Theme.lagoon();
+                theme.run();
+                assertThat(values(keys)).isEqualTo(before);
+            }
+        });
+    }
+
+    @Test
     void eachReviewSectionKeepsItsTitledBorder() {
         Edt.run(() -> {
             ReviewStep review = new ReviewStep(step -> { });
@@ -79,6 +119,7 @@ class ThemeTest {
     @Test
     void aDialogDetailIsASecondSmallerGreyLine() {
         Edt.run(() -> {
+            Theme.light();   // the muted colour exists only once a theme is installed
             assertThat(Dialogs.content("Discard this new order?", null)).isEqualTo("Discard this new order?");
             JPanel panel = (JPanel) Dialogs.content("Place order for €37.20?", "Order for Ada Shop Ltd, 13 items.");
             JLabel message = (JLabel) panel.getComponent(0);
@@ -88,6 +129,12 @@ class ThemeTest {
             assertThat(detail.getForeground()).isEqualTo(UIManager.getColor(Theme.MUTED));
             assertThat(detail.getFont().getSize2D()).isLessThan(message.getFont().getSize2D());
         });
+    }
+
+    private static Map<String, Object> values(String... keys) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        for (String key : keys) values.put(key, UIManager.get(key));
+        return values;
     }
 
     private static void collectTitles(Container container, List<String> out) {

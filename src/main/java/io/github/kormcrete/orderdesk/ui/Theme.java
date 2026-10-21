@@ -4,6 +4,7 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.ui.FlatEmptyBorder;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonLaf;
 
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
@@ -12,9 +13,10 @@ import javax.swing.plaf.InsetsUIResource;
 import java.awt.Dimension;
 
 /**
- * FlatLaf Light or Dark, switched live from View ▸ Theme. {@code FlatLaf.setup} resets every default, so the Order
- * Desk values below are put again on each switch: roomier tables and controls, and the app's own colour keys
- * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}.
+ * FlatLaf Light, Dark or Kormcrete's Lagoon, switched live from View ▸ Theme. {@code FlatLaf.setup} resets every
+ * default, so the Order Desk values below are put again on each switch: the app's own colour keys
+ * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}, and for Light and Dark roomier tables and
+ * controls. Lagoon keeps its own sizing, framed tabs and grid tables.
  */
 final class Theme {
 
@@ -36,6 +38,13 @@ final class Theme {
         apply(new FlatDarkLaf());
     }
 
+    /** Not {@code FlatLagoonLaf.setup()}: that puts Lagoon's font into UIManager, where it would outlive a switch. */
+    static void lagoon() {
+        FlatLaf.setup(new FlatLagoonLaf());
+        colors(UIManager.getLookAndFeelDefaults(), false);
+        FlatLaf.updateUI();
+    }
+
     /**
      * Puts go into the look and feel's own defaults, which the next {@code FlatLaf.setup} replaces: a plain
      * {@code UIManager.put} would outlive the switch and carry light values into the dark theme.
@@ -44,9 +53,7 @@ final class Theme {
         FlatLaf.setup(laf);
         UIDefaults defaults = UIManager.getLookAndFeelDefaults();
         boolean dark = laf.isDark();
-        color(defaults, MUTED, dark ? 0x8a8a8a : 0x6e6e6e);
-        color(defaults, CARD_BACKGROUND, dark ? 0x404345 : 0xfafafa);
-        color(defaults, SOFT_BORDER, dark ? 0x4e5152 : 0xdadada);
+        colors(defaults, dark);
 
         // tables: 26 px rows and header, 8 px cell padding, a grey header with a full-strength line under it
         defaults.put("Table.showHorizontalLines", true);
@@ -75,6 +82,12 @@ final class Theme {
         defaults.put("Tree.rowHeight", 24);
         defaults.put("Tree.border", new FlatEmptyBorder(4, 1, 4, 1));
         FlatLaf.updateUI();
+    }
+
+    private static void colors(UIDefaults defaults, boolean dark) {
+        color(defaults, MUTED, dark ? 0x8a8a8a : 0x6e6e6e);
+        color(defaults, CARD_BACKGROUND, dark ? 0x404345 : 0xfafafa);
+        color(defaults, SOFT_BORDER, dark ? 0x4e5152 : 0xdadada);
     }
 
     private static void color(UIDefaults defaults, String key, int rgb) {

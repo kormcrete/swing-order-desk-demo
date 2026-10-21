@@ -3,6 +3,10 @@ Order Desk bundles the following third-party software in order-desk.jar.
 == FlatLaf and FlatLaf Extras 3.7.2 - https://www.formdev.com/flatlaf/
 Licensed under the Apache License, Version 2.0; the text is in META-INF/LICENSE.
 
+== swing-flatlaf-lagoon-theme 1.0.0-SNAPSHOT - https://github.com/kormcrete/swing-flatlaf-lagoon-theme
+Copyright 2026 kormcrete and the swing-flatlaf-lagoon-theme contributors
+Licensed under the Apache License, Version 2.0; the text is in META-INF/LICENSE.
+
 == JSVG 2.1.0 - https://github.com/weisJ/jsvg
 MIT License
 

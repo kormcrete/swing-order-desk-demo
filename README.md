@@ -233,7 +233,7 @@ or the agent:
 - The Orders tab: search for "birch", filter by status, right-click an order to cancel it.
 - An order's tab: Save receipt… writes a plain-text receipt through a file chooser.
 - File ▸ Close tab, ⌘W (Ctrl+W elsewhere) and File ▸ Exit, which ask first while a cart has products.
-- View ▸ Theme ▸ Dark and back.
+- View ▸ Theme ▸ Dark or Lagoon (Kormcrete's own FlatLaf theme) and back.
 
 ## License
 

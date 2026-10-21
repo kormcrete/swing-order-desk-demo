@@ -137,20 +137,24 @@ public final class MainWindow extends JFrame implements Workspace {
         JMenu theme = new JMenu("Theme");
         JRadioButtonMenuItem light = new JRadioButtonMenuItem("Light", true);
         JRadioButtonMenuItem dark = new JRadioButtonMenuItem("Dark");
+        JRadioButtonMenuItem lagoon = new JRadioButtonMenuItem("Lagoon");
         ButtonGroup themes = new ButtonGroup();
         themes.add(light);
         themes.add(dark);
+        themes.add(lagoon);
         light.addActionListener(e -> Theme.light());
         dark.addActionListener(e -> Theme.dark());
+        lagoon.addActionListener(e -> Theme.lagoon());
         theme.add(light);
         theme.add(dark);
+        theme.add(lagoon);
         view.add(theme);
 
         JMenu help = new JMenu("Help");
         help.setMnemonic(KeyEvent.VK_H);
         help.add(item(new JMenuItem("About Order Desk"), null, () -> Dialogs.info(this, "About Order Desk",
                 "Order Desk\nA small, fictional order-entry app: the demo for swing-ui-agent.\n"
-                        + "Built with Java 8, FlatLaf and MigLayout. All customers, products and orders are invented.")));
+                        + "Built with Java 8, FlatLaf, the Lagoon theme and MigLayout. All customers, products and orders are invented.")));
 
         JMenuBar bar = new JMenuBar();
         bar.add(file);

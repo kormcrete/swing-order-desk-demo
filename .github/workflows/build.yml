@@ -9,7 +9,8 @@ on:
 permissions:
   contents: read
 
-# swing-ui-agent is not on Maven Central yet: install it from its repo, then build and test this one.
+# swing-ui-agent and the Lagoon theme are not on Maven Central yet: install them from their repos, then build and
+# test this one.
 jobs:
   build:
     name: Linux / Java 8
@@ -21,6 +22,11 @@ jobs:
         with:
           repository: kormcrete/swing-ui-agent
           path: swing-ui-agent
+      - name: Check out the Lagoon theme
+        uses: actions/checkout@v7
+        with:
+          repository: kormcrete/swing-flatlaf-lagoon-theme
+          path: swing-flatlaf-lagoon-theme
       - uses: actions/setup-java@v6
         with:
           distribution: zulu
@@ -28,6 +34,8 @@ jobs:
           cache: maven
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
+      - name: Install the Lagoon theme
+        run: mvn -B -f swing-flatlaf-lagoon-theme/pom.xml install -DskipTests
       - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
         run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
