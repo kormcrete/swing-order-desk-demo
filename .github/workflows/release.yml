@@ -249,7 +249,10 @@ jobs:
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh release create "$GITHUB_REF_NAME" dist/*
-          --title "Kormcrete Order Desk ${GITHUB_REF_NAME#v}"
-          --notes-file packaging/release-notes.md
+        # the notes: what is new in this tag (packaging/whats-new/<tag>.md, when there is one), then the standing text
+        run: |
+          NEW="packaging/whats-new/$GITHUB_REF_NAME.md"
+          { if [ -f "$NEW" ]; then cat "$NEW"; echo; fi; cat packaging/release-notes.md; } > release-notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "Kormcrete Order Desk ${GITHUB_REF_NAME#v}" \
+            --notes-file release-notes.md

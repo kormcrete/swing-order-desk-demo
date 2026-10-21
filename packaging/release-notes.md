@@ -20,9 +20,6 @@ zip runs on your own Java 8 or newer, on any computer (Linux too).
 - Java zip: unzip, then run `order-desk` in the **Kormcrete Order Desk** folder (`order-desk.cmd` on Windows). It uses
   `JAVA_HOME` when set, else the `java` on your PATH, and prints the agent's lines in the terminal.
 
-**New in this version:** the kormcrete k builds itself on a splash while Order Desk starts, and View ▸ Theme offers
-**Lagoon**, Kormcrete's own FlatLaf theme, next to Light and Dark.
-
 **Run a recorded test right away:** in the bar at the bottom of the window, press **Load recorded test…**. Order
 Desk's three recorded tests are listed (`place-order`, `cart-totals`, `cart-with-steps`): pick one and press **▶ Run**,
 with **Step by step** if you want to watch. They come with the app and stay as they are; a test you record or change
