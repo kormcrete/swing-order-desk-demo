@@ -15,6 +15,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -70,21 +71,33 @@ class ThemeTest {
     }
 
     @Test
-    void lagoonKeepsItsOwnLookAndGetsOnlyTheOrderDeskColours() {
+    void lagoonGetsOrderDesksSizesAndKeepsItsOwnStyle() {
         Edt.run(() -> {
             FlatLaf.setup(new FlatLagoonLaf());   // Lagoon as it comes
-            Object rowHeight = UIManager.get("Table.rowHeight");
-            Object buttonMargin = UIManager.get("Button.margin");
+            Object intercellSpacing = UIManager.get("Table.intercellSpacing");
             Object tabForeground = UIManager.get("TabbedPane.foreground");
+            Object headerBackground = UIManager.get("TableHeader.background");
 
             Theme.lagoon();
             assertThat(UIManager.getLookAndFeel()).isInstanceOf(FlatLagoonLaf.class);
             assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x6e6e6e));
             assertThat(UIManager.getColor(Theme.CARD_BACKGROUND)).isEqualTo(new Color(0xfafafa));
             assertThat(UIManager.getColor(Theme.SOFT_BORDER)).isEqualTo(new Color(0xdadada));
-            assertThat(UIManager.get("Table.rowHeight")).isEqualTo(rowHeight);
-            assertThat(UIManager.get("Button.margin")).isEqualTo(buttonMargin);
+            // the sizes Light gets: 26 px rows and header, 28 px controls, 24 px tree rows
+            assertThat(UIManager.getInt("Table.rowHeight")).isEqualTo(26);
+            assertThat(UIManager.getInt("TableHeader.height")).isEqualTo(26);
+            assertThat(UIManager.getInsets("Table.cellMargins")).isEqualTo(new Insets(2, 8, 2, 8));
+            assertThat(UIManager.getInsets("TableHeader.cellMargins")).isEqualTo(new Insets(2, 8, 2, 8));
+            assertThat(UIManager.getInsets("Button.margin")).isEqualTo(new Insets(5, 14, 5, 14));
+            assertThat(UIManager.getInsets("TextField.margin")).isEqualTo(new Insets(5, 8, 5, 8));
+            assertThat(UIManager.getInsets("ComboBox.padding")).isEqualTo(new Insets(5, 8, 5, 8));
+            assertThat(UIManager.getInsets("Spinner.padding")).isEqualTo(new Insets(5, 8, 5, 8));
+            assertThat(UIManager.getInt("Tree.rowHeight")).isEqualTo(24);
+            assertThat(UIManager.getInsets("TabbedPane.tabAreaInsets")).isEqualTo(new Insets(0, 6, 0, 6));
+            // Lagoon's style stays: its grid, tab colours and header colour
+            assertThat(UIManager.get("Table.intercellSpacing")).isEqualTo(intercellSpacing);
             assertThat(UIManager.get("TabbedPane.foreground")).isEqualTo(tabForeground);
+            assertThat(UIManager.get("TableHeader.background")).isEqualTo(headerBackground);
         });
     }
 

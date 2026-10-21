@@ -15,8 +15,8 @@ import java.awt.Dimension;
 /**
  * FlatLaf Light, Dark or Kormcrete's Lagoon, switched live from View ▸ Theme. {@code FlatLaf.setup} resets every
  * default, so the Order Desk values below are put again on each switch: the app's own colour keys
- * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}, and for Light and Dark roomier tables and
- * controls. Lagoon keeps its own sizing, framed tabs and grid tables.
+ * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}, and in every theme roomier tables and
+ * controls. Light and Dark also get a lined table and a grey tab strip; Lagoon keeps its grid and framed tabs.
  */
 final class Theme {
 
@@ -41,7 +41,9 @@ final class Theme {
     /** Not {@code FlatLagoonLaf.setup()}: that puts Lagoon's font into UIManager, where it would outlive a switch. */
     static void lagoon() {
         FlatLaf.setup(new FlatLagoonLaf());
-        colors(UIManager.getLookAndFeelDefaults(), false);
+        UIDefaults defaults = UIManager.getLookAndFeelDefaults();
+        colors(defaults, false);
+        sizes(defaults);
         FlatLaf.updateUI();
     }
 
@@ -55,17 +57,28 @@ final class Theme {
         boolean dark = laf.isDark();
         colors(defaults, dark);
 
-        // tables: 26 px rows and header, 8 px cell padding, a grey header with a full-strength line under it
+        sizes(defaults);
+
+        // tables: lines between the rows only, a grey header with a full-strength line under it
         defaults.put("Table.showHorizontalLines", true);
         defaults.put("Table.intercellSpacing", new Dimension(0, 1));
+        defaults.put("TableHeader.bottomSeparatorColor", UIManager.getColor("Component.borderColor"));
+        if (!dark) defaults.put("TableHeader.background", UIManager.getColor("Panel.background"));   // dark: as the mock
+
+        // tab strip: grey titles, the selected one in text colour over the accent underline
+        defaults.put("TabbedPane.inactiveUnderlineColor", UIManager.getColor("TabbedPane.underlineColor"));
+        defaults.put("TabbedPane.foreground", UIManager.getColor(MUTED));
+        defaults.put("TabbedPane.selectedForeground", UIManager.getColor("Label.foreground"));
+        FlatLaf.updateUI();
+    }
+
+    /** Order Desk's room, the same in every theme: 26 px table rows and header, 28 px controls, 24 px tree rows. */
+    private static void sizes(UIDefaults defaults) {
         defaults.put("Table.rowHeight", 26);
         defaults.put("Table.cellMargins", new InsetsUIResource(2, 8, 2, 8));
         defaults.put("TableHeader.cellMargins", new InsetsUIResource(2, 8, 2, 8));
         defaults.put("TableHeader.height", 26);
-        defaults.put("TableHeader.bottomSeparatorColor", UIManager.getColor("Component.borderColor"));
-        if (!dark) defaults.put("TableHeader.background", UIManager.getColor("Panel.background"));   // dark: as the mock
 
-        // 28 px buttons, fields, combo boxes and spinners
         defaults.put("Button.margin", new InsetsUIResource(5, 14, 5, 14));
         for (String key : new String[] {"TextField.margin", "FormattedTextField.margin", "PasswordField.margin"}) {
             defaults.put(key, new InsetsUIResource(5, 8, 5, 8));
@@ -73,15 +86,9 @@ final class Theme {
         defaults.put("ComboBox.padding", new InsetsUIResource(5, 8, 5, 8));
         defaults.put("Spinner.padding", new InsetsUIResource(5, 8, 5, 8));
 
-        // tab strip: grey titles, the selected one in text colour over the accent underline
-        defaults.put("TabbedPane.inactiveUnderlineColor", UIManager.getColor("TabbedPane.underlineColor"));
         defaults.put("TabbedPane.tabAreaInsets", new InsetsUIResource(0, 6, 0, 6));
-        defaults.put("TabbedPane.foreground", UIManager.getColor(MUTED));
-        defaults.put("TabbedPane.selectedForeground", UIManager.getColor("Label.foreground"));
-
         defaults.put("Tree.rowHeight", 24);
         defaults.put("Tree.border", new FlatEmptyBorder(4, 1, 4, 1));
-        FlatLaf.updateUI();
     }
 
     private static void colors(UIDefaults defaults, boolean dark) {
