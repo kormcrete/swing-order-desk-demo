@@ -12,6 +12,7 @@ import java.awt.geom.AffineTransform;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.function.Supplier;
 
 /**
  * The splash: the JVM shows {@link #IMAGE} (the jar manifest's SplashScreen-Image) as soon as it starts, white with
@@ -79,6 +80,28 @@ final class Splash {
             }
         }
         show.run();
+    }
+
+    /**
+     * Builds what the splash leads to. If that fails, the splash closes before the failure goes on: otherwise the
+     * finished k would stay on screen with no app behind it, looking hung.
+     */
+    static <T> T building(Supplier<T> build) {
+        try {
+            return build.get();
+        } catch (RuntimeException | Error e) {
+            close();
+            throw e;
+        }
+    }
+
+    private static void close() {
+        if (!showing()) return;
+        try {
+            SplashScreen.getSplashScreen().close();   // the painter's next update() then ends the animation
+        } catch (IllegalStateException | NullPointerException e) {
+            // closed in the meantime
+        }
     }
 
     private static void animate(SplashScreen splash) {

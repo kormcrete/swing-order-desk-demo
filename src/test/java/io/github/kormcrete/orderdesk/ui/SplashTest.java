@@ -7,6 +7,7 @@ import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** The k that builds itself on the splash, with the website hero's timing; and when the main window may show. */
 class SplashTest {
@@ -63,6 +64,20 @@ class SplashTest {
         Splash.play();
         Splash.whenDone(() -> shown.set(true));
         assertThat(shown).isTrue();
+    }
+
+    @Test
+    void buildingReturnsWhatItBuilt() {
+        assertThat(Splash.building(() -> "window")).isEqualTo("window");
+    }
+
+    @Test
+    void aFailedBuildIsRethrownAfterTheSplashCloses() {
+        IllegalStateException failure = new IllegalStateException("no window");
+        // headless there is no splash to close; the failure must still come through unchanged
+        assertThatThrownBy(() -> Splash.building(() -> {
+            throw failure;
+        })).isSameAs(failure);
     }
 
     private static BufferedImage paint(int ms) {

@@ -82,8 +82,10 @@ public final class MainWindow extends JFrame implements Workspace {
      */
     public static void show(Store store) {
         Splash.play();
-        Theme.light();
-        MainWindow window = new MainWindow(store);
+        MainWindow window = Splash.building(() -> {
+            Theme.light();
+            return new MainWindow(store);
+        });
         Splash.whenDone(() -> window.setVisible(true));
     }
 
