@@ -119,6 +119,8 @@ java -javaagent:target/swing-ui-agent-agent.jar=port=8770,plugins=order-desk-plu
   vocabulary. Driving and recording work without it; then a reset only closes dialogs, so the recorded tests pass
   only on a freshly started app.
 - The palette (recording bar) is on by default; add `,palette=off` after the port for agent-only runs.
+- `-jar` shows the splash first: the kormcrete k builds itself, then the window opens (about 2 s). Started by its
+  main class (IntelliJ's **Order Desk**), the app opens at once.
 
 ## Drive it with a coding agent
 

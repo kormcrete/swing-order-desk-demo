@@ -176,6 +176,8 @@
                                     <manifestEntries>
                                         <!-- FlatLaf has Java 9+ classes under META-INF/versions -->
                                         <Multi-Release>true</Multi-Release>
+                                        <!-- shown by the JVM as it starts; Order Desk builds the k on it (ui.Splash) -->
+                                        <SplashScreen-Image>io/github/kormcrete/orderdesk/splash.png</SplashScreen-Image>
                                     </manifestEntries>
                                 </transformer>
                             </transformers>

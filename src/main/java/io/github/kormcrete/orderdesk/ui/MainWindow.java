@@ -76,10 +76,15 @@ public final class MainWindow extends JFrame implements Workspace {
         setLocationRelativeTo(null);
     }
 
-    /** Light theme, then the window. Call on the event dispatch thread. */
+    /**
+     * Light theme, then the window, shown once the k has built itself on the splash (at once without a splash). Call
+     * on the event dispatch thread.
+     */
     public static void show(Store store) {
+        Splash.play();
         Theme.light();
-        new MainWindow(store).setVisible(true);
+        MainWindow window = new MainWindow(store);
+        Splash.whenDone(() -> window.setVisible(true));
     }
 
     private JComponent toolbar() {
