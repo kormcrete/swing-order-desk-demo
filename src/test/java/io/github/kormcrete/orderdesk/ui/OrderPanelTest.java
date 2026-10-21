@@ -1,17 +1,22 @@
 package io.github.kormcrete.orderdesk.ui;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import io.github.kormcrete.orderdesk.model.Order;
 import io.github.kormcrete.orderdesk.model.Seed;
 import io.github.kormcrete.orderdesk.model.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JComponent;
+import javax.swing.SwingUtilities;
 import java.time.LocalDate;
 import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class OrderPanelTest {
+
+    private static final String FULL_BORDER = FlatClientProperties.TABBED_PANE_HAS_FULL_BORDER;
 
     private final Store store = Seed.store(() -> LocalDate.of(2026, 10, 12));
     private final RecordingWorkspace workspace = new RecordingWorkspace();
@@ -38,6 +43,27 @@ class OrderPanelTest {
             assertThat(panel.details().getTitleAt(1)).isEqualTo("Delivery");
             assertThat(panel.details().getTitleAt(2)).isEqualTo("Invoice");
             assertThat(panel.itemsTable().getRowCount()).isEqualTo(2);
+        });
+    }
+
+    @Test
+    void theTabsGetALineAroundThemExceptUnderLagoonWhereTheTabbedPaneDrawsItsOwnFullBorder() {
+        OrderPanel panel = panel("ORD-1636");
+        Edt.run(() -> {
+            JComponent box = (JComponent) panel.details().getParent();
+            assertThat(box.getBorder()).isNotNull();
+            assertThat(panel.details().getClientProperty(FULL_BORDER)).isEqualTo(false);
+            try {
+                Theme.lagoon();
+                SwingUtilities.updateComponentTreeUI(panel);
+                assertThat(box.getBorder()).isNull();
+                assertThat(panel.details().getClientProperty(FULL_BORDER)).isEqualTo(true);
+            } finally {
+                Theme.light();
+            }
+            SwingUtilities.updateComponentTreeUI(panel);
+            assertThat(box.getBorder()).isNotNull();
+            assertThat(panel.details().getClientProperty(FULL_BORDER)).isEqualTo(false);
         });
     }
 

@@ -15,6 +15,7 @@ import javax.swing.table.DefaultTableModel;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Insets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,6 +39,7 @@ class ThemeTest {
             assertThat(UIManager.getColor(Theme.CARD_BACKGROUND)).isEqualTo(new Color(0xfafafa));
             assertThat(UIManager.getColor("TableHeader.background")).isEqualTo(UIManager.getColor("Panel.background"));
             assertThat(UIManager.getInt("Table.rowHeight")).isEqualTo(26);
+            assertThat(UIManager.getBoolean(Theme.BOXED_TABS)).isTrue();
 
             Theme.dark();
             assertThat(UIManager.getColor(Theme.MUTED)).isEqualTo(new Color(0x8a8a8a));
@@ -74,7 +76,6 @@ class ThemeTest {
     void lagoonGetsOrderDesksSizesAndKeepsItsOwnStyle() {
         Edt.run(() -> {
             FlatLaf.setup(new FlatLagoonLaf());   // Lagoon as it comes
-            Object intercellSpacing = UIManager.get("Table.intercellSpacing");
             Object tabForeground = UIManager.get("TabbedPane.foreground");
             Object headerBackground = UIManager.get("TableHeader.background");
 
@@ -94,8 +95,12 @@ class ThemeTest {
             assertThat(UIManager.getInsets("Spinner.padding")).isEqualTo(new Insets(5, 8, 5, 8));
             assertThat(UIManager.getInt("Tree.rowHeight")).isEqualTo(24);
             assertThat(UIManager.getInsets("TabbedPane.tabAreaInsets")).isEqualTo(new Insets(0, 6, 0, 6));
-            // Lagoon's style stays: its grid, tab colours and header colour
-            assertThat(UIManager.get("Table.intercellSpacing")).isEqualTo(intercellSpacing);
+            // lines between the rows only, as in Light; Lagoon's frame around the order's tabs is box enough
+            assertThat(UIManager.getBoolean("Table.showHorizontalLines")).isTrue();
+            assertThat(UIManager.getBoolean("Table.showVerticalLines")).isFalse();
+            assertThat(UIManager.getDimension("Table.intercellSpacing")).isEqualTo(new Dimension(0, 1));
+            assertThat(UIManager.getBoolean(Theme.BOXED_TABS)).isFalse();
+            // Lagoon's style stays: its tab colours and header colour
             assertThat(UIManager.get("TabbedPane.foreground")).isEqualTo(tabForeground);
             assertThat(UIManager.get("TableHeader.background")).isEqualTo(headerBackground);
         });

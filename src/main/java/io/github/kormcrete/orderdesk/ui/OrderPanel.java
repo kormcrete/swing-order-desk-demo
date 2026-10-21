@@ -29,7 +29,15 @@ final class OrderPanel extends JPanel {
     private final JButton saveReceipt = new JButton("Save receipt…", Icons.get(Icons.SAVE));
     private final JButton cancel = new JButton("Cancel order", Icons.get(Icons.BAN));
     private final JLabel cancelHint = Ui.hint("");
-    private final JTabbedPane details = new JTabbedPane();
+    private final JTabbedPane details = new JTabbedPane() {
+        /** Under Lagoon no box: the tabbed pane draws the line around its pages itself. */
+        @Override
+        public void updateUI() {
+            boolean boxed = UIManager.getBoolean(Theme.BOXED_TABS);
+            putClientProperty(FlatClientProperties.TABBED_PANE_HAS_FULL_BORDER, !boxed);
+            super.updateUI();
+        }
+    };
     private final JTable itemsTable;
     private final Runnable storeListener = this::refresh;
 
@@ -108,13 +116,14 @@ final class OrderPanel extends JPanel {
         return panel;
     }
 
-    /** The sub-tabs in one box, as in the mock: a line around the strip and the pages. */
+    /** The sub-tabs in one box, as in the mock: a line around the strip and the pages (Lagoon: see details). */
     private static JComponent box(JTabbedPane tabs) {
         JPanel box = new JPanel(new BorderLayout()) {
             @Override
             public void updateUI() {
                 super.updateUI();
-                setBorder(BorderFactory.createLineBorder(UIManager.getColor("Component.borderColor")));
+                setBorder(UIManager.getBoolean(Theme.BOXED_TABS)
+                        ? BorderFactory.createLineBorder(UIManager.getColor("Component.borderColor")) : null);
             }
         };
         box.add(tabs);

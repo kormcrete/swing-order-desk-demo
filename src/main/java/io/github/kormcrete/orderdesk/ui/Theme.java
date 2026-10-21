@@ -16,7 +16,8 @@ import java.awt.Dimension;
  * FlatLaf Light, Dark or Kormcrete's Lagoon, switched live from View ▸ Theme. {@code FlatLaf.setup} resets every
  * default, so the Order Desk values below are put again on each switch: the app's own colour keys
  * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}, and in every theme roomier tables and
- * controls. Light and Dark also get a lined table and a grey tab strip; Lagoon keeps its grid and framed tabs.
+ * controls, and tables with lines between the rows only. Light and Dark also get a grey header and tab strip and a
+ * line around an order's tabs; under Lagoon the tabbed pane draws that line itself (its full border).
  */
 final class Theme {
 
@@ -26,6 +27,8 @@ final class Theme {
     static final String CARD_BACKGROUND = "OrderDesk.cardBackground";
     /** A soft line: the terms card, the status bar divider, the wizard's step rule. */
     static final String SOFT_BORDER = "OrderDesk.softBorder";
+    /** True when an order's tabs get a line around them; under Lagoon their tabbed pane draws its full border. */
+    static final String BOXED_TABS = "OrderDesk.boxedTabs";
 
     private Theme() {
     }
@@ -59,9 +62,7 @@ final class Theme {
 
         sizes(defaults);
 
-        // tables: lines between the rows only, a grey header with a full-strength line under it
-        defaults.put("Table.showHorizontalLines", true);
-        defaults.put("Table.intercellSpacing", new Dimension(0, 1));
+        // tables: a grey header with a full-strength line under it
         defaults.put("TableHeader.bottomSeparatorColor", UIManager.getColor("Component.borderColor"));
         if (!dark) defaults.put("TableHeader.background", UIManager.getColor("Panel.background"));   // dark: as the mock
 
@@ -69,11 +70,18 @@ final class Theme {
         defaults.put("TabbedPane.inactiveUnderlineColor", UIManager.getColor("TabbedPane.underlineColor"));
         defaults.put("TabbedPane.foreground", UIManager.getColor(MUTED));
         defaults.put("TabbedPane.selectedForeground", UIManager.getColor("Label.foreground"));
+        defaults.put(BOXED_TABS, true);
         FlatLaf.updateUI();
     }
 
-    /** Order Desk's room, the same in every theme: 26 px table rows and header, 28 px controls, 24 px tree rows. */
+    /**
+     * Order Desk's room, the same in every theme: 26 px table rows and header, 28 px controls, 24 px tree rows; table
+     * lines between the rows only.
+     */
     private static void sizes(UIDefaults defaults) {
+        defaults.put("Table.showHorizontalLines", true);
+        defaults.put("Table.showVerticalLines", false);
+        defaults.put("Table.intercellSpacing", new Dimension(0, 1));
         defaults.put("Table.rowHeight", 26);
         defaults.put("Table.cellMargins", new InsetsUIResource(2, 8, 2, 8));
         defaults.put("TableHeader.cellMargins", new InsetsUIResource(2, 8, 2, 8));
