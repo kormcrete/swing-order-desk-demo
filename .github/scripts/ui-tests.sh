@@ -2,6 +2,7 @@
 # Runs the UI tests (*UiIT) the way CI does: Order Desk starts with the swing-ui-agent agent, the tests drive it.
 # Needs a built target/ (mvn verify) and order-desk-plugin/target/ (mvn -f order-desk-plugin/pom.xml install).
 # On Linux without a display it starts a virtual one (Xvfb).
+# The tests start once Order Desk's window is up: with -jar it opens after the splash (the k building itself).
 # --attach: start nothing, test the Order Desk already running with the agent on $SWINGUI_PORT (a download).
 # Other arguments go to Maven, e.g. -Dswingui.recordedDir=<folder>: the recorded tests to run.
 # Usage: ui-tests.sh [--attach] [maven args...]
@@ -32,6 +33,19 @@ for i in $(seq 1 60); do
   if [ -n "$APP" ] && ! kill -0 "$APP" 2>/dev/null; then echo "Order Desk stopped:"; cat target/app.log; exit 1; fi
   if [ "$i" = 60 ]; then
     echo "Order Desk did not answer on port $PORT in 60 s"
+    if [ -n "$APP" ]; then cat target/app.log; fi
+    exit 1
+  fi
+  sleep 1
+done
+
+# the agent answers before main() runs; the window opens after the splash
+for i in $(seq 1 30); do
+  SNAPSHOT=$(java -jar "$AGENT" --port "$PORT" snapshot 2>&1 || true)
+  if echo "$SNAPSHOT" | grep -q '"role":"window","name":"Order Desk"'; then echo "Order Desk's window is up (${i}s)"; break; fi
+  if [ "$i" = 30 ]; then
+    echo "Order Desk's window did not open in 30 s:"
+    echo "$SNAPSHOT"
     if [ -n "$APP" ]; then cat target/app.log; fi
     exit 1
   fi
