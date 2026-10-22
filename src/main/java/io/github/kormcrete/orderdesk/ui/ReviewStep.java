@@ -44,6 +44,7 @@ final class ReviewStep extends JPanel {
         add(section("Shipping", () -> goTo.accept(1)));
         add(section("Payment", () -> goTo.accept(2)));
         JTable table = Ui.table(lines);
+        table.setName("reviewLines");   // for a plugin: the cart's table has the same columns
         Ui.widths(table, 0, 60, 90, 100);
         add(Ui.scroll(table), "hmax 170");
         add(totals, "right");

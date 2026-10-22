@@ -155,6 +155,8 @@ final class OrderDeskOrdersVocabulary {
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
                                 + "'cell':{'row':{%s:'{order}'},'column':'{column}','expected':'{value}'}}",
                                 ORDERS_SCOPE, key(ORDER_COLUMN)))
+                        // as the agent and a step's body record it: the cell as the target, then its text
+                        .matchAlso(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", orderRow("order")))
                         .java(STEPS, "orderIs(ui, {order}, {column}, {value})")
                         .build(),
                 DomainStep.check("ordersListedAre", "The orders listed are {orders}")

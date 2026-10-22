@@ -159,6 +159,8 @@ public final class OrderDeskSteps {
     static final String OK_ANSWER = "OK";
     /** The review's totals panel, by its code name: its Shipping is told apart from the step indicator's. */
     static final String TOTALS_ID = "totals";
+    /** The Review step's lines table (the cart's has the same columns). */
+    static final String REVIEW_LINES_ID = "reviewLines";
     /** The review's sections. */
     static final String DELIVERY_ADDRESS_SECTION = "Delivery address";
     static final String SHIPPING_SECTION = "Shipping";

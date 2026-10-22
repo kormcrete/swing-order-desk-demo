@@ -290,6 +290,21 @@ class CheckoutPanelTest {
         });
     }
 
+    /** The review's lines table is named, so a plugin tells it from the cart's table of the same columns. */
+    @Test
+    void aPluginFindsTheReviewLinesByTheirName() {
+        CheckoutPanel panel = checkout("Ada", "PAP-A4-500", 3, "PEN-GEL-BLK", 10);
+        Edt.run(() -> {
+            panel.next();
+            panel.next();
+            panel.paymentStep().poField().setText("PO-2026-140");
+            panel.next();
+            javax.swing.JTable lines = Named.shown(panel, "reviewLines", javax.swing.JTable.class);
+            assertThat(lines.getRowCount()).isEqualTo(2);
+            assertThat(lines.getColumnName(0)).isEqualTo("Product");
+        });
+    }
+
     private static JLabel valueFor(TotalsPanel totals, String caption) {
         for (java.awt.Component c : totals.getComponents()) {
             if (c instanceof JLabel && caption.equals(((JLabel) c).getText())) return (JLabel) ((JLabel) c).getLabelFor();

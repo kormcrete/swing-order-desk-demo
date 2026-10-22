@@ -124,7 +124,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 69;
+    private static final int CHECKED_PATTERN_ENTRIES = 72;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -369,17 +369,23 @@ class OrderDeskVocabularyTest {
         // a written pattern (match) and the body take their names from OrderDeskSteps' constants; this pins that a
         // rename there reaches both: each entry's fixed parts equal the body's step at the same place. A pattern that
         // only suggests its step (autoFold false) is looser than the body on purpose, and a check that only reads
-        // (newOrderIsFor) takes no steps to compare; a cell check is compared as the body writes it (asBodyStep)
+        // (newOrderIsFor) takes no steps to compare; a cell check is compared as the body writes it (asBodyStep). A
+        // check's matchAlso is compared too (each is another way to record the same read); an act's matchAlso is
+        // another way to do it (a row menu for a button), not the body's
         int checked = 0;
         for (DomainStep s : steps) {
             if (s.match().isEmpty() || s.match().get(0).contains("\"use\"") || !s.autoFold()) continue;
             JsonNode body = run(s.id(), sample(s.id()));
             if (body.size() == 0) continue;
-            assertThat(body.size()).as(s.id() + " steps").isGreaterThanOrEqualTo(s.match().size());
-            for (int i = 0; i < s.match().size(); i++) {
-                JsonNode entry = asBodyStep(JSON.readTree(s.match().get(i)));
-                assertThat(fixedParts(entry, body.get(i))).as(s.id() + " match " + (i + 1) + " vs " + body.get(i)).isEmpty();
-                checked++;
+            List<List<String>> written = new ArrayList<List<String>>(Collections.singletonList(s.match()));
+            if (s.kind() == DomainStep.Kind.CHECK) written.addAll(s.matchAlso());
+            for (List<String> match : written) {
+                assertThat(body.size()).as(s.id() + " steps").isGreaterThanOrEqualTo(match.size());
+                for (int i = 0; i < match.size(); i++) {
+                    JsonNode entry = asBodyStep(JSON.readTree(match.get(i)));
+                    assertThat(fixedParts(entry, body.get(i))).as(s.id() + " match " + (i + 1) + " vs " + body.get(i)).isEmpty();
+                    checked++;
+                }
             }
         }
         assertThat(checked).isEqualTo(CHECKED_PATTERN_ENTRIES);
@@ -475,6 +481,62 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
+    void theBundledCartTotalsLineTotalCheckFoldsIntoCartLineIs() throws IOException {
+        // the agent's shape of a cell check (the target with its row and column, then text), as cart-totals.json holds
+        // it, seen as the recorder sees the cell (every cell of its row)
+        JsonNode check = null;
+        for (JsonNode step : JSON.readTree(new java.io.File("../uitest/cart-totals.json")).path("steps")) {
+            for (JsonNode c : step.path("checks")) if ("The A4 paper line comes to €14.70".equals(c.path("say").asText())) check = c;
+        }
+        assertThat(check).isNotNull();
+        com.fasterxml.jackson.databind.node.ObjectNode recorded = check.deepCopy();
+        recorded.remove("say");
+        recorded.put("action", "expect");
+        JsonNode seen = json("{'target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'table',"
+                + "'row':{'Product':'A4 paper, 500 sheets','Qty':'3','Price':'€4.90','Line total':'€14.70'},'column':'Line total'}}");
+
+        JsonNode form = Matcher.matchForm(recorded, seen, false);
+
+        assertThat(form.path("text").asText()).isEqualTo("€14.70");
+        assertThat(matchAny("cartLineIs", form)).containsEntry("product", "A4 paper, 500 sheets")
+                .containsEntry("column", "Line total").containsEntry("value", "€14.70");
+        assertThat(first(form)).isEqualTo("cartLineIs");
+    }
+
+    @Test
+    void anAgentsCheckOnALineTotalFoldsIntoCartLineIsNotIntoAProductCheck() {
+        JsonNode lineTotal = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'Product':'A4 paper, 500 sheets','Qty':'3','Price':'€4.90','Line total':'€14.70'},"
+                + "'column':'Line total'},'text':'€14.70'}");
+        JsonNode price = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'SKU':'DSK-STAPLER','Product':'Stapler','Price':'€12.50','Stock':'4'},"
+                + "'column':'Price'},'text':'€12.50'}");
+
+        assertThat(matchAny("cartLineIs", lineTotal)).containsEntry("product", "A4 paper, 500 sheets")
+                .containsEntry("column", "Line total").containsEntry("value", "€14.70");
+        assertThat(matchAny("productIs", lineTotal)).isNull();
+        assertThat(matchAny("productIs", price)).containsEntry("product", "Stapler").containsEntry("column", "Price")
+                .containsEntry("value", "€12.50");
+        assertThat(matchAny("cartLineIs", price)).isNull();
+    }
+
+    @Test
+    void anAgentsCheckOfAnOrdersCellFoldsIntoOrderIsAndOfAReviewLineIntoReviewLineIs() {
+        JsonNode status = json("{'action':'expect','target':{" + ORDERS_TABLE + "," + ORD_1639 + ",'column':'Status'},'text':'Placed'}");
+        JsonNode cart = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'table',"
+                + "'row':{'Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},'column':'Qty'},'text':'1'}");
+        JsonNode review = json("{'action':'expect','target':{'window':'dialog','role':'table','name':'reviewLines',"
+                + "'row':{'Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},'column':'Qty'},'text':'1'}");
+
+        assertThat(matchAny("orderIs", status)).containsEntry("order", "ORD-1639").containsEntry("column", "Status")
+                .containsEntry("value", "Placed");
+        assertThat(matchAny("orderIs", cart)).isNull();
+        assertThat(matchAny("reviewLineIs", review)).containsEntry("product", "Stapler").containsEntry("column", "Qty");
+        // the review's table has a name of its own: a cart line is no review line
+        assertThat(matchAny("reviewLineIs", cart)).isNull();
+    }
+
+    @Test
     void thePersonsCheckOfACartLineOffersCartLineIsAndOfAProductProductIs() {
         // as the palette's Check menu records a cell check: the bare table, then the cell by its row key and column
         JTable cart = table(CART, line("A4 paper, 500 sheets", "3", "€4.90", "€14.70"), line("Stapler", "1", "€12.50", "€12.50"));
@@ -506,17 +568,18 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
-    void thePersonsCheckOfAReviewLineOffersReviewLineIsWhichOnlySuggestsItself() {
+    void thePersonsCheckOfAReviewLineOffersReviewLineIsAndOfACartLineDoesNot() {
+        // the review's table is named reviewLines (the app names it for a plugin): only it offers reviewLineIs
         JTable review = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+        review.setName("reviewLines");
         JTable cart = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
 
         assertThat(offered(CheckMenuForms.cell(review, 0, 1, "dialog", null)))
                 .contains("reviewLineIs{column=Qty, product=Stapler, value=1}")
                 .noneMatch(c -> c.startsWith("cartLineIs"));
-        // a pattern never compares the window, and the review's table has no scope: a cart's line fits it too
         assertThat(offered(CheckMenuForms.cell(cart, 0, 1, "main", NEW_ORDER)))
-                .contains("reviewLineIs{column=Qty, product=Stapler, value=1}", "cartLineIs{column=Qty, product=Stapler, value=1}");
-        assertThat(step("reviewLineIs").autoFold()).isFalse();
+                .contains("cartLineIs{column=Qty, product=Stapler, value=1}")
+                .noneMatch(c -> c.startsWith("reviewLineIs"));
     }
 
     @Test
@@ -785,6 +848,15 @@ class OrderDeskVocabularyTest {
 
     private static List<String> line(String... cells) {
         return Arrays.asList(cells);
+    }
+
+    /** The values of the first of step {@code id}'s patterns (its match, then each matchAlso) that {@code step} fits; null: none. */
+    private Map<String, String> matchAny(String id, JsonNode step) {
+        for (Pattern p : patterns(id)) {
+            Pattern.Match m = p.match(Collections.singletonList(step));
+            if (m != null) return m.params();
+        }
+        return null;
     }
 
     /** The step the run {@code raw} folds into first; null for none. */

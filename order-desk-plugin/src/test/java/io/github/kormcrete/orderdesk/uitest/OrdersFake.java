@@ -34,6 +34,8 @@ class OrdersFake extends FakeApp {
     private boolean asText;
     /** The orders whose tab a double click on their row, or the row menu's Open, opens. */
     private final List<String> opening = new ArrayList<String>();
+    /** How many rows a read of the table gives (the rest are read one by one, by index); null: all. */
+    private Integer first;
 
     OrdersFake() {
         answer("text 'Search'", field("Search", ""));
@@ -110,6 +112,13 @@ class OrdersFake extends FakeApp {
         return this;
     }
 
+    /** A read of the table gives its first {@code rows} rows only, as the agent's read stops at 20. */
+    OrdersFake readsFirst(int rows) {
+        first = rows;
+        show();
+        return this;
+    }
+
     private void opened(String number) {
         if (opening.contains(number)) answer("tab '" + number + "'", node("tab", number));
     }
@@ -120,7 +129,8 @@ class OrdersFake extends FakeApp {
             return;
         }
         forget("element #ordersEmpty");
-        Node table = table(COLUMNS, rows.size(), rows);
+        Node table = table(COLUMNS, rows.size(), first == null ? rows : rows.subList(0, Math.min(first, rows.size())));
+        for (int i = 0; i < rows.size(); i++) answer("table row=" + i + " col=Order", cell("Order", rows.get(i).get(0)));
         table.selected = selected;
         answer("table", table);
         for (List<String> r : rows) {

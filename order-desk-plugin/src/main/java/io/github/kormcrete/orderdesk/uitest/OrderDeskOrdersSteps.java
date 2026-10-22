@@ -111,10 +111,17 @@ public final class OrderDeskOrdersSteps {
         });
         if (open != null) return;
         List<String> shut = new ArrayList<String>();
+        boolean closed = false;
         for (String n : numbers) {
-            if (!presentNow(ui.tab(n))) shut.add(n);
-            else if (!wereOpen.contains(n)) quietly(() -> closeOrderTab(ui, n));
+            if (!presentNow(ui.tab(n))) {
+                shut.add(n);
+            } else if (!wereOpen.contains(n)) {
+                quietly(() -> closeOrderTab(ui, n));
+                closed = true;
+            }
         }
+        // closing a tab shows the tab now last, not Orders: its rows can be clicked only once Orders shows again
+        if (closed) quietly(() -> ui.tab(ORDERS_TAB).click());
         quietly(() -> reselect(ui, selected, numbers));
         back(ui, before);
         throw new DriverException(Reason.NOT_ACTIONABLE, "The tab of " + join(shut) + " did not open");
@@ -453,14 +460,23 @@ public final class OrderDeskOrdersSteps {
     /**
      * After a sort that failed: puts the list back in the order it read in ({@code start}, its rows then) with clicks on
      * the header of a column that read sorted then (the Order column at first), at most two each; true when the orders
-     * read as they did. Quiet: a click that fails ends it.
+     * read as they did. An order's values do not change with a sort, so every column of every order is read now (a read
+     * gives the first rows only) and laid out in the order {@code start} had. Quiet: a click that fails ends it.
      */
     private static boolean restoreOrder(Client ui, List<Map<String, String>> start) {
         try {
             List<String> was = numbers(start);
-            if (numbers(orderRows(ui)).equals(was)) return true;
+            List<Map<String, String>> now = orderRows(ui, COLUMNS.toArray(new String[0]));
+            if (numbers(now).equals(was)) return true;
+            Map<String, Map<String, String>> byNumber = new LinkedHashMap<String, Map<String, String>>();
+            for (Map<String, String> r : now) byNumber.put(r.get(ORDER_COLUMN), r);
+            List<Map<String, String>> then = new ArrayList<Map<String, String>>();
+            for (String n : was) {
+                if (!byNumber.containsKey(n)) return false;
+                then.add(byNumber.get(n));
+            }
             for (String c : COLUMNS) {
-                Integer d = directionOf(column(start, c), comparator(c));
+                Integer d = directionOf(column(then, c), comparator(c));
                 if (d == null || d == 0) continue;
                 for (int click = 0; click < 2; click++) {
                     ordersTable(ui).cell(c).click();

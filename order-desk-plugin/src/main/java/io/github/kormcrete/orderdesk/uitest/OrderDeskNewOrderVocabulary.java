@@ -203,6 +203,8 @@ final class OrderDeskNewOrderVocabulary {
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
                                 + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
                                 NEW_ORDER_SCOPE, key(SKU_COLUMN)))
+                        // as the agent and a step's body record it: the cell as the target, then its text
+                        .matchAlso(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", productRow("product")))
                         .java(STEPS, "productIs(ui, {product}, {column}, {value})")
                         .build(),
                 DomainStep.check("lowStockWarningIs", "The low-stock warning of {product} is {warning}")
@@ -273,6 +275,8 @@ final class OrderDeskNewOrderVocabulary {
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
                                 + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
                                 NEW_ORDER_SCOPE, key(PRODUCT_COLUMN)))
+                        // as the agent and a step's body record it: the cell as the target, then its text
+                        .matchAlso(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", cartRow("product")))
                         .java(STEPS, "cartLineIs(ui, {product}, {column}, {value})")
                         .build(),
                 DomainStep.check("cartAmountIs", "The cart's {amount} is {value}")

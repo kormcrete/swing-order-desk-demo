@@ -32,19 +32,25 @@ public final class CheckMenuForms {
     /**
      * The Check menu's recordable checks of cell ({@code row}, {@code column}) (view indices) of {@code table}, which
      * shows in {@code window} inside {@code scope} (its tabs and titled sections, root first), each as a pattern
-     * matches it.
+     * matches it. A table with a code name ({@code setName}) is recorded by it and seen by it.
      */
     public static List<JsonNode> cell(JTable table, int row, int column, String window, List<String> scope) {
         List<String> headers = TableWidget.headers(table);
-        Locator recorded = new Locator();
-        recorded.window = window;
-        recorded.role = "table";
+        // as the recorder addresses it: by its code name when it has one, else by window and role
+        String name = table.getName();
+        Locator recorded = name != null && !name.isEmpty() ? Locator.ofId(name) : new Locator();
+        if (recorded.id == null) {
+            recorded.window = window;
+            recorded.role = "table";
+        }
         recorded.row = TableWidget.rowKey(table, row);
         recorded.column = headers.get(column);
         Locator seen = new Locator();
         seen.window = window;
         seen.scope = scope == null || scope.isEmpty() ? null : new ArrayList<String>(scope);
         seen.role = "table";
+        // a code name is the name the element is seen by
+        seen.name = name == null || name.isEmpty() ? null : name;
         Map<String, Object> cells = new LinkedHashMap<String, Object>();
         for (int c = 0; c < headers.size(); c++) {
             if (cells.containsKey(headers.get(c))) continue;

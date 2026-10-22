@@ -218,12 +218,14 @@ add `tab:Items` and so on.
   `cell` (the row by its key, the table's first column with unique values: Order, the cart's Product, the products'
   SKU, the review's Product; the column; the value), not as a target with a row and column. `orderIs`, `cartLineIs`,
   `productIs` and `reviewLineIs` match that shape (pinned by `CheckMenuForms`, a test helper that runs the library's
-  own Check menu code on a table); a check of the key cell itself is offered too, so each of them also reads its
-  key column (Order, Product) and `productIs` takes a SKU for the product. `orderIs`, `cartLineIs` and `productIs`
-  fit only their own table (the Orders tab's scope with the Order key; a new order's scope with the Product key for
-  the cart, the SKU key for the products; an order tab's Items have neither scope). `reviewLineIs` only suggests itself:
-  a pattern never compares the window and the review's table has no scope, so a cart line's cell fits it too (the
-  Check menu then offers both, `cartLineIs` and `reviewLineIs`).
+  own Check menu code on a table), and keep the shape the agent and the step bodies record (the cell as the target,
+  then its text; bundled `cart-totals.json`'s "The A4 paper line comes to €14.70") as a second pattern (`matchAlso`).
+  A check of the key cell itself is offered too, so each of them also reads its key column (Order, Product) and
+  `productIs` takes a SKU for the product. Each fits only its own table: the Orders tab's scope with the Order key; a
+  new order's scope with the Product key for the cart, the SKU key for the products (an order tab's Items have neither
+  scope); the review's table by its code name `reviewLines` (R12: a pattern never compares the window, and the cart's
+  table has the same columns). `reviewLineIs` still only suggests itself: its body reads the dialog's only table by
+  role, so the body's steps carry no name to compare with its patterns.
 - A checkout field, step, way to pay, section or answer is given by the tester's words: the name, its start, a word of
   it ("note": Delivery note), the label the app shows or the id ("postalCode"); "PO" is the PO number.
 
@@ -242,6 +244,7 @@ add `tab:Items` and so on.
 | R9 `ShippingStep` prices; `PaymentStep` invoice note | no names | `setName("standardPrice")`, `setName("expressPrice")`, `setName("invoiceNote")` | invisible |
 | R10 `TotalsPanel` values (Review step) | `label 'Shipping'` in the checkout dialog matches the total's value and the step indicator's Shipping | first planned: `setName` on each value (`subtotal`, `volumeDiscount`, `shipping`, `vat`, `total`); made instead: `setName("totals")` on the panel (a code name replaces the caption name, so `label 'Total'` would stop finding the value: the 3 bundled recorded tests and `cartTotalIs` read it so) | invisible |
 | R11 `OrderPanel` status, facts, units, Delivery and Invoice values | no names; the Delivery and Invoice captions (`Ui.hint`) are not tied to their values | `setName("orderStatus")`, `setName("orderFacts")`, `setName("itemsSummary")`; `setLabelFor` from each caption to its value (`setName("deliveryAddress")` on the address column) | invisible |
+| R12 `ReviewStep` lines table | the cart's table has the same columns (Product, Qty, Price, Line total) and a pattern never compares the window, so a person's check of a cart line looked like a review line | `setName("reviewLines")` | invisible |
 
 ## Changes made to the app
 
@@ -258,4 +261,5 @@ add `tab:Items` and so on.
 | R9 `ShippingStep`: `setName("standardPrice")`, `setName("expressPrice")`; `PaymentStep`: `setName("invoiceNote")` | The prices; the invoice note; a card-only customer | invisible | - |
 | R10 `TotalsPanel`: the panel `setName("totals")` (in the cart, the review and the order's Invoice tab); its values keep no name, so each stays found by its caption | The order's totals (Review) | invisible | - |
 | R11 `OrderPanel`: `setName("orderStatus")` on the status pill, `setName("orderFacts")`, `setName("itemsSummary")`; each Delivery and Invoice caption `setLabelFor` its value (Delivery address, Shipping method, Delivery note, Payment, Order date), the address column `setName("deliveryAddress")` | The order's status and facts; units; Delivery; Invoice | invisible | - |
+| R12 `ReviewStep`: the lines table `setName("reviewLines")` | The order's lines (Review): `reviewLineIs` offered on the review's table only | invisible | - |
 | Bug fix `ProductsPanel.refresh`: the stock refresh repaints the products table instead of firing a rows-updated event (after it, choosing a category with a product selected below the category's rows failed) | Browse a category; Show a product in its category | no (a bug fix) | user OK 2026-10-22 |

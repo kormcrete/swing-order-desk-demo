@@ -104,8 +104,9 @@ class OrderDeskOrdersStepsTest {
 
     @Test
     void openOrderThatFailsClosesTheTabsItOpenedAndGivesBackTheSelectionAndTheTab() {
-        // of two orders only ORD-1639's tab opens: it is closed again, ORD-1634 is selected again as it was, and the
-        // new order shows again
+        // of two orders only ORD-1639's tab opens: it is closed again (the app then shows the tab now last, not
+        // Orders, so Orders is clicked before its rows are), ORD-1634 is selected again as it was, and the new order
+        // shows again
         OrdersFake app = new OrdersFake().tabs("New order · Ada Shop Ltd", "Orders", "New order · Ada Shop Ltd")
                 .selecting(3).opening("ORD-1639");
 
@@ -117,7 +118,7 @@ class OrderDeskOrdersStepsTest {
                 + ",{'action':'click','target':" + row("ORD-1638") + ",'modifiers':['Mod']}"
                 + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Open']}"
                 + ",{'action':'click','target':{'role':'tab','name':'ORD-1639'}}"
-                + ",{'action':'menu','path':['File','Close tab']}"
+                + ",{'action':'menu','path':['File','Close tab']}," + TO_ORDERS
                 + ",{'action':'click','target':" + row("ORD-1634") + "}"
                 + ",{'action':'click','target':{'role':'tab','name':'New order · Ada Shop Ltd'}}]"));
     }
@@ -324,7 +325,20 @@ class OrderDeskOrdersStepsTest {
                 + ",{'action':'click','target':{'role':'tab','name':'New order · Ada Shop Ltd'}}]"));
     }
 
-    // ---- select, cancel, keep, copy    // ---- select, cancel, keep, copy
+    @Test
+    void sortOrdersThatFailsReadsEveryValueItNeedsToPutTheListBack() {
+        // the list began sorted by Customer (Ada, Birch, Café) and a read gives its first row only: the rest are read
+        // one by one, so the Customer of the others is read too before the list is put back
+        OrdersFake app = new OrdersFake().listing("", "ORD-1639", "ORD-1634", "ORD-1638").sortableAsText().readsFirst(1);
+
+        Throwable unsorted = catchThrowable(() -> OrderDeskOrdersSteps.sortOrders(app.client(), "Total", "ascending"));
+
+        assertThat(unsorted).isInstanceOf(DriverException.class).hasMessage("NOT_ACTIONABLE: The orders do not read"
+                + " sorted by Total, ascending after 3 clicks on its header: Total reads €181.44; €542.58; €95.52");
+        assertThat(OrderDeskOrdersSteps.listedOrders(app.client())).containsExactly("ORD-1639", "ORD-1634", "ORD-1638");
+    }
+
+    // ---- select, cancel, keep, copy
 
     @Test
     void selectOrdersClicksTheFirstThenTheOthersWithModHeld() {
