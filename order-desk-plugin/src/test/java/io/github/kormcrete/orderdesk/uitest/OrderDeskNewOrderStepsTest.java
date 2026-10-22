@@ -138,7 +138,7 @@ class OrderDeskNewOrderStepsTest {
         app.answer("tab 'Orders'", label("Orders", "New order · Ada Shop Ltd"));
 
         OrderDeskNewOrderSteps.newOrderIsFor(ui, "Ada Shop Ltd");
-        OrderDeskNewOrderSteps.newOrderIsFor(ui, "ada shop");
+        OrderDeskNewOrderSteps.newOrderIsFor(ui, "ada shop ltd");
         Throwable wrong = catchThrowable(() -> OrderDeskNewOrderSteps.newOrderIsFor(ui, "Birch & Co"));
         Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.newOrderIsFor(ui, "none"));
 
@@ -289,11 +289,9 @@ class OrderDeskNewOrderStepsTest {
 
     @Test
     void addProductsToCartSelectsThemAllThenAddsOnceAndSaysWhichWereLeftOut() {
-        newOrderShowing();
-        products();
-        app.answer("button 'Add to cart'", node("button", "Add to cart"));
+        CartFake app = new CartFake();
 
-        Map<String, Object> made = OrderDeskNewOrderSteps.addProductsToCart(ui, "stapler; desk lamp; A4");
+        Map<String, Object> made = OrderDeskNewOrderSteps.addProductsToCart(app.client(), "stapler; desk lamp; A4");
 
         assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Stapler'},'column':'SKU'}},"
@@ -625,6 +623,132 @@ class OrderDeskNewOrderStepsTest {
                 .hasMessage("Add to cart is disabled (“Select a product first”), expected enabled");
     }
 
+    // ---- after the review: failures leave the screen as found, names given twice, Remove's reason, whole names
+
+    @Test
+    void newOrderIsForTakesTheWholeNameOnly() {
+        newOrderShowing();
+        app.answer("tab 'Orders'", label("Orders", "New order · Ada Shop Ltd"));
+
+        Throwable start = catchThrowable(() -> OrderDeskNewOrderSteps.newOrderIsFor(ui, "A"));
+
+        assertThat(start).isInstanceOf(AssertionError.class)
+                .hasMessage("The new order is for Ada Shop Ltd, expected A (only the start of its name: give the whole name)");
+    }
+
+    @Test
+    void buttonIsDisabledRemoveFailsWithExpectedAndActual() {
+        newOrderShowing();
+        app.answer("button 'Remove'", withState(node("button", "Remove"), "disabled"));
+        app.answer("label 'Select a cart line first'", label("Select a cart line first"));
+
+        Throwable wrong = catchThrowable(() -> OrderDeskNewOrderSteps.buttonIsDisabled(ui, "Remove", "Nothing selected"));
+
+        assertThat(wrong).isInstanceOf(AssertionError.class)
+                .hasMessage("Remove's reason reads “Select a cart line first”, expected “Nothing selected”");
+    }
+
+    @Test
+    void addProductsToCartNamedTwiceSelectsItOnceAndReadsTheCartForWhatWasAdded() {
+        CartFake app = new CartFake();
+
+        Map<String, Object> made = OrderDeskNewOrderSteps.addProductsToCart(app.client(), "stapler; Stapler; desk lamp");
+
+        // a second Mod-click on the Stapler would have unselected it
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Stapler'},'column':'SKU'}},"
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Desk lamp'},'column':'SKU'},'modifiers':['Mod']},"
+                + "{'action':'click','target':{" + NO + ",'role':'button','name':'Add to cart'}}]"));
+        assertThat(made).containsEntry("added", Collections.singletonList("Stapler"))
+                .containsEntry("leftOut", Collections.singletonList("Desk lamp"));
+    }
+
+    @Test
+    void addProductsToCartCountsAProductAlreadyInTheCartWhenItsLineGrows() {
+        CartFake app = new CartFake();
+        app.inCart("Stapler", 1);
+
+        Map<String, Object> made = OrderDeskNewOrderSteps.addProductsToCart(app.client(), "Stapler; A4");
+
+        assertThat(made).containsEntry("added", Arrays.asList("Stapler", "A4 paper, 500 sheets"))
+                .containsEntry("leftOut", Collections.emptyList());
+    }
+
+    @Test
+    void removeFromCartNamedTwiceSelectsTheLineOnce() {
+        newOrderShowing();
+        cart("Stapler", "Gel pen, black");
+
+        OrderDeskNewOrderSteps.removeFromCart(ui, "Stapler; stapler");
+        Throwable one = catchThrowable(() -> OrderDeskNewOrderSteps.keepCartLines(ui, "Stapler; stapler"));
+
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Stapler'},'column':'Line total'}},"
+                + "{'action':'click','target':{" + NO + ",'role':'button','name':'Remove'}},"
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Stapler'},'column':'Line total'}}]"));
+        assertThat(one).isInstanceOf(DriverException.class).hasMessageContaining("two or more");
+    }
+
+    @Test
+    void chooseCustomerOnTwoMatchesClosesTheSuggestionsAndPicksTheCustomerAgain() {
+        CustomerFake app = new CustomerFake("Ada Shop Ltd");
+
+        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.chooseCustomer(app.client(), "am"));
+
+        assertThat(two).hasMessageContaining("“am” fits 2 customers");
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'type','target':{" + NO + ",'role':'text','name':'Customer'},'text':'am'},"
+                + "{'action':'press','keys':'Escape'},"
+                + "{'action':'type','target':{" + NO + ",'role':'text','name':'Customer'},'text':'Ada Shop Ltd'},"
+                + "{'action':'press','keys':'Enter'}]"));
+    }
+
+    @Test
+    void chooseCustomerThatFitsNoneLeavesAnEmptyFieldEmpty() {
+        CustomerFake app = new CustomerFake("");
+
+        Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.chooseCustomer(app.client(), "zz"));
+
+        assertThat(none).hasMessageContaining("No customer fits “zz”");
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'type','target':{" + NO + ",'role':'text','name':'Customer'},'text':'zz'},"
+                + "{'action':'click','target':{'scope':['tab:New order*','text:Customer'],'id':'clear'}},"
+                + "{'action':'press','keys':'Down','target':{" + NO + ",'role':'text','name':'Customer'}},"
+                + "{'action':'press','keys':'Escape'}]"));
+    }
+
+    @Test
+    void openNewOrderThatFitsNoOneClosesTheTabItOpened() {
+        CustomerFake app = new CustomerFake("");
+
+        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrder(app.client(), "am"));
+
+        assertThat(two).hasMessageContaining("“am” fits 2 customers");
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'menu','path':['File','New order']},"
+                + "{'action':'type','target':{'scope':['tab:New order'],'role':'text','name':'Customer'},'text':'am'},"
+                + "{'action':'press','keys':'Escape'},"
+                + "{'action':'menu','path':['File','Close tab']}]"));
+    }
+
+    @Test
+    void recentCustomersAreClosesTheMenuWhenItsReadFails() {
+        FakeApp broken = new FakeApp() {
+            @Override
+            public List<Node> readAll(io.github.kormcrete.swingui.driver.model.Locator target, Integer maxRows) {
+                throw new DriverException(Reason.APP_ERROR, "the menu went away");
+            }
+        };
+        broken.answer("button 'New order for a recent customer'", node("button", "New order for a recent customer"));
+
+        Throwable failed = catchThrowable(() -> OrderDeskNewOrderSteps.recentCustomersAre(broken.client(), "Ada Shop Ltd"));
+
+        assertThat(failed).isNotNull();
+        assertThat(broken.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{'role':'button','name':'New order for a recent customer'}},"
+                + "{'action':'press','keys':'Escape'}]"));
+    }
+
     // ---- helpers
 
     private void newOrderShowing() {
@@ -677,5 +801,100 @@ class OrderDeskNewOrderStepsTest {
                 return super.press(keys, target, timeout);
             }
         }.client();
+    }
+
+    /** A new order whose cart grows when Add to cart is clicked: one more of each selected product in stock. */
+    private static final class CartFake extends FakeApp {
+        private final Map<String, Integer> cart = new java.util.LinkedHashMap<String, Integer>();
+        private final List<String> selected = new ArrayList<String>();
+
+        CartFake() {
+            answer("text 'Customer'", node("text", "Customer"));
+            List<List<String>> rows = Arrays.asList(
+                    Arrays.asList("PAP-A4-500", "A4 paper, 500 sheets", "€4.90", "120"),
+                    Arrays.asList("DSK-STAPLER", "Stapler", "€12.50", "4"),
+                    Arrays.asList("DSK-LAMP", "Desk lamp", "€39.00", "Out of stock"));
+            answer("table col=SKU", table(PRODUCT_COLUMNS, rows.size(), rows));
+            answer("button 'Add to cart'", node("button", "Add to cart"));
+        }
+
+        void inCart(String product, int qty) {
+            cart.put(product, qty);
+            showCart();
+        }
+
+        @Override
+        public io.github.kormcrete.swingui.driver.VerbOutcome click(io.github.kormcrete.swingui.driver.model.Locator target,
+                String button, Integer count, List<String> modifiers, Long timeout) {
+            if (target.row != null && "SKU".equals(target.column)) {
+                if (modifiers == null) selected.clear();
+                selected.add(String.valueOf(target.row.get("Product")));
+            } else if ("Add to cart".equals(target.name)) {
+                for (String p : selected) if (!"Desk lamp".equals(p)) cart.put(p, cart.containsKey(p) ? cart.get(p) + 1 : 1);
+                showCart();
+            }
+            return super.click(target, button, count, modifiers, timeout);
+        }
+
+        private void showCart() {
+            List<List<String>> lines = new ArrayList<List<String>>();
+            for (Map.Entry<String, Integer> e : cart.entrySet()) lines.add(Arrays.asList(e.getKey(), String.valueOf(e.getValue()), "€1.00", "€1.00"));
+            answer("table col=Line total", table(CART_COLUMNS, lines.size(), lines));
+        }
+    }
+
+    /**
+     * A new order's Customer field holding {@code text}: typing shows the suggestions for it (name or city holds it),
+     * the X empties it, Down lists every customer, Escape closes the list.
+     */
+    private static final class CustomerFake extends FakeApp {
+        private static final List<String> ALL = Arrays.asList("Ada Shop Ltd Berlin · Account", "Birch & Co Vienna · Account",
+                "Café Lumen Amsterdam · Card only", "Fjord Supplies Hamburg · Card only");
+
+        CustomerFake(String text) {
+            field(text);
+        }
+
+        private void field(String text) {
+            Node f = node("text", "Customer");
+            f.value = text;
+            answer("text 'Customer'", f);
+        }
+
+        private void suggest(List<String> items) {
+            forget("popup list");
+            forget("popup label 'No customer matches'");
+            if (items == null) return;
+            if (items.isEmpty()) answer("popup label 'No customer matches'", label("No customer matches"));
+            else answer("popup list", items("list", items, 0));
+        }
+
+        @Override
+        public io.github.kormcrete.swingui.driver.VerbOutcome type(io.github.kormcrete.swingui.driver.model.Locator target,
+                String text, Boolean replace, Boolean commit, Long timeout) {
+            field(text);
+            List<String> fits = new ArrayList<String>();
+            for (String c : ALL) if (c.toLowerCase().contains(text.toLowerCase())) fits.add(c);
+            suggest(fits);
+            return super.type(target, text, replace, commit, timeout);
+        }
+
+        @Override
+        public io.github.kormcrete.swingui.driver.VerbOutcome click(io.github.kormcrete.swingui.driver.model.Locator target,
+                String button, Integer count, List<String> modifiers, Long timeout) {
+            if ("clear".equals(target.id)) {
+                field("");
+                suggest(null);
+            }
+            return super.click(target, button, count, modifiers, timeout);
+        }
+
+        @Override
+        public io.github.kormcrete.swingui.driver.VerbOutcome press(String keys, io.github.kormcrete.swingui.driver.model.Locator target,
+                Long timeout) {
+            if ("Down".equals(keys)) suggest(ALL);
+            if ("Escape".equals(keys) || "Enter".equals(keys)) suggest(null);
+            return super.press(keys, target, timeout);
+        }
     }
 }

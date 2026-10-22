@@ -180,7 +180,8 @@ class FakeApp implements Verbs {
 
     @Override public String remember(Locator target, boolean selected, Long timeout) {
         Node n = read(target);
-        String text = n.value != null ? n.value : n.name;
+        // a field shows its content, never its caption
+        String text = n.value != null ? n.value : "text".equals(n.role) ? null : n.name;
         if (text == null || text.isEmpty()) throw new DriverException(Reason.EXPECTATION, "nothing to remember: " + key(target));
         return text;
     }

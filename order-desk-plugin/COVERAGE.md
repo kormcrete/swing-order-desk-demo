@@ -67,7 +67,7 @@ both have a `Product` column, so a row locator on either must also name a column
 | Editing the Customer text forgets the chosen customer (tab back to "New order", Checkout… blocked) | act | `typeCustomer` (then `newOrderIsFor` `none`, `buttonIsDisabled` Checkout…) |
 | The tab's title: "New order", then "New order · Ada Shop Ltd" | check | `newOrderIsFor` |
 | The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` |
-| Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` (app bug, see Notes: a category chosen while a product further down the list is selected) |
+| Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` |
 | Search products by SKU or name (Search; its X clears it) | act | `searchProducts`, `clearProductSearch` |
 | The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` |
 | Low stock: a warning icon in Stock at 5 or fewer, its tooltip "Low stock: 4 left" | check | `lowStockWarningIs` |
@@ -77,7 +77,7 @@ both have a `Product` column, so a row locator on either must also name a column
 | Add a product with a quantity | act | `addQtyToCart` |
 | Add several selected products at once (out-of-stock ones are left out) | act | `addProductsToCart` (the outcome lists the products left out) |
 | Add to cart is disabled, with its reason: "Select a product first", "The selected products are out of stock" | check | `buttonIsDisabled`, `buttonIsEnabled`; `addToCart` fails with the reason |
-| Show a product in its category (its row menu ▸ Show in category) | act | `showInCategory` (app bug, see Notes: fails unless the product's row number fits the target category) |
+| Show a product in its category (its row menu ▸ Show in category) | act | `showInCategory` |
 | Change a cart line's quantity (its Qty cell: digits and Enter, or the spinner's arrows) | act | `setQuantity` |
 | A quantity below 1 or not a whole number is ignored: the line keeps its quantity | check | `setQuantity`, then `cartLineIs` (Qty) |
 | Remove a line (select it, Remove; its row menu ▸ Remove; Delete or Backspace in the cart; Order ▸ Remove from cart) | act | `removeFromCart` |
@@ -184,17 +184,10 @@ add `tab:Items` and so on.
   are parted by `;` (product names hold commas); `none` stands for "not shown" in every check.
 - A read of a table gives its first 20 rows: the products past them (Cleaning) are read one by one (row index, then
   SKU).
-- App bug (found writing the steps, NOT fixed: needs the person's OK): choosing a category, by a click in Categories
-  or by Show in category, while the selected product's row number is past the new category's row count (e.g. the
-  Espresso machine selected, then Desk; or Show in category on the Stapler from All products) throws
-  `ArrayIndexOutOfBoundsException` on the event thread (`ProductsPanel.applyFilter` → `updateAdd` →
-  `selectedProducts` → `JTable.convertRowIndexToModel`). `browseCategory` passes when no such product is selected;
-  `showInCategory` passes only when the product's row fits its category (it already shows that category).
-- `checkoutWithPo` presses Next on the Address step without looking: for a customer whose address is incomplete
-  (Elm Street Studio) Next is disabled. It types into "PO number", which exists only for customers that require a
-  PO number; for Birch & Co and Elm Street Studio the field is "PO number (optional)", and card-only customers
-  have none.
-- `placeOrder` finds the status line by `contains "placed"`; since R1 it can read it by id (`statusMessage`).
+- App bug found writing the steps, fixed with the person's OK (2026-10-22, see "Changes made to the app"): choosing
+  a category, by a click in Categories or by Show in category, while the selected product's row lay past the new
+  category's rows threw `ArrayIndexOutOfBoundsException` on the event thread. It came from the rows-updated event the
+  tab fired each time it showed (`ProductsPanel.refresh`).
 
 ## Reach fixes needed
 
@@ -227,3 +220,4 @@ add `tab:Items` and so on.
 | R9 `ShippingStep`: `setName("standardPrice")`, `setName("expressPrice")`; `PaymentStep`: `setName("invoiceNote")` | The prices; the invoice note; a card-only customer | invisible | - |
 | R10 `TotalsPanel`: the panel `setName("totals")` (in the cart, the review and the order's Invoice tab); its values keep no name, so each stays found by its caption | The order's totals (Review) | invisible | - |
 | R11 `OrderPanel`: `setName("orderStatus")` on the status pill, `setName("orderFacts")`, `setName("itemsSummary")`; each Delivery and Invoice caption `setLabelFor` its value (Delivery address, Shipping method, Delivery note, Payment, Order date), the address column `setName("deliveryAddress")` | The order's status and facts; units; Delivery; Invoice | invisible | - |
+| Bug fix `ProductsPanel.refresh`: the stock refresh repaints the products table instead of firing a rows-updated event (after it, choosing a category with a product selected below the category's rows failed) | Browse a category; Show a product in its category | no (a bug fix) | user OK 2026-10-22 |

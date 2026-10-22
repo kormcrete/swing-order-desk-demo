@@ -91,7 +91,7 @@ final class OrderDeskNewOrderVocabulary {
                         .build(),
                 DomainStep.check("newOrderIsFor", "The new order is for {customer}")
                         .about("Reads whose new order shows, by its tab's title \"New order · Ada Shop Ltd\": the"
-                                + " customer's name or its start; none: no customer chosen yet (the tab reads \"New order\")")
+                                + " customer's whole name, any case; none: no customer chosen yet (the tab reads \"New order\")")
                         .param("customer", ParamType.TEXT).choices(customers)
                         .code((ui, p) -> OrderDeskNewOrderSteps.newOrderIsFor(ui, p.text("customer")))
                         .match(json("{'action':'expect','target':{'role':'tab','name':%s},'state':['selected']}",
@@ -161,9 +161,9 @@ final class OrderDeskNewOrderVocabulary {
                 DomainStep.act("addProductsToCart", "Add {products} to the cart together")
                         .about("Needs: a new order showing, the products listed. Ends: on it, one more of each in the cart"
                                 + " (in the list's order). {products}: names or their starts " + SEVERAL
-                                + " (\"Stapler; Gel pen, black\"). The app"
-                                + " leaves out-of-stock products out: the outcome lists them under leftOut; all out of"
-                                + " stock fails with the app's reason")
+                                + " (\"Stapler; Gel pen, black\"; one named twice counts once). The app leaves out-of-stock"
+                                + " products out: the outcome says, from the cart afterwards, which were added and which"
+                                + " left out (leftOut); all out of stock fails with the app's reason")
                         .param("products", ParamType.TEXT)
                         .codeWithOutcome((ui, p) -> OrderDeskNewOrderSteps.addProductsToCart(ui, p.text("products")))
                         .match(json("{'action':'click','target':{%s}}", productRow("products")),
@@ -223,7 +223,8 @@ final class OrderDeskNewOrderVocabulary {
                 // ---- the cart
                 DomainStep.act("removeFromCart", "Remove {products} from the cart")
                         .about("Needs: a new order with those lines in its cart. Ends: on it, the lines gone. {products}:"
-                                + " one line or several " + SEVERAL + " (names or their starts); several are asked about"
+                                + " one line or several " + SEVERAL + " (names or their starts; one named twice counts"
+                                + " once); several are asked about"
                                 + " first (\"Remove 2 lines from the cart?\"), answered Remove lines")
                         .param("products", ParamType.TEXT).choices(cartLines)
                         .code((ui, p) -> OrderDeskNewOrderSteps.removeFromCart(ui, p.text("products")))

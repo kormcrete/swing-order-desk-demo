@@ -28,6 +28,8 @@ public final class OrderDeskSteps {
 
     static final String FILE_MENU = "File";
     static final String NEW_ORDER_ITEM = "New order";
+    /** File ▸ Close tab: closes the selected tab (an empty new order without a question). */
+    static final String CLOSE_TAB_ITEM = "Close tab";
     /** The toolbar button that opens a new order. */
     static final String NEW_ORDER_BUTTON = "New order";
     /** The toolbar button that opens a new order for a customer picked from its menu. */

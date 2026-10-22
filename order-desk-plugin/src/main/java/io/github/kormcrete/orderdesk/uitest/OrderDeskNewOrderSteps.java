@@ -12,9 +12,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.LOOK;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.column;
@@ -45,8 +47,6 @@ import static io.github.kormcrete.swingui.junit.UiAssertions.assertThat;
  */
 public final class OrderDeskNewOrderSteps {
 
-    /** A product's Stock cell when there is none left; the row is greyed and Add to cart refuses it. */
-    static final String OUT_OF_STOCK = "Out of stock";
     /** The columns of the products table a check reads (Product names the row). */
     static final List<String> PRODUCT_CHECK_COLUMNS = Collections.unmodifiableList(Arrays.asList(SKU_COLUMN, PRICE_COLUMN, STOCK_COLUMN));
     /** The columns of the cart a check reads (Product names the line). */
@@ -57,6 +57,7 @@ public final class OrderDeskNewOrderSteps {
     /** The new order's buttons that show a reason while disabled. */
     static final List<String> REASON_BUTTONS = Collections.unmodifiableList(Arrays.asList(
             ADD_TO_CART_BUTTON, REMOVE_BUTTON, CHECKOUT_BUTTON));
+    private static final String ONE_LINE_ASKS_NOTHING = "Removing one line asks nothing: name two or more cart lines, parted by ;";
     /** What a step says when the new order it needs is not showing. */
     static final String NO_NEW_ORDER = "No new order is showing. Open one first with \"Open a new order for <customer>\","
             + " or select its tab";
@@ -72,7 +73,13 @@ public final class OrderDeskNewOrderSteps {
      */
     public static void openNewOrder(Client ui, String customer) {
         ui.menu(FILE_MENU, NEW_ORDER_ITEM);
-        pickCustomer(ui, ui.tab(NEW_ORDER_TAB).field(CUSTOMER_FIELD), customer);
+        try {
+            pickCustomer(ui, ui.tab(NEW_ORDER_TAB).field(CUSTOMER_FIELD), customer);
+        } catch (RuntimeException e) {
+            // no customer fits: close the empty tab this step opened (nothing in its cart, so no question)
+            quietly(() -> ui.menu(FILE_MENU, CLOSE_TAB_ITEM));
+            throw e;
+        }
     }
 
     /**
@@ -83,7 +90,15 @@ public final class OrderDeskNewOrderSteps {
      */
     public static void chooseCustomer(Client ui, String customer) {
         requireNewOrder(ui);
-        pickCustomer(ui, newOrder(ui).field(CUSTOMER_FIELD), customer);
+        final Target field = newOrder(ui).field(CUSTOMER_FIELD);
+        final String before = shown(field);
+        try {
+            pickCustomer(ui, field, customer);
+        } catch (RuntimeException e) {
+            // no customer fits: give the field back what it held (the customer chosen before, picked again)
+            quietly(() -> restoreCustomer(ui, field, before));
+            throw e;
+        }
     }
 
     /** Types {@code text} into the showing new order's Customer field and picks nothing: the suggestions show. */
@@ -114,8 +129,9 @@ public final class OrderDeskNewOrderSteps {
     }
 
     /**
-     * Checks whose new order is showing, by its tab's title ("New order · Ada Shop Ltd"): the customer's name or its
-     * start; {@code none}: no customer chosen yet (the tab reads "New order").
+     * Checks whose new order is showing, by its tab's title ("New order · Ada Shop Ltd"): the customer's whole name, any
+     * case (only the shown customer is known here, so a start of a name could mean another one); {@code none}: no
+     * customer chosen yet (the tab reads "New order").
      */
     public static void newOrderIsFor(Client ui, String customer) {
         requireNewOrder(ui);
@@ -130,8 +146,11 @@ public final class OrderDeskNewOrderSteps {
             throw new AssertionError("The new order has no customer yet (its tab reads " + quoted(String.valueOf(title))
                     + "), expected " + customer);
         }
-        if (!chosen.toLowerCase(Locale.ROOT).startsWith(customer.trim().toLowerCase(Locale.ROOT))) {
-            throw new AssertionError("The new order is for " + chosen + ", expected " + customer);
+        String wanted = customer.trim();
+        if (!chosen.equalsIgnoreCase(wanted)) {
+            boolean start = chosen.toLowerCase(Locale.ROOT).startsWith(wanted.toLowerCase(Locale.ROOT));
+            throw new AssertionError("The new order is for " + chosen + ", expected " + wanted
+                    + (start ? " (only the start of its name: give the whole name)" : ""));
         }
     }
 
@@ -153,11 +172,15 @@ public final class OrderDeskNewOrderSteps {
             throw new DriverException(Reason.NOT_FOUND, "The toolbar's New order for a recent customer (▾) is not showing");
         }
         opener.click();
-        List<String> offered = look(() -> {
-            List<String> items = ui.popup().menuitem(null).texts();
-            return items.isEmpty() ? null : items;
-        });
-        ui.press("Escape");
+        List<String> offered;
+        try {
+            offered = look(() -> {
+                List<String> items = ui.popup().menuitem(null).texts();
+                return items.isEmpty() ? null : items;
+            });
+        } finally {
+            ui.press("Escape");
+        }
         namesAre(offered == null ? Collections.<String>emptyList() : offered, names(customers), "The recent customers are");
     }
 
@@ -179,27 +202,33 @@ public final class OrderDeskNewOrderSteps {
 
     /**
      * Adds several products at once ({@code "Stapler; Gel pen, black"}): selects their rows (the first, then the others
-     * with Cmd or Ctrl held), then one Add to cart. The app leaves out-of-stock products out; returns which were added
-     * and which were left out: {@code {"added": [...], "leftOut": [...]}}. All out of stock fails with the app's reason.
+     * with Cmd or Ctrl held; a product named twice counts once), then one Add to cart. The app leaves out-of-stock
+     * products out; returns, as the cart shows it afterwards, which were added and which were left out:
+     * {@code {"added": [...], "leftOut": [...]}}. All out of stock fails with the app's reason.
      */
     public static Map<String, Object> addProductsToCart(Client ui, String products) {
         requireNewOrder(ui);
         List<Map<String, String>> rows = productRows(ui);
         List<String> wanted = names(products);
         if (wanted.isEmpty()) throw new DriverException(Reason.BAD_INPUT, "Name one or more products, parted by ;");
-        List<String> chosen = new ArrayList<String>();
-        for (String w : wanted) chosen.add(resolveProduct(ui, w, rows));
+        Set<String> picked = new LinkedHashSet<String>();
+        for (String w : wanted) picked.add(resolveProduct(ui, w, rows));
+        List<String> chosen = new ArrayList<String>(picked);
         for (int i = 0; i < chosen.size(); i++) {
             Target sku = productRow(ui, chosen.get(i)).cell(SKU_COLUMN);
             if (i == 0) sku.click();
             else sku.click(null, 0, ADD_TO_SELECTION);
         }
+        Map<String, String> before = quantities(cartRows(ui));
         pressAddToCart(ui, join(chosen));
+        Map<String, String> after = quantities(cartRows(ui));
         List<String> added = new ArrayList<String>();
         List<String> leftOut = new ArrayList<String>();
         for (String name : chosen) {
-            if (OUT_OF_STOCK.equals(valueOf(rows, name, STOCK_COLUMN))) leftOut.add(name);
-            else added.add(name);
+            String was = before.get(name);
+            String now = after.get(name);
+            if (now != null && !now.equals(was)) added.add(name);
+            else leftOut.add(name);
         }
         Map<String, Object> made = new LinkedHashMap<String, Object>();
         made.put("added", added);
@@ -318,10 +347,9 @@ public final class OrderDeskNewOrderSteps {
 
     /** Asks to remove two or more cart lines, then answers Keep: the cart stays as it was. */
     public static void keepCartLines(Client ui, String products) {
-        if (names(products).size() < 2) {
-            throw new DriverException(Reason.BAD_INPUT, "Removing one line asks nothing: name two or more cart lines, parted by ;");
-        }
-        selectCartLines(ui, products);
+        if (names(products).size() < 2) throw new DriverException(Reason.BAD_INPUT, ONE_LINE_ASKS_NOTHING);
+        List<String> lines = selectCartLines(ui, products);
+        if (lines.size() < 2) throw new DriverException(Reason.BAD_INPUT, ONE_LINE_ASKS_NOTHING);
         newOrder(ui).button(REMOVE_BUTTON).click();
         ui.answer(KEEP_ANSWER);
     }
@@ -386,7 +414,13 @@ public final class OrderDeskNewOrderSteps {
         } catch (UiAssertionError e) {
             throw new AssertionError(name + " is enabled, expected disabled: " + quoted(reason));
         }
-        Target beside = REMOVE_BUTTON.equals(name) ? newOrder(ui).label(reason) : reasonOf(ui, name);
+        Target beside = reasonOf(ui, name);
+        if (REMOVE_BUTTON.equals(name) && !SELECT_A_CART_LINE_FIRST.equals(reason)) {
+            // Remove's reason has one text and no code name: it is found by that text, so read it to say what shows
+            String actual = shown(beside);
+            throw new AssertionError(name + "'s reason " + (actual == null ? "is not shown" : "reads " + quoted(actual))
+                    + ", expected " + quoted(reason));
+        }
         shows(beside, name + "'s reason", reason);
     }
 
@@ -426,16 +460,53 @@ public final class OrderDeskNewOrderSteps {
         if (!showing(newOrder(ui).field(CUSTOMER_FIELD))) throw new DriverException(Reason.NOT_FOUND, NO_NEW_ORDER);
     }
 
-    private static void pickCustomer(Client ui, Target field, String customer) {
+    /**
+     * Types {@code customer} and takes the suggestion it means. A miss fails with the suggestion list closed again (for
+     * none: the field emptied, as {@link #everyCustomer} leaves it; for several: Escape); the caller puts back the rest.
+     */
+    private static void pickCustomer(final Client ui, Target field, String customer) {
         field.type(customer);
         List<String> offered = suggestions(ui);
         if (offered.isEmpty()) {
             throw new DriverException(Reason.NOT_FOUND, "No customer fits " + quoted(customer) + ". Order Desk offers: "
                     + join(everyCustomer(ui, field)));
         }
-        int at = suggestionFor(customer, offered);
+        int at;
+        try {
+            at = suggestionFor(customer, offered);
+        } catch (RuntimeException e) {
+            quietly(() -> ui.press("Escape"));
+            throw e;
+        }
         if (at == 0) ui.press("Enter");
         else ui.popup().list(null).item(offered.get(at)).click();
+    }
+
+    /** The Customer field as it was before a miss: empty, or {@code before} typed again and picked when it is a customer. */
+    private static void restoreCustomer(Client ui, Target field, String before) {
+        if (before == null || before.isEmpty()) {
+            String now = shown(field);
+            if (now != null && !now.isEmpty()) field.clearValue();
+            return;
+        }
+        field.type(before);
+        List<String> offered = suggestions(ui);
+        int at = -1;
+        for (int i = 0; i < offered.size(); i++) {
+            if (isSuggestionOf(offered.get(i), before)) at = at == -1 ? i : -2;
+        }
+        if (at == 0) ui.press("Enter");
+        else if (at > 0) ui.popup().list(null).item(offered.get(at)).click();
+        else if (!offered.isEmpty()) ui.press("Escape");
+    }
+
+    /** Runs a step that puts the screen back after a failure; its own failure must not hide the first one. */
+    private static void quietly(Runnable undo) {
+        try {
+            undo.run();
+        } catch (RuntimeException ignored) {
+            // the step's own failure is the one to report
+        }
     }
 
     /**
@@ -517,8 +588,9 @@ public final class OrderDeskNewOrderSteps {
         List<String> held = cartLines(ui);
         List<String> wanted = names(products);
         if (wanted.isEmpty()) throw new DriverException(Reason.BAD_INPUT, "Name one or more cart lines, parted by ;");
-        List<String> lines = new ArrayList<String>();
-        for (String w : wanted) lines.add(pick(w, held, "cart line", "cart lines", "The cart holds"));
+        Set<String> picked = new LinkedHashSet<String>();   // a line named twice counts once: a second click would unselect it
+        for (String w : wanted) picked.add(pick(w, held, "cart line", "cart lines", "The cart holds"));
+        List<String> lines = new ArrayList<String>(picked);
         for (int i = 0; i < lines.size(); i++) {
             Target total = newOrder(ui).table().row(PRODUCT_COLUMN, lines.get(i)).cell(LINE_TOTAL_COLUMN);
             if (i == 0) total.click();
@@ -595,6 +667,13 @@ public final class OrderDeskNewOrderSteps {
             if (e.reason() == Reason.NOT_FOUND) return new ArrayList<Map<String, String>>();
             throw e;
         }
+    }
+
+    /** Each cart line's Qty, by product. */
+    private static Map<String, String> quantities(List<Map<String, String>> cart) {
+        Map<String, String> out = new LinkedHashMap<String, String>();
+        for (Map<String, String> row : cart) out.put(row.get(PRODUCT_COLUMN), row.get(QTY_COLUMN));
+        return out;
     }
 
     private static String valueOf(List<Map<String, String>> rows, String name, String col) {
