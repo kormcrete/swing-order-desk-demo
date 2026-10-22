@@ -3,12 +3,12 @@ package io.github.kormcrete.orderdesk.uitest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kormcrete.swingui.agent.BodyTrace;
-import io.github.kormcrete.swingui.client.TracingVerbs;
 import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.junit.Client;
 import io.github.kormcrete.swingui.spi.DomainStep;
 import io.github.kormcrete.swingui.spi.ParamType;
 import io.github.kormcrete.swingui.spi.Params;
+import io.github.kormcrete.swingui.vocab.Matcher;
 import io.github.kormcrete.swingui.vocab.Pattern;
 import io.github.kormcrete.swingui.vocab.PatternCompiler;
 import org.junit.jupiter.api.Test;
@@ -38,14 +38,15 @@ class OrderDeskVocabularyTest {
     /** A value for every param of every step, each one the stand-in app ({@link #app}) knows. */
     private static final Map<String, String> SAMPLE = new HashMap<String, String>();
     static {
-        String[] pairs = {"customer", "Ada Shop Ltd", "product", "Stapler", "qty", "3", "po", "PO-7781", "order", "ORD-1640",
+        String[] pairs = {"customer", "Ada Shop Ltd", "product", "Stapler", "qty", "3", "po", "PO-7781", "order", "ORD-1639",
                 "total", "€31.32", "text", "pen", "customers", "Ada Shop Ltd", "terms", "Card only", "category", "Desk",
                 "products", "Stapler", "lines", "Stapler; Gel pen, black", "column", "Stock", "value", "4",
                 "warning", "Low stock: 4 left", "count", "22 products", "amount", "Subtotal", "reason", "x",
                 "button", "Add to cart", "field", "Street", "method", "Express", "number", "4242424242424242",
                 "expiry", "12/29", "name", "Ada Lindqvist", "section", "Payment", "step", "Address", "answer", "card",
                 "message", "Owes €940.00 now, this order adds €96.60.", "error", "none", "note", "Debit or credit card",
-                "price", "€14.90"};
+                "price", "€14.90", "status", "placed", "orders", "ORD-1639", "direction", "descending", "tab", "Orders",
+                "tabs", "Orders", "item", "Close tab", "state", "disabled"};
         for (int i = 0; i < pairs.length; i += 2) SAMPLE.put(pairs[i], pairs[i + 1]);
     }
 
@@ -66,7 +67,25 @@ class OrderDeskVocabularyTest {
         override("reviewLineIs", "column", "Qty", "value", "1");
         override("reviewAmountIs", "amount", "Total", "value", "€41.16");
         override("paymentNoteIs", "method", "Card");
+        override("sortOrders", "column", "Total");
+        override("orderIs", "column", "Total", "value", "€95.52");
+        override("ordersListedAre", "orders", "ORD-1639; ORD-1638; ORD-1636; ORD-1634");
+        override("ordersEmptyMessageIs", "message", "none");
+        override("selectedOrdersAre", "orders", "none");
+        override("statusLineIs", "message", "Ready");
+        override("openOrdersCountIs", "count", "2");
+        override("exitQuestionIs", "message", "Discard the open new orders?");
+        override("aboutShows", "text", "fictional");
     }
+
+    /** The Orders list's steps (openOrder too) and the main window's: they run on {@link OrdersFake}. */
+    private static final List<String> ORDERS_LIST = Arrays.asList("openOrder", "searchOrders", "clearOrderSearch",
+            "filterOrders", "sortOrders", "selectOrders", "cancelOrders", "keepOrders", "copyOrderNumbers", "orderIs",
+            "ordersListedAre", "ordersEmptyMessageIs", "selectedOrdersAre");
+    private static final List<String> MAIN_WINDOW = Arrays.asList("selectTab", "closeTab", "keepTab", "openTabsAre",
+            "selectedTabIs", "menuItemIs", "statusLineIs", "openOrdersCountIs", "cancelExit", "exitQuestionIs", "aboutShows");
+    /** The main window's steps that need a new order with something in its cart. */
+    private static final List<String> ON_A_CART = Arrays.asList("closeTab", "keepTab", "cancelExit", "exitQuestionIs");
 
     /** The checkout step each checkout step runs on in these tests (the credit-limit ones with its warning open). */
     private static final Map<String, String> CHECKOUT_ON = new HashMap<String, String>();
@@ -101,7 +120,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 51;
+    private static final int CHECKED_PATTERN_ENTRIES = 69;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -150,7 +169,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theCheckoutStepsAndChecks() {
-        assertThat(sentences().subList(32, sentences().size())).containsExactly(
+        assertThat(sentences().subList(32, 55)).containsExactly(
                 "startCheckout: Start the checkout",
                 "setCheckoutField: Set the checkout's {field} to {value}",
                 "chooseShipping: Choose {method} shipping",
@@ -178,14 +197,44 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
+    void theOrdersListAndMainWindowStepsAndChecks() {
+        assertThat(sentences().subList(55, sentences().size())).containsExactly(
+                "searchOrders: Search the orders for {text}",
+                "clearOrderSearch: Clear the order search",
+                "filterOrders: Filter the orders by status {status}",
+                "sortOrders: Sort the orders by {column}, {direction}",
+                "selectOrders: Select the orders {orders}",
+                "cancelOrders: Cancel the orders {orders}",
+                "keepOrders: Ask to cancel the orders {orders}, then keep them",
+                "copyOrderNumbers: Copy the order numbers of {orders}",
+                "orderIs: The {column} of order {order} is {value}",
+                "ordersListedAre: The orders listed are {orders}",
+                "ordersEmptyMessageIs: The orders list reads {message}",
+                "selectedOrdersAre: The selected orders are {orders}",
+                "selectTab: Switch to the tab {tab}",
+                "closeTab: Close the selected tab",
+                "keepTab: Ask to close the selected tab, then cancel",
+                "openTabsAre: The open tabs are {tabs}",
+                "selectedTabIs: The selected tab is {tab}",
+                "menuItemIs: The menu item {item} is {state}",
+                "statusLineIs: The status line reads {message}",
+                "openOrdersCountIs: The open orders count reads {count}",
+                "cancelExit: Ask to exit, then cancel",
+                "exitQuestionIs: The exit question reads {message}",
+                "aboutShows: About Order Desk shows {text}");
+        assertThat(step("sortOrders").outcomeBody()).isNotNull();
+        assertThat(step("sortOrders").params().get(1).optional()).isTrue();
+        assertThat(step("sortOrders").params().get(1).defaultValue()).isEqualTo("ascending");
+    }
+
+    @Test
     void anActStepSaysWhatItNeedsAndWhereItEndsAndACheckWhatItReads() {
-        List<String> acts = Collections.singletonList("openOrder");   // its screen comes later
         for (DomainStep s : steps) {
             boolean check = s.id().endsWith("Is") || s.id().endsWith("Are") || s.id().equals("newOrderIsFor")
-                    || s.id().equals("buttonIsDisabled") || s.id().equals("buttonIsEnabled");
+                    || s.id().equals("buttonIsDisabled") || s.id().equals("buttonIsEnabled") || s.id().equals("aboutShows");
             assertThat(s.kind()).as(s.id()).isEqualTo(check ? DomainStep.Kind.CHECK : DomainStep.Kind.ACT);
             assertThat(s.about()).as(s.id()).isNotBlank();
-            if (s.kind() == DomainStep.Kind.ACT && !acts.contains(s.id())) {
+            if (s.kind() == DomainStep.Kind.ACT) {
                 assertThat(s.about()).as(s.id()).startsWith("Needs: ").contains(". Ends: ");
             }
             if (s.kind() == DomainStep.Kind.CHECK) assertThat(s.about()).as(s.id()).startsWith("Reads ");
@@ -206,7 +255,7 @@ class OrderDeskVocabularyTest {
         for (DomainStep s : steps) {
             Class<?> type = Class.forName(s.javaClass());
             assertThat(s.javaClass()).as(s.id()).isIn(OrderDeskSteps.class.getName(), OrderDeskNewOrderSteps.class.getName(),
-                    OrderDeskCheckoutSteps.class.getName());
+                    OrderDeskCheckoutSteps.class.getName(), OrderDeskOrdersSteps.class.getName(), OrderDeskMainSteps.class.getName());
             String call = s.javaCall();
             String name = call.substring(0, call.indexOf('('));
             int args = call.split(",").length;
@@ -219,6 +268,7 @@ class OrderDeskVocabularyTest {
         assertThat(method(OrderDeskSteps.class, "placeOrder").getReturnType()).isEqualTo(String.class);
         assertThat(step("addProductsToCart").outcomeBody()).isNotNull();
         assertThat(method(OrderDeskNewOrderSteps.class, "addProductsToCart").getReturnType()).isEqualTo(Map.class);
+        assertThat(method(OrderDeskOrdersSteps.class, "sortOrders").getReturnType()).isEqualTo(Map.class);
     }
 
     @Test
@@ -237,7 +287,9 @@ class OrderDeskVocabularyTest {
     @Test
     void eachNewOrderStepFailsFastWhenItsScreenIsNotShowing() {
         // the Orders tab selected, or no new order open: every step of a new order's tab says so within about a second
-        List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre", "openOrder"));
+        List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre"));
+        elsewhere.addAll(ORDERS_LIST);
+        elsewhere.addAll(MAIN_WINDOW);
         for (String id : CHECKOUT_ON.keySet()) if (!FROM_NEW_ORDER.contains(id)) elsewhere.add(id);
         int checked = 0;
         for (final DomainStep s : steps) {
@@ -282,6 +334,30 @@ class OrderDeskVocabularyTest {
             checked++;
         }
         assertThat(checked).isEqualTo(CHECKOUT_ON.size() - FROM_NEW_ORDER.size());
+    }
+
+    @Test
+    void eachOrdersListAndMainWindowStepFailsFastWhenItsScreenIsNotShowing() {
+        // no main window: every step of the Orders list and the main window says so within about a second, and none
+        // takes a step (no File ▸ Exit, above all)
+        int checked = 0;
+        for (final DomainStep s : steps) {
+            if (!ORDERS_LIST.contains(s.id()) && !MAIN_WINDOW.contains(s.id())) continue;
+            final FakeApp nothing = new FakeApp();
+            final Map<String, String> v = sample(s.id());
+            long start = System.currentTimeMillis();
+
+            Throwable gone = catchThrowable(() -> s.body().run(nothing.client(), new Params() {
+                @Override public String text(String name) { return v.get(name); }
+                @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
+            }));
+
+            assertThat(System.currentTimeMillis() - start).as(s.id()).isLessThan(2000);
+            assertThat(gone).as(s.id()).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: " + OrderDeskOrdersSteps.NO_MAIN);
+            assertThat(nothing.steps()).as(s.id()).isEmpty();
+            checked++;
+        }
+        assertThat(checked).isEqualTo(ORDERS_LIST.size() + MAIN_WINDOW.size());
     }
 
     @Test
@@ -489,7 +565,151 @@ class OrderDeskVocabularyTest {
         assertThat(OrderDeskCheckoutSteps.field(m.params().get("field")).name).isEqualTo("Postal code");
     }
 
+    // ---- the Orders list and the main window: what folds, and what only looks like it
+
+    private static final String ORD_1639 = "'row':{'Order':'ORD-1639','Date':'9 Oct 2026','Customer':'Ada Shop Ltd',"
+            + "'Items':'55','Total':'€95.52','Status':'Placed'}";
+    private static final String ORD_1638 = "'row':{'Order':'ORD-1638','Date':'7 Oct 2026','Customer':'Café Lumen',"
+            + "'Items':'8','Total':'€181.44','Status':'Placed'}";
+    private static final String ORDERS_TABLE = "'window':'main','scope':['tab:Orders'],'role':'table'";
+
+    @Test
+    void aPersonsCancelOfOneOrderFoldsIntoCancelOrders() {
+        JsonNode click = json("{'action':'click','target':{" + ORDERS_TABLE + "," + ORD_1639 + ",'column':'Customer'}}");
+        JsonNode menu = json("{'action':'contextMenu','target':{" + ORDERS_TABLE + "," + ORD_1639 + "},'path':['Cancel orders…']}");
+        JsonNode yes = json("{'action':'answer','button':'Cancel order'}");
+
+        assertThat(pattern("cancelOrders").match(Arrays.asList(click, menu, yes)).params()).containsEntry("orders", "ORD-1639");
+        // a right-click alone selects the order under it: the order cancelled is that one
+        assertThat(pattern("cancelOrders").match(Arrays.asList(menu, yes)).params()).containsEntry("orders", "ORD-1639");
+        assertThat(step("cancelOrders").autoFold()).isTrue();
+    }
+
+    @Test
+    void aCancelOfSeveralOrdersOrOfAnotherRowThanTheOneClickedIsNoCancelOrdersFold() {
+        // "Cancel orders" answers a question about several selected orders: one captured order cannot replay it
+        JsonNode add = json("{'action':'click','target':{" + ORDERS_TABLE + "," + ORD_1638 + "},'modifiers':['Mod']}");
+        JsonNode menu = json("{'action':'contextMenu','target':{" + ORDERS_TABLE + "," + ORD_1638 + "},'path':['Cancel orders…']}");
+        JsonNode several = json("{'action':'answer','button':'Cancel orders'}");
+        JsonNode click = json("{'action':'click','target':{" + ORDERS_TABLE + "," + ORD_1639 + "}}");
+        JsonNode one = json("{'action':'answer','button':'Cancel order'}");
+
+        for (Pattern p : patterns("cancelOrders")) {
+            assertThat(p.match(Arrays.asList(add, menu, several))).isNull();
+            assertThat(p.match(Arrays.asList(menu, several))).isNull();
+            assertThat(p.match(Arrays.asList(click, menu, one))).isNull();
+        }
+    }
+
+    @Test
+    void theOrderTabsOwnCancelOrderIsNoCancelOrdersFold() {
+        JsonNode button = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button','name':'Cancel order'}}");
+        JsonNode yes = json("{'action':'answer','button':'Cancel order'}");
+
+        assertThat(choices(button, yes)).isEmpty();
+    }
+
+    @Test
+    void closeTabAndDiscardFoldIntoCloseTabAndCancelIntoKeepTab() {
+        // the bundled cart-totals test ends with these two steps
+        JsonNode close = json("{'action':'menu','path':['File','Close tab']}");
+        JsonNode discard = json("{'action':'answer','button':'Discard'}");
+        JsonNode cancel = json("{'action':'answer','button':'Cancel'}");
+
+        assertThat(first(close, discard)).isEqualTo("closeTab");
+        assertThat(first(close)).isEqualTo("closeTab");
+        assertThat(first(close, cancel)).isEqualTo("keepTab");
+    }
+
+    @Test
+    void aPersonsCheckOfAnOrdersCellFoldsIntoOrderIsAndACartOrItemsCellDoesNot() {
+        JsonNode status = json("{'action':'expect','target':{" + ORDERS_TABLE + "," + ORD_1639 + ",'column':'Status'},'text':'Placed'}");
+        JsonNode cart = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'table',"
+                + "'row':{'Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},'column':'Qty'},'text':'1'}");
+        JsonNode items = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639','tab:Items'],'role':'table',"
+                + "'row':{'SKU':'DSK-STAPLER','Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},"
+                + "'column':'Qty'},'text':'1'}");
+
+        assertThat(pattern("orderIs").match(Collections.singletonList(status)).params()).containsEntry("order", "ORD-1639")
+                .containsEntry("column", "Status").containsEntry("value", "Placed");
+        assertThat(pattern("orderIs").match(Collections.singletonList(cart))).isNull();
+        assertThat(pattern("orderIs").match(Collections.singletonList(items))).isNull();
+    }
+
+    @Test
+    void anOrdersSearchFoldsIntoSearchOrdersAndANewOrdersSearchIntoSearchProducts() {
+        JsonNode orders = json("{'action':'type','target':{'window':'main','scope':['tab:Orders'],'role':'text','name':'Search'},'text':'ada'}");
+        JsonNode products = json("{'action':'type','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'text',"
+                + "'name':'Search'},'text':'pen'}");
+
+        assertThat(first(orders)).isEqualTo("searchOrders");
+        assertThat(first(products)).isEqualTo("searchProducts");
+        assertThat(pattern("searchOrders").match(Collections.singletonList(products))).isNull();
+    }
+
+    @Test
+    void theStatusLineAndTheEmptyListChecksFoldWhereTheyReplay() {
+        // a named label as a recording sees it: its id from the recorded locator, its role and name (the code name)
+        JsonNode status = json("{'action':'expect','target':{'id':'statusMessage','window':'main','role':'label',"
+                + "'name':'statusMessage'},'text':'Order ORD-1640 placed'}");
+        JsonNode empty = json("{'action':'expect','target':{'id':'ordersEmpty','window':'main','scope':['tab:Orders'],"
+                + "'role':'label','name':'ordersEmpty'},'text':'No orders match ‘zz’'}");
+        JsonNode products = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'label','name':'No products match ‘zz’'},'text':'No products match ‘zz’'}");
+
+        assertThat(first(status)).isEqualTo("statusLineIs");
+        assertThat(first(empty)).isEqualTo("ordersEmptyMessageIs");
+        assertThat(pattern("ordersEmptyMessageIs").match(Collections.singletonList(products))).isNull();
+    }
+
+    @Test
+    void aSelectedTabCheckOfANewOrderGoesToNewOrderIsForAndOfAnOrderToSelectedTabIs() {
+        JsonNode newOrder = json("{'action':'expect','target':{'window':'main','role':'tab','name':'New order · Ada Shop Ltd'},"
+                + "'state':['selected']}");
+        JsonNode order = json("{'action':'expect','target':{'window':'main','role':'tab','name':'ORD-1639'},'state':['selected']}");
+
+        assertThat(first(newOrder)).isEqualTo("newOrderIsFor");
+        assertThat(first(order)).isEqualTo("selectedTabIs");
+    }
+
+    @Test
+    void theOpenOrdersCountCheckFoldsIntoOpenOrdersCountIs() {
+        JsonNode count = json("{'action':'expect','target':{'window':'main','role':'label','name':'4 open orders'},'text':'4 open orders'}");
+
+        assertThat(pattern("openOrdersCountIs").match(Collections.singletonList(count)).params())
+                .containsEntry("count", "4 open orders");
+    }
+
+    @Test
+    void stepsWhoseRecordingCannotSayWhatTheyDidOnlySuggestThemselves() {
+        // a header click sorts one way or the other; a click with Cmd held adds to a selection; one of two tabs with one
+        // title; a menu or message check fits any popup or message; Exit's question depends on every new order's cart
+        for (String id : Arrays.asList("sortOrders", "selectOrders", "keepOrders", "copyOrderNumbers", "ordersListedAre",
+                "selectedOrdersAre", "selectTab", "openTabsAre", "menuItemIs", "cancelExit", "exitQuestionIs", "aboutShows")) {
+            assertThat(step(id).autoFold()).as(id).isFalse();
+        }
+        JsonNode delivery = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'tab','name':'Delivery'}}");
+        assertThat(pattern("selectTab").match(Collections.singletonList(delivery)).params()).containsEntry("tab", "Delivery");
+    }
+
     // ---- helpers
+
+    /** Every step that matches the whole run {@code raw}, the most specific first (as a recording weighs them). */
+    private List<Matcher.Choice> choices(JsonNode... raw) {
+        List<Matcher.Candidate> vocabulary = new ArrayList<Matcher.Candidate>();
+        for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
+            vocabulary.add(new Matcher.Candidate(c.step().id(), c.patterns(), c.step().autoFold()));
+        }
+        List<Matcher.Item> items = new ArrayList<Matcher.Item>();
+        for (int i = 0; i < raw.length; i++) items.add(Matcher.Item.raw(i, "person", raw[i], false, true));
+        return Matcher.matches(items, vocabulary, System.nanoTime() + 5_000_000_000L);
+    }
+
+    /** The step the run {@code raw} folds into first; null for none. */
+    private String first(JsonNode... raw) {
+        List<Matcher.Choice> c = choices(raw);
+        return c.isEmpty() ? null : c.get(0).step;
+    }
 
     private static JsonNode addToCartButton() {
         return json("{'action':'click','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'button',"
@@ -539,7 +759,8 @@ class OrderDeskVocabularyTest {
 
     /**
      * The steps {@code id}'s body takes with these values: the steps of a new order's tab on a stand-in app showing a
-     * new order ({@link #app}), the others traced on a Client that reaches no app (they do not look first).
+     * new order ({@link #app}), the checkout's on {@link CheckoutFake}, the Orders list's and the main window's on
+     * {@link OrdersFake} ({@link #mainWindow}).
      */
     private JsonNode run(String id, final Map<String, String> v) {
         final DomainStep s = step(id);
@@ -580,21 +801,27 @@ class OrderDeskVocabularyTest {
             body.run(checkout.client());
             return checkout.steps();
         }
-        if ("openOrder".equals(s.id())) {
-            TracingVerbs verbs = new TracingVerbs();
-            try {
-                body.run(new Client(verbs, verbs.app(), "trace"));
-            } catch (RuntimeException e) {
-                // placeOrder reads the new number, which a trace cannot answer: its steps up to there count; any other
-                // throw is a broken body
-                if (verbs.derivable()) throw e;
-            }
-            assertThat(verbs.steps()).as("the body's steps").isNotEmpty();
-            return JSON.valueToTree(verbs.steps());
+        if (ORDERS_LIST.contains(s.id()) || MAIN_WINDOW.contains(s.id())) {
+            FakeApp app = mainWindow(s.id());
+            body.run(app.client());
+            return app.steps();
         }
         FakeApp app = app();
         body.run(app.client());
         return app.steps();
+    }
+
+    /** The main window as step {@code id} needs it, with every value its sample check expects. */
+    private static FakeApp mainWindow(String id) {
+        OrdersFake app = ON_A_CART.contains(id) ? OrderDeskMainStepsTest.onNewOrder("Stapler") : new OrdersFake();
+        if ("sortOrders".equals(id)) app.sortable();
+        if ("clearOrderSearch".equals(id)) app.searchHolds("ada");
+        app.answer("tab 'ORD-1639'", FakeApp.node("tab", "ORD-1639"));
+        app.answer("popup menuitem 'Close tab'", FakeApp.withState(FakeApp.node("menuitem", "Close tab"), "disabled"));
+        app.answer("dialog:Exit label", FakeApp.label("OptionPane.label", "Discard the open new orders?"));
+        app.answer("dialog:About Order Desk label", FakeApp.label("OptionPane.label", "Order Desk"),
+                FakeApp.label("OptionPane.label", "A small, fictional order-entry app."));
+        return app;
     }
 
     /** A new order with every value the sample checks expect, so each check passes. */

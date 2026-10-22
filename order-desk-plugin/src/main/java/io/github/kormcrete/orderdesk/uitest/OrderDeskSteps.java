@@ -13,9 +13,10 @@ import io.github.kormcrete.swingui.junit.Target;
  * the "Add to cart" button, change its constant and both kinds of test pass again, and a person's clicks still fold.
  *
  * <p>The steps of a new order's tab are in {@link OrderDeskNewOrderSteps}, the checkout's in
- * {@link OrderDeskCheckoutSteps}; the ones here that act there (open a new order, add to the cart, set a quantity, the
- * cart total, check out with a PO number, place the order) call them, and keep their names for the Java tests and the
- * recorded tests that use them.
+ * {@link OrderDeskCheckoutSteps}, the Orders list's in {@link OrderDeskOrdersSteps} and the main window's (tabs, menus,
+ * status bar) in {@link OrderDeskMainSteps}; the ones here that act there (open a new order, add to the cart, set a
+ * quantity, the cart total, check out with a PO number, place the order, open an order) call them, and keep their names
+ * for the Java tests and the recorded tests that use them.
  *
  * <p>Client calls only: no app classes, so the plugin needs nothing from the app's build.
  */
@@ -165,6 +166,47 @@ public final class OrderDeskSteps {
     /** The status line, by its code name: "Order ORD-1640 placed". */
     static final String STATUS_MESSAGE_ID = "statusMessage";
 
+    // ---- the Orders list (OrderDeskOrdersSteps)
+
+    static final String DATE_COLUMN = "Date";
+    static final String ITEMS_COLUMN = "Items";
+    /** The Orders list's Total column (the cart's total is a label captioned {@link #TOTAL_LABEL}). */
+    static final String TOTAL_COLUMN = "Total";
+    static final String STATUS_COLUMN = "Status";
+    /** The status filter beside Search, and what it offers, in its order. */
+    static final String STATUS_COMBO = "Status";
+    static final String ALL_STATUSES = "All";
+    static final String PLACED_STATUS = "Placed";
+    static final String SHIPPED_STATUS = "Shipped";
+    static final String CANCELLED_STATUS = "Cancelled";
+    /** The text that replaces the orders when none is listed, by its code name: "No orders match ‘zzz’". */
+    static final String ORDERS_EMPTY_ID = "ordersEmpty";
+    /** The Orders list's row menu. */
+    static final String OPEN_ITEM = "Open";
+    static final String CANCEL_ORDERS_ITEM = "Cancel orders…";
+    static final String COPY_ORDER_NUMBER_ITEM = "Copy order number";
+    /** The answers to "Cancel order ORD-1635?" and "Cancel 2 orders?" ({@link #KEEP_ANSWER} keeps them). */
+    static final String CANCEL_ORDER_ANSWER = "Cancel order";
+    static final String CANCEL_ORDERS_ANSWER = "Cancel orders";
+    /** Beside the status filter while Cancel orders… is disabled for the selected orders (fixed text). */
+    static final String CANCEL_HINT = "Only placed orders can be cancelled";
+
+    // ---- the main window (OrderDeskMainSteps)
+
+    static final String ORDER_MENU = "Order";
+    static final String VIEW_MENU = "View";
+    static final String HELP_MENU = "Help";
+    static final String EXIT_ITEM = "Exit";
+    static final String ABOUT_ITEM = "About Order Desk";
+    /** Close tab's question for a new order with something in its cart ("Discard this new order?"), and its answer. */
+    static final String CLOSE_TAB_TITLE = "Close tab";
+    static final String DISCARD_ANSWER = "Discard";
+    /** Exit's question while a new order has something in its cart ("Discard the open new orders?"). */
+    static final String EXIT_TITLE = "Exit";
+    static final String ABOUT_TITLE = "About Order Desk";
+    /** The status bar's right side: "4 open orders", "1 open order" (no code name: found by these words). */
+    static final String OPEN_ORDERS_LABEL = "open order";
+
     private OrderDeskSteps() {
     }
 
@@ -209,10 +251,12 @@ public final class OrderDeskSteps {
         return OrderDeskCheckoutSteps.placeOrder(ui);
     }
 
-    /** Opens the order {@code order} (e.g. {@code ORD-1640}) from the Orders list in a tab of its own. */
+    /**
+     * Opens the order {@code order} (e.g. {@code ORD-1640}, or several parted by ;) from the Orders list in a tab of its
+     * own, as {@link OrderDeskOrdersSteps#openOrder} does.
+     */
     public static void openOrder(Client ui, String order) {
-        ui.tab(ORDERS_TAB).click();
-        ui.tab(ORDERS_TAB).table().row(ORDER_COLUMN, order).doubleClick();
+        OrderDeskOrdersSteps.openOrder(ui, order);
     }
 
     /** Checks the cart total of the open new order, e.g. {@code €31.32}. */

@@ -23,6 +23,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.column;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.isNone;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.join;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.look;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quietly;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.names;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.namesAre;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.notShown;
@@ -519,14 +520,6 @@ public final class OrderDeskNewOrderSteps {
         else if (!offered.isEmpty()) ui.press("Escape");
     }
 
-    /** Runs a step that puts the screen back after a failure; its own failure must not hide the first one. */
-    private static void quietly(Runnable undo) {
-        try {
-            undo.run();
-        } catch (RuntimeException ignored) {
-            // the step's own failure is the one to report
-        }
-    }
 
     /**
      * The suggestion a tester means by {@code customer}: the only one whose text (name, city, terms) starts with it,

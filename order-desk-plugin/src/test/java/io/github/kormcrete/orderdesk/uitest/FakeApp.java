@@ -166,15 +166,34 @@ class FakeApp implements Verbs {
         if (l.item != null) b.append(" item=").append(String.join(" > ", l.item));
         if (l.scope != null) {
             // a section or an id scope tells apart elements of one window that look alike (a review section's labels,
-            // the totals' Shipping); a tab scope does not (the tests answer one tab at a time)
+            // the totals' Shipping); a tab scope does not (the tests answer one tab at a time), except for a tab inside
+            // a tab (an order's own Items, Delivery and Invoice)
             List<String> inside = new ArrayList<String>();
-            for (String step : l.scope) if (step.startsWith("section:") || step.startsWith("id:")) inside.add(step);
+            for (String step : l.scope) {
+                if (step.startsWith("section:") || step.startsWith("id:") || "tab".equals(l.role) && step.startsWith("tab:")) {
+                    inside.add(step);
+                }
+            }
             if (!inside.isEmpty()) b.append(" in ").append(String.join(",", inside));
         }
         return b.toString();
     }
 
     // ---- reads
+
+    private final Map<String, List<String>> menus = new LinkedHashMap<String, List<String>>();
+
+    /** The items of the menu bar's menu {@code menu}, as a read of them answers. */
+    FakeApp menu(String menu, String... items) {
+        menus.put(menu, Arrays.asList(items));
+        return this;
+    }
+
+    @Override public List<String> menuItems(List<String> path) {
+        List<String> items = menus.get(String.join(" > ", path));
+        if (items == null) throw new DriverException(Reason.NOT_FOUND, "no menu " + path);
+        return items;
+    }
 
     @Override public CapabilityReport capabilities() { throw Verbs.missing("capabilities"); }
     @Override public Watch watch() { throw Verbs.missing("watch"); }

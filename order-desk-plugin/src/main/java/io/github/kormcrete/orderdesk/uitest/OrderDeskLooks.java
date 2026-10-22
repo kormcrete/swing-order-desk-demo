@@ -210,4 +210,48 @@ final class OrderDeskLooks {
             throw new AssertionError(what + " " + (actual.isEmpty() ? "nothing" : join(actual)) + ", expected " + join(expected));
         }
     }
+
+    /** Runs a step that puts the screen back after a failure; its own failure must not hide the first one. */
+    static void quietly(Runnable undo) {
+        try {
+            undo.run();
+        } catch (RuntimeException ignored) {
+            // the step's own failure is the one to report
+        }
+    }
+
+    /** True when {@code target} is there now: one read, no wait. */
+    static boolean presentNow(Target target) {
+        try {
+            return target.timeout(Duration.ofMillis(1)).presence() != Target.Presence.NONE;
+        } catch (UiActionFailed e) {
+            return false;
+        }
+    }
+
+    /**
+     * A message's lines, read within {@link #LOOK}; null when it does not show. A line is the label's text: its value
+     * when it has one (a message pane names every label "OptionPane.label"), else its name.
+     */
+    static List<String> messageLines(final Target labels) {
+        return look(() -> {
+            List<String> names = labels.texts();
+            List<String> values = labels.values();
+            List<String> lines = new ArrayList<String>();
+            for (int i = 0; i < names.size(); i++) {
+                String v = i < values.size() ? values.get(i) : null;
+                lines.add(v != null && !v.isEmpty() ? v : names.get(i));
+            }
+            return lines.isEmpty() ? null : lines;
+        });
+    }
+
+    /** The message is {@code expected}: its whole text, or one of its lines, white space aside. */
+    static void messageIs(List<String> lines, String expected, String what) {
+        String want = oneLine(expected);
+        String all = oneLine(String.join(" ", lines));
+        if (want.equals(all)) return;
+        for (String line : lines) if (want.equals(oneLine(line))) return;
+        throw new AssertionError(what + " reads " + quoted(all) + ", expected " + quoted(want));
+    }
 }

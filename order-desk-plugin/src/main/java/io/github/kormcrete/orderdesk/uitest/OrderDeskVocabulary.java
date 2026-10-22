@@ -49,7 +49,8 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.TOTAL_LABEL;
  * product's row, not only its SKU cell; {@code addQtyToCart} is {@code addToCart} then {@code setQuantity};
  * {@code openOrder} matches with or without the click on the Orders tab; {@code checkoutWithPo} and {@code placeOrder}
  * look at the checkout first, and {@code placeOrder} reads the new number. The rest of a new order's steps and checks
- * are in {@link OrderDeskNewOrderVocabulary}, the checkout's in {@link OrderDeskCheckoutVocabulary}. The patterns take the app's names
+ * are in {@link OrderDeskNewOrderVocabulary}, the checkout's in {@link OrderDeskCheckoutVocabulary}, the Orders list's
+ * in {@link OrderDeskOrdersVocabulary}, the main window's in {@link OrderDeskMainVocabulary}. The patterns take the app's names
  * from {@link OrderDeskSteps}' constants, so a rename is one change there.
  */
 public final class OrderDeskVocabulary implements Vocabulary {
@@ -78,6 +79,8 @@ public final class OrderDeskVocabulary implements Vocabulary {
         steps.addAll(new OrderDeskNewOrderVocabulary(this::knownCustomers, this::productNames, this::cartLines,
                 this::categories).steps());
         steps.addAll(new OrderDeskCheckoutVocabulary(this::knownCustomers, this::reviewProducts).steps());
+        steps.addAll(new OrderDeskOrdersVocabulary(this::listedOrders).steps());
+        steps.addAll(new OrderDeskMainVocabulary(this::openTabs, this::menuItems).steps());
         return steps;
     }
 
@@ -159,8 +162,12 @@ public final class OrderDeskVocabulary implements Vocabulary {
                         .java(STEPS, "placeOrder(ui)")
                         .build(),
                 DomainStep.act("openOrder", "Open order {order}")
-                        .about("Opens a placed order (e.g. ORD-1640) from the Orders list in a tab of its own")
-                        .param("order", ParamType.TEXT)
+                        .about("Needs: the main window, no dialog open (it goes to the Orders tab itself), the order"
+                                + " listed. Ends: on the order's own tab (an order already open: its tab selected again)."
+                                + " Double clicks its row. {order}: its number (ORD-1640, or the digits 1640) or its"
+                                + " customer's name or start when that customer has one order listed (several fail naming"
+                                + " them); several orders parted by ; open together (selected, then the row menu's Open)")
+                        .param("order", ParamType.TEXT).choices(this::listedOrders)
                         .code((ui, p) -> OrderDeskSteps.openOrder(ui, p.text("order")))
                         .match(json("{'optional':true,'action':'click','target':{'role':'tab','name':%s}}", text(ORDERS_TAB)),
                                 json("{'action':'click','target':{'scope':[%s],'role':'table','row':{%s:'{order}'}},'count':2}",
@@ -202,6 +209,27 @@ public final class OrderDeskVocabulary implements Vocabulary {
                 next, next,
                 json("{'action':'type','target':{'window':'dialog','role':'text','name':%s},'text':'{po}'}", text(poCaption)),
                 next};
+    }
+
+    /** The order numbers the Orders list shows (the Orders tab selected). */
+    private List<String> listedOrders() {
+        Client ui = live.timeout(READ);
+        try {
+            OrderDeskOrdersSteps.requireOrdersList(ui);
+        } catch (DriverException e) {
+            throw new IllegalStateException("the orders are listed on the Orders tab, and it is not showing", e);
+        }
+        return OrderDeskOrdersSteps.listedOrders(ui);
+    }
+
+    /** The open tabs' titles. */
+    private List<String> openTabs() {
+        return OrderDeskMainSteps.mainTabs(live.timeout(READ));
+    }
+
+    /** The menu bar's items ("File > Close tab") and the Orders list's row menu's. */
+    private List<String> menuItems() {
+        return OrderDeskMainSteps.menuItemNames(live.timeout(READ));
     }
 
     /** The products in the showing new order's cart. */

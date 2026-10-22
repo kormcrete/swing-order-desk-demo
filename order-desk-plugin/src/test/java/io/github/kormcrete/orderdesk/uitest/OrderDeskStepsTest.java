@@ -2,8 +2,6 @@ package io.github.kormcrete.orderdesk.uitest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.kormcrete.swingui.client.TracingVerbs;
-import io.github.kormcrete.swingui.junit.Client;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -11,16 +9,13 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Each of Order Desk's steps as the steps it takes: traced on a Client that reaches no app, or, for the steps of a new
- * order's tab (which look at the app first), on a stand-in app ({@link FakeApp}).
+ * Each of Order Desk's first steps as the steps it takes, on a stand-in app ({@link FakeApp}): every one looks at the
+ * app first.
  */
 class OrderDeskStepsTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
     private static final String NEW_ORDER = "'scope':['tab:New order*']";
-
-    private final TracingVerbs verbs = new TracingVerbs();
-    private final Client ui = new Client(verbs, verbs.app(), "trace");
 
     @Test
     void openNewOrderPicksTheCustomerInANewOrderTab() {
@@ -110,12 +105,15 @@ class OrderDeskStepsTest {
 
     @Test
     void openOrderDoubleClicksItsRowInTheOrdersList() {
-        OrderDeskSteps.openOrder(ui, "ORD-1640");
+        // the same steps as before the step looked at the list (the bundled recorded tests' fold)
+        OrdersFake app = new OrdersFake();
+        app.answer("tab 'ORD-1639'", FakeApp.node("tab", "ORD-1639"));
 
-        assertThat(trace()).isEqualTo(json("["
+        OrderDeskSteps.openOrder(app.client(), "ORD-1639");
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{'role':'tab','name':'Orders'}},"
-                + "{'action':'click','target':{'scope':['tab:Orders'],'role':'table','row':{'Order':'ORD-1640'}},'count':2}]"));
-        assertThat(verbs.derivable()).isTrue();
+                + "{'action':'click','target':{'scope':['tab:Orders'],'role':'table','row':{'Order':'ORD-1639'}},'count':2}]"));
     }
 
     @Test
@@ -126,10 +124,6 @@ class OrderDeskStepsTest {
 
         assertThat(app.steps()).isEqualTo(json("[{'action':'expect','target':{" + NEW_ORDER + ",'role':'label','name':'Total'},"
                 + "'text':'€31.32','timeout':1000}]"));
-    }
-
-    private JsonNode trace() {
-        return JSON.valueToTree(verbs.steps());
     }
 
     static JsonNode json(String singleQuoted) {

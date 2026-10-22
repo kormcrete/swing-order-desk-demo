@@ -16,19 +16,19 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 | Open a new order (File ▸ New order, Ctrl/Cmd+N, toolbar New order) | act | `openNewOrder` |
 | Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrder` |
 | The recent customers the toolbar ▾ offers, newest first | check | `recentCustomersAre` |
-| Close the selected tab (File ▸ Close tab, Ctrl/Cmd+W, the tab's X) | act | to write: `menu {"path":["File","Close tab"]}` (the tab's X has no node; the menu covers it) |
-| Closing a new order with something in its cart asks "Discard this new order?" (Discard, Cancel) | act | to write: `menu {"path":["File","Close tab"]}`, then `answer {"button":"Discard"}` or `{"button":"Cancel"}` |
-| Close tab is disabled on the Orders tab, which never closes | check | to write: `describe_ui {"fields":["menuPaths"]}` (`File > Close tab [disabled]`) |
-| Switch to an open tab (click it) | act | to write: `click {"role":"tab","name":"<title>"}`; two new orders for one customer share a title: the step names which (the newest) or fails naming both |
-| Which tabs are open and which one is selected | check | to write: `describe_ui {"fields":["activeTab"]}`; one tab: `read {"role":"tab","name":"<title>"}` (state `selected`) |
-| Order ▸ Checkout… and Order ▸ Remove from cart are enabled only when the selected new order can check out / has a selected cart line | check | to write: `describe_ui {"fields":["menuPaths"]}` (`[disabled]` marks) |
-| The status line: "Ready", "Order ORD-1640 placed", "Order ORD-1635 cancelled", "2 orders cancelled", "Copied ORD-1633", "Receipt saved to <path>" | check | to write: `read {"window":"main","role":"label","id":"statusMessage"}` |
-| The open orders count ("4 open orders", "1 open order") | check | to write: `read {"window":"main","role":"label","name":"open order","match":"contains"}` |
-| Exit asks "Discard the open new orders?" while a new order has something in its cart (File ▸ Exit, closing the window, Cmd+Q) | check | to write: `menu {"path":["File","Exit"]}` (its `pending` carries the question; the item is listed by `read {"form":"menuItems","path":["File"]}`, not driven live) |
-| Keep working after all: Cancel on that question leaves the app and its tabs as they were | act | to write: `menu {"path":["File","Exit"]}`, then `answer {"button":"Cancel"}` |
+| Close the selected tab (File ▸ Close tab, Ctrl/Cmd+W, the tab's X) | act | `closeTab` (File ▸ Close tab; the tab's X has no node, the menu covers it; another tab: `selectTab` first) |
+| Closing a new order with something in its cart asks "Discard this new order?" (Discard, Cancel) | act | `closeTab` (Discard), `keepTab` (Cancel) |
+| Close tab is disabled on the Orders tab, which never closes | check | `menuItemIs` (Close tab, disabled: opens File, reads, Escape); `closeTab` on the Orders tab fails saying so |
+| Switch to an open tab (click it) | act | `selectTab` (title or the start of a word of it; two new orders for one customer share a title: it takes the newest, the rightmost; also an order tab's Items, Delivery, Invoice) |
+| Which tabs are open and which one is selected | check | `openTabsAre`, `selectedTabIs` (an order tab's inner tabs left out of the open tabs, counted as selected) |
+| Order ▸ Checkout… and Order ▸ Remove from cart are enabled only when the selected new order can check out / has a selected cart line | check | `menuItemIs` |
+| The status line: "Ready", "Order ORD-1640 placed", "Order ORD-1635 cancelled", "2 orders cancelled", "Copied ORD-1633", "Receipt saved to <path>" | check | `statusLineIs` (by id `statusMessage`) |
+| The open orders count ("4 open orders", "1 open order") | check | `openOrdersCountIs` ("4" or the words; the tester gives the count: it moves as orders are placed and cancelled) |
+| Exit asks "Discard the open new orders?" while a new order has something in its cart (File ▸ Exit, closing the window, Cmd+Q) | check | `exitQuestionIs` (chooses File ▸ Exit only while a new order with something in its cart shows, reads, answers Cancel; else fails and chooses nothing) |
+| Keep working after all: Cancel on that question leaves the app and its tabs as they were | act | `cancelExit` (same guard: never ends the app) |
 | Exit the app (Discard and exit; File ▸ Exit with no unsaved new order) | act | Gap: not a tester's concern (it ends the app under test: no run continues past it) |
 | Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | Gap: not a tester's concern |
-| About Order Desk (Help ▸ About Order Desk, a message, OK) | act | Gap: not a tester's concern |
+| About Order Desk (Help ▸ About Order Desk, a message, OK): its text | check | `aboutShows` (ruling R23: a check of the text, whole words of it; opens, reads, OK) |
 | The splash while the app starts | check | Gap: not a tester's concern |
 
 ## Orders list
@@ -38,18 +38,18 @@ The pinned Orders tab (`OrdersPanel`). Its table is the only table on the tab: `
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| Open a placed order (double click its row, Enter on it, or its row menu ▸ Open; an order already open is selected again, not opened twice) | act | `openOrder` |
-| Open several selected orders at once (row menu ▸ Open, Enter) | act | to write: `click` rows with `"modifiers":["Shift"]` (or Cmd/Ctrl), then `context_menu ... "path":["Open"]` |
-| Search orders by number or customer (Search; its X clears it) | act | to write: `type {"scope":["tab:Orders"],"role":"text","name":"Search"}`; clear: `click {"scope":["tab:Orders","text:Search"],"id":"clear"}` |
-| Filter by status (Status: All, Placed, Shipped, Cancelled) | act | to write: `select {"scope":["tab:Orders"],"role":"combo","name":"Status"},"item":"<status>"` |
-| Sort by a column (click its header; again reverses; Order, newest first, at start) | act | to write: `click {"scope":["tab:Orders"],"role":"table","column":"<header>"}` |
-| An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | to write: `read {"scope":["tab:Orders"],"role":"table","row":{"Order":"<order>"},"column":"<header>"}` (Status reads "Placed", "Shipped", "Cancelled") |
-| Which orders are listed, in which order (after a search, filter or sort) | check | to write: `read {"scope":["tab:Orders"],"role":"table"}` (`rows`, `rowCount`) |
-| Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | to write: `read {"scope":["tab:Orders"],"role":"label","id":"ordersEmpty"}` |
-| Select one or several orders | act | to write: `click` on `{"scope":["tab:Orders"],"role":"table","row":{"Order":"<order>"}}`, more with `"modifiers":["Shift"]`; check `expect {"selected":[…]}` |
-| Cancel orders (row menu ▸ Cancel orders…, then "Cancel order ORD-1635?" or "Cancel 2 orders?" with Cancel order(s) / Keep) | act | to write: `context_menu {"scope":["tab:Orders"],"role":"table","row":{"Order":"<order>"}},"path":["Cancel orders…"]`, then `answer {"button":"Cancel order"}` (`"Cancel orders"` for several, `"Keep"`) |
-| Cancel orders… is disabled unless every selected order is Placed; "Only placed orders can be cancelled" shows beside the filter | check | to write: `expect {"target":{"scope":["tab:Orders"],"role":"label","name":"Only placed orders can be cancelled"},"shown":true}` (fixed text) |
-| Copy order numbers (row menu ▸ Copy order number; the status line says "Copied ORD-1633, ORD-1634") | act | to write: `context_menu ... "path":["Copy order number"]`; the status line: `read {"window":"main","role":"label","id":"statusMessage"}` |
+| Open a placed order (double click its row, Enter on it, or its row menu ▸ Open; an order already open is selected again, not opened twice) | act | `openOrder` (number, digits, or a customer with one order listed; waits for its tab) |
+| Open several selected orders at once (row menu ▸ Open, Enter) | act | `openOrder` with several parted by `;` (selected with Cmd/Ctrl, then the row menu's Open) |
+| Search orders by number or customer (Search; its X clears it) | act | `searchOrders`, `clearOrderSearch` |
+| Filter by status (Status: All, Placed, Shipped, Cancelled) | act | `filterOrders` ("placed", "cancel") |
+| Sort by a column (click its header; again reverses; Order, newest first, at start) | act | `sortOrders` (clicks the header until the column's values read in the asked direction; outcome: the column and direction left, `either` when every value is the same) |
+| An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed") |
+| Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one) |
+| Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | `ordersEmptyMessageIs` (by id `ordersEmpty`), `ordersListedAre` with `none` |
+| Select one or several orders | act | `selectOrders` (Cmd/Ctrl for the others), `selectedOrdersAre` |
+| Cancel orders (row menu ▸ Cancel orders…, then "Cancel order ORD-1635?" or "Cancel 2 orders?" with Cancel order(s) / Keep) | act | `cancelOrders`, `keepOrders` |
+| Cancel orders… is disabled unless every selected order is Placed; "Only placed orders can be cancelled" shows beside the filter | check | `menuItemIs` (Cancel orders…, disabled: opens the selected orders' row menu, reads, Escape; checks the hint too); `cancelOrders` fails with that reason before clicking the list |
+| Copy order numbers (row menu ▸ Copy order number; the status line says "Copied ORD-1633, ORD-1634") | act | `copyOrderNumbers`, then `statusLineIs` |
 | The clipboard holds the copied numbers | check | Gap: the OS owns it |
 
 ## New order
@@ -193,6 +193,16 @@ add `tab:Items` and so on.
   category's rows threw `ArrayIndexOutOfBoundsException` on the event thread. It came from the rows-updated event the
   tab fired each time it showed (`ProductsPanel.refresh`).
 
+- Orders list and main window (sub-task d): an Orders list act goes to the Orders tab itself (a click on it; after a
+  miss it selects the tab that was selected again); a check needs the Orders tab showing and says so otherwise. An
+  order is given by its number, its digits ("1640") or a customer with one order listed; a customer with several fails
+  naming their numbers. `openOrder` keeps its id, sentence and steps for one order (tab click, double click) and now
+  fails fast, resolves the order, takes several, and waits for the order's tab. Sorting cannot be undone in the app (a
+  third click reverses again), so `sortOrders` clicks the header until the column's values, read as shown (amounts,
+  dates, the Status filter's order, names), are in the asked direction, and says what it left. No step ends the app:
+  `cancelExit` and `exitQuestionIs` choose File ▸ Exit only while a new order with something in its cart shows, so the
+  app asks; otherwise they fail and choose nothing. The open orders count moves with every placed or cancelled order:
+  `openOrdersCountIs` takes the count the tester expects.
 - Checkout (sub-task c): `placeOrder` read the status line as "a label containing ‘placed’" and cut the number out of
   its name. Since R1 that label's name is its code name `statusMessage`, so the cut threw "String index out of range:
   -7" after the order was placed (runs against an app before R1 passed). It now reads the label by id and its shown text

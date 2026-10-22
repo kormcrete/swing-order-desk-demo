@@ -22,6 +22,9 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.column;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.isNone;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.join;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.look;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageIs;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageLines;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quietly;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.names;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.namesAre;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.notShown;
@@ -610,22 +613,7 @@ public final class OrderDeskCheckoutSteps {
         return ui.tab(number).states().contains("selected") ? number : null;
     }
 
-    /** A message's lines, read within {@link OrderDeskLooks#LOOK}; null when it does not show. */
-    private static List<String> messageLines(final Target labels) {
-        return look(() -> {
-            List<String> lines = labels.texts();
-            return lines.isEmpty() ? null : lines;
-        });
-    }
 
-    /** The message is {@code expected}: its whole text, or one of its lines, white space aside. */
-    private static void messageIs(List<String> lines, String expected, String what) {
-        String want = oneLine(expected);
-        String all = oneLine(String.join(" ", lines));
-        if (want.equals(all)) return;
-        for (String line : lines) if (want.equals(oneLine(line))) return;
-        throw new AssertionError(what + " reads " + quoted(all) + ", expected " + quoted(want));
-    }
 
     private static Target checkout(Client ui) {
         return ui.dialog(CHECKOUT_TITLE + "*");
@@ -732,14 +720,5 @@ public final class OrderDeskCheckoutSteps {
         for (String s : SECTIONS) words.put(s, s);
         words.put(ADDRESS_STEP, DELIVERY_ADDRESS_SECTION);
         return resolve(section, words, "review section", "review sections", "The review's sections");
-    }
-
-    /** Runs a step that puts the screen back after a failure; its own failure must not hide the first one. */
-    private static void quietly(Runnable undo) {
-        try {
-            undo.run();
-        } catch (RuntimeException ignored) {
-            // the step's own failure is the one to report
-        }
     }
 }
