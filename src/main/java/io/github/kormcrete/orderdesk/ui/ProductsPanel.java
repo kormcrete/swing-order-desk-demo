@@ -201,10 +201,13 @@ final class ProductsPanel extends JPanel {
         }
     }
 
-    /** Stock changed elsewhere. */
+    /**
+     * Stock changed elsewhere. The cells read the stock as they paint, so a repaint shows it. No rows-updated event:
+     * after one (the tab fires it each time it shows), choosing a category while a product further down than the
+     * category's rows was selected failed with an ArrayIndexOutOfBoundsException in the row sorter.
+     */
     void refresh() {
-        int rows = model.getRowCount();
-        if (rows > 0) model.fireTableRowsUpdated(0, rows - 1);
+        table.repaint();
         updateAdd();
     }
 

@@ -83,6 +83,32 @@ class ProductsPanelTest {
     }
 
     @Test
+    void choosingACategoryWithAProductSelectedBelowItsRowsKeepsWorking() {
+        // the tab refreshes the stock each time it shows; a person's click selects a row as changeSelection does; then a
+        // category with fewer rows than that row's number, by the tree or by Show in category
+        Edt.run(() -> {
+            JTable table = panel.table();
+            panel.refresh();   // what a new order's tab does when it shows: stock may have changed meanwhile
+            table.changeSelection(rowOf("COF-ESPRESSO"), 0, false, false);
+            panel.selectCategory("office/desk");
+            assertThat(table.getRowCount()).isEqualTo(5);
+            assertThat(panel.countText()).isEqualTo("5 products");
+            assertThat(panel.addHint()).isEqualTo("Select a product first");
+        });
+        Edt.run(() -> {
+            JTable table = panel.table();
+            panel.selectCategory("all");
+            panel.refresh();
+            table.changeSelection(rowOf("DSK-STAPLER"), 0, false, false);
+            panel.showInCategory();
+            DefaultMutableTreeNode node = (DefaultMutableTreeNode) panel.tree().getLastSelectedPathComponent();
+            assertThat(((Category) node.getUserObject()).label()).isEqualTo("Desk");
+            assertThat(table.getValueAt(table.getSelectedRow(), 0)).isEqualTo("DSK-STAPLER");
+            assertThat(panel.countText()).isEqualTo("5 products · 1 selected");
+        });
+    }
+
+    @Test
     void stockColumn() {
         Edt.run(() -> {
             JTable table = panel.table();
