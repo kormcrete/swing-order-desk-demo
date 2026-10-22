@@ -23,7 +23,9 @@ or the message showing. A row marked `R<n>` waits for that reach fix (below) bef
 | Order ▸ Checkout… and Order ▸ Remove from cart are enabled only when the selected new order can check out / has a selected cart line | check | to write: `describe_ui {"fields":["menuPaths"]}` (`[disabled]` marks) |
 | The status line: "Ready", "Order ORD-1640 placed", "Order ORD-1635 cancelled", "2 orders cancelled", "Copied ORD-1633", "Receipt saved to <path>" | check | to write: R1 (the message label has no name; only its own text finds it) |
 | The open orders count ("4 open orders", "1 open order") | check | to write: `read {"window":"main","role":"label","name":"open order","match":"contains"}` |
-| Exit asks "Discard the open new orders?" while a new order has something in its cart (Discard and exit, Cancel) (File ▸ Exit, closing the window, Cmd+Q) | act | Open question 1 |
+| Exit asks "Discard the open new orders?" while a new order has something in its cart (File ▸ Exit, closing the window, Cmd+Q) | check | to write: `menu {"path":["File","Exit"]}` (its `pending` carries the question; the item is listed by `read {"form":"menuItems","path":["File"]}`, not driven live) |
+| Keep working after all: Cancel on that question leaves the app and its tabs as they were | act | to write: `menu {"path":["File","Exit"]}`, then `answer {"button":"Cancel"}` |
+| Exit the app (Discard and exit; File ▸ Exit with no unsaved new order) | act | Gap: not a tester's concern (it ends the app under test: no run continues past it) |
 | Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | Gap: not a tester's concern |
 | About Order Desk (Help ▸ About Order Desk, a message, OK) | act | Gap: not a tester's concern |
 | The splash while the app starts | check | Gap: not a tester's concern |
@@ -145,7 +147,7 @@ The modal "Checkout — <customer>" dialog (`CheckoutPanel`, `AddressStep`, `Shi
 | Back out at the confirmation (Cancel): still on Review | act | to write: `click {"window":"dialog","role":"button","name":"Place order"}`, `answer {"button":"Cancel"}` |
 | The confirmation's total and item count | check | to write: the Place order click's `pending.message` |
 | Placing: "Placing order…", "Order for €122.34 · Ada Shop Ltd", every button disabled, about 2 s | check | to write: `expect {"target":{"window":"dialog","role":"label","name":"Placing order…"},"shown":true}` |
-| Placing fails: "The order could not be placed." (OK; back on Review) | check | Open question 3 |
+| Placing fails: "The order could not be placed." (OK; back on Review) | check | Gap: needs app internals even after an app change (provoking it needs stock to change inside the modal 2 s placing window) |
 | Once placed: the new order's tab takes the new order's place, titled with its number; the status line says "Order ORD-1640 placed" | check | `placeOrder` (returns the number) |
 
 ## Order tab
@@ -165,23 +167,9 @@ add `tab:Items` and so on.
 | Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | to write: `click {"scope":["tab:<order>"],"role":"button","name":"Save receipt…"}`, then `choose_file {"path":"<file>"}`; the status line: R1 |
 | Saving over a file asks "ORD-1640.txt already exists." / "Do you want to replace it?" (Replace, Cancel) | act | to write: as above, then `answer {"button":"Replace"}` or `{"button":"Cancel"}` |
 | Saving fails: "The receipt could not be saved: …" | check | to write: the `choose_file` result's `pending` (not provoked live: needs a path the app cannot write) |
-| The saved receipt's text | check | Open question 2 |
+| The saved receipt's text | check | Gap: not a tester's concern (every fact in the file shows on the order tab: number, date, status and customer in its header, the lines on Items, address, shipping method and note on Delivery, payment and totals on Invoice; covered there. The file only words some differently: a title line "Order Desk — receipt", free shipping as "€0.00" where the tab says "Free", the method without its price, no SKU, no Note line when there is none) |
 | Cancel the order (Cancel order, then "Cancel order ORD-1640?" with Cancel order / Keep; the status turns Cancelled, the status line says "Order ORD-1640 cancelled") | act | to write: `click {"scope":["tab:<order>"],"role":"button","name":"Cancel order"}`, `answer {"button":"Cancel order"}` (`"Keep"`) |
 | Cancel order is disabled for a shipped or cancelled order: "Only placed orders can be cancelled — this one is shipped" | check | to write: `read {"scope":["tab:<order>"],"role":"button","name":"Cancel order"}` (state `disabled`); `read {"scope":["tab:<order>"],"role":"label","name":"Only placed orders can be cancelled","match":"contains"}` |
-
-## Open questions
-
-Rows the survey could not place: none fits `to write` (no step can do or read them through the UI) or one of the
-three gap reasons. For the person to decide.
-
-1. **Exit.** File ▸ Exit (or closing the window) ends the app under test; with an unsaved cart it first asks
-   "Discard the open new orders?". The question and its Cancel are testable (`menu {"path":["File","Exit"]}`,
-   `answer {"button":"Cancel"}`); "Discard and exit" ends the run. Cover the question only, and gap the exit?
-2. **The receipt file's text.** It is written to disk, not shown in the app. A step's `Client` cannot read a file;
-   a Java test can. Gap, or a check outside the plugin?
-3. **"The order could not be placed."** Shown only when the store refuses the order during the 2 s it is placed
-   (stock changed meanwhile). The checkout dialog is modal, so no person can change stock in between: no tester
-   can provoke it.
 
 ## Notes for the steps (found while surveying)
 
