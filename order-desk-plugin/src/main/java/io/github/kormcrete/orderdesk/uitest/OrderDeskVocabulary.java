@@ -50,7 +50,8 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.TOTAL_LABEL;
  * {@code openOrder} matches with or without the click on the Orders tab; {@code checkoutWithPo} and {@code placeOrder}
  * look at the checkout first, and {@code placeOrder} reads the new number. The rest of a new order's steps and checks
  * are in {@link OrderDeskNewOrderVocabulary}, the checkout's in {@link OrderDeskCheckoutVocabulary}, the Orders list's
- * in {@link OrderDeskOrdersVocabulary}, the main window's in {@link OrderDeskMainVocabulary}. The patterns take the app's names
+ * in {@link OrderDeskOrdersVocabulary}, the main window's in {@link OrderDeskMainVocabulary}, an order's own tab's in
+ * {@link OrderDeskOrderTabVocabulary}. The patterns take the app's names
  * from {@link OrderDeskSteps}' constants, so a rename is one change there.
  */
 public final class OrderDeskVocabulary implements Vocabulary {
@@ -81,6 +82,7 @@ public final class OrderDeskVocabulary implements Vocabulary {
         steps.addAll(new OrderDeskCheckoutVocabulary(this::knownCustomers, this::reviewProducts).steps());
         steps.addAll(new OrderDeskOrdersVocabulary(this::listedOrders).steps());
         steps.addAll(new OrderDeskMainVocabulary(this::openTabs, this::menuItems).steps());
+        steps.addAll(new OrderDeskOrderTabVocabulary(this::openOrderTabs, this::orderItems).steps());
         return steps;
     }
 
@@ -225,6 +227,23 @@ public final class OrderDeskVocabulary implements Vocabulary {
     /** The open tabs' titles. */
     private List<String> openTabs() {
         return OrderDeskMainSteps.mainTabs(live.timeout(READ));
+    }
+
+    /** The open order tabs' titles, their numbers ("ORD-1639"). */
+    private List<String> openOrderTabs() {
+        return OrderDeskOrderTabSteps.openOrderTabs(live.timeout(READ));
+    }
+
+    /** The lines of the selected order's own tab, by product name (its Items tab showing). */
+    private List<String> orderItems() {
+        Client ui = live.timeout(READ);
+        try {
+            return OrderDeskOrderTabSteps.selectedOrderItems(ui);
+        } catch (DriverException e) {
+            throw new IllegalStateException("the lines are on an order's own Items tab, and no order's tab is selected", e);
+        } catch (UiActionFailed e) {
+            throw notShowing(e, "the lines are on an order's own Items tab, and it is not showing");
+        }
     }
 
     /** The menu bar's items ("File > Close tab") and the Orders list's row menu's. */

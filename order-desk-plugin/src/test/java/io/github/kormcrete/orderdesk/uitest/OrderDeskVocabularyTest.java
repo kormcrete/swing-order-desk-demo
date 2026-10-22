@@ -80,6 +80,15 @@ class OrderDeskVocabularyTest {
         override("openOrdersCountIs", "count", "2");
         override("exitQuestionIs", "message", "Discard the open new orders?");
         override("aboutShows", "text", "fictional");
+        override("saveReceipt", "file", "ORD-1639.txt");
+        override("keepExistingReceipt", "file", "ORD-1639.txt");
+        override("receiptSaveErrorIs", "file", "/nope/x", "message", "The receipt could not be saved");
+        override("orderFactsAre", "facts", "Ada Shop Ltd");
+        override("orderItemsAre", "lines", "Gel pen, black; A4 paper, 500 sheets; Paper clips, box of 100; Gel pen, blue");
+        override("orderItemIs", "product", "Paper clips", "column", "Line total", "value", "€3.00");
+        override("orderItemsSummaryIs", "summary", "56 units in 4 lines");
+        override("orderDeliveryIs", "detail", "Shipping method", "value", "Standard · 3–5 business days · €4.90");
+        override("orderInvoiceIs", "detail", "Total", "value", "€95.52");
     }
 
     /** The Orders list's steps (openOrder too) and the main window's: they run on {@link OrdersFake}. */
@@ -88,6 +97,10 @@ class OrderDeskVocabularyTest {
             "ordersListedAre", "ordersEmptyMessageIs", "selectedOrdersAre");
     private static final List<String> MAIN_WINDOW = Arrays.asList("selectTab", "closeTab", "keepTab", "openTabsAre",
             "selectedTabIs", "menuItemIs", "statusLineIs", "openOrdersCountIs", "cancelExit", "exitQuestionIs", "aboutShows");
+    /** An order's own tab's steps: they run on {@link OrderTabFake}. */
+    private static final List<String> ORDER_TAB = Arrays.asList("saveReceipt", "keepExistingReceipt", "cancelOrder",
+            "keepOrder", "receiptSaveErrorIs", "orderStatusIs", "orderFactsAre", "orderItemsAre", "orderItemIs",
+            "orderItemsSummaryIs", "orderDeliveryIs", "orderInvoiceIs");
     /** The main window's steps that need a new order with something in its cart. */
     private static final List<String> ON_A_CART = Arrays.asList("closeTab", "keepTab", "cancelExit", "exitQuestionIs");
 
@@ -124,7 +137,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 72;
+    private static final int CHECKED_PATTERN_ENTRIES = 90;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -202,7 +215,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theOrdersListAndMainWindowStepsAndChecks() {
-        assertThat(sentences().subList(55, sentences().size())).containsExactly(
+        assertThat(sentences().subList(55, 78)).containsExactly(
                 "searchOrders: Search the orders for {text}",
                 "clearOrderSearch: Clear the order search",
                 "filterOrders: Filter the orders by status {status}",
@@ -229,6 +242,25 @@ class OrderDeskVocabularyTest {
         assertThat(step("sortOrders").outcomeBody()).isNotNull();
         assertThat(step("sortOrders").params().get(1).optional()).isTrue();
         assertThat(step("sortOrders").params().get(1).defaultValue()).isEqualTo("ascending");
+    }
+
+    @Test
+    void theOrderTabStepsAndChecks() {
+        assertThat(sentences().subList(78, sentences().size())).containsExactly(
+                "saveReceipt: Save the receipt of order {order} as {file}",
+                "keepExistingReceipt: Ask to save the receipt of order {order} over {file}, then keep the file",
+                "cancelOrder: Cancel order {order} from its tab",
+                "keepOrder: Ask to cancel order {order} from its tab, then keep it",
+                "receiptSaveErrorIs: Saving the receipt of order {order} as {file} fails with {message}",
+                "orderStatusIs: The status on order {order}'s tab is {status}",
+                "orderFactsAre: The customer, date and total on order {order}'s tab read {facts}",
+                "orderItemsAre: The lines on order {order}'s Items tab are {lines}",
+                "orderItemIs: The {column} of {product} on order {order}'s Items tab is {value}",
+                "orderItemsSummaryIs: The units on order {order}'s Items tab read {summary}",
+                "orderDeliveryIs: The {detail} on order {order}'s Delivery tab is {value}",
+                "orderInvoiceIs: The {detail} on order {order}'s Invoice tab is {value}");
+        assertThat(step("saveReceipt").outcomeBody()).isNotNull();
+        assertThat(ORDER_TAB).hasSize(sentences().size() - 78);
     }
 
     @Test
@@ -259,7 +291,8 @@ class OrderDeskVocabularyTest {
         for (DomainStep s : steps) {
             Class<?> type = Class.forName(s.javaClass());
             assertThat(s.javaClass()).as(s.id()).isIn(OrderDeskSteps.class.getName(), OrderDeskNewOrderSteps.class.getName(),
-                    OrderDeskCheckoutSteps.class.getName(), OrderDeskOrdersSteps.class.getName(), OrderDeskMainSteps.class.getName());
+                    OrderDeskCheckoutSteps.class.getName(), OrderDeskOrdersSteps.class.getName(), OrderDeskMainSteps.class.getName(),
+                    OrderDeskOrderTabSteps.class.getName());
             String call = s.javaCall();
             String name = call.substring(0, call.indexOf('('));
             int args = call.split(",").length;
@@ -273,6 +306,7 @@ class OrderDeskVocabularyTest {
         assertThat(step("addProductsToCart").outcomeBody()).isNotNull();
         assertThat(method(OrderDeskNewOrderSteps.class, "addProductsToCart").getReturnType()).isEqualTo(Map.class);
         assertThat(method(OrderDeskOrdersSteps.class, "sortOrders").getReturnType()).isEqualTo(Map.class);
+        assertThat(method(OrderDeskOrderTabSteps.class, "saveReceipt").getReturnType()).isEqualTo(Map.class);
     }
 
     @Test
@@ -294,6 +328,7 @@ class OrderDeskVocabularyTest {
         List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre"));
         elsewhere.addAll(ORDERS_LIST);
         elsewhere.addAll(MAIN_WINDOW);
+        elsewhere.addAll(ORDER_TAB);
         for (String id : CHECKOUT_ON.keySet()) if (!FROM_NEW_ORDER.contains(id)) elsewhere.add(id);
         int checked = 0;
         for (final DomainStep s : steps) {
@@ -362,6 +397,29 @@ class OrderDeskVocabularyTest {
             checked++;
         }
         assertThat(checked).isEqualTo(ORDERS_LIST.size() + MAIN_WINDOW.size());
+    }
+
+    @Test
+    void eachOrderTabStepFailsFastWhenItsScreenIsNotShowing() {
+        // no main window: every step of an order's own tab says so within about a second, and none takes a step
+        int checked = 0;
+        for (final DomainStep s : steps) {
+            if (!ORDER_TAB.contains(s.id())) continue;
+            final FakeApp nothing = new FakeApp();
+            final Map<String, String> v = sample(s.id());
+            long start = System.currentTimeMillis();
+
+            Throwable gone = catchThrowable(() -> s.body().run(nothing.client(), new Params() {
+                @Override public String text(String name) { return v.get(name); }
+                @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
+            }));
+
+            assertThat(System.currentTimeMillis() - start).as(s.id()).isLessThan(2000);
+            assertThat(gone).as(s.id()).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: " + OrderDeskOrdersSteps.NO_MAIN);
+            assertThat(nothing.steps()).as(s.id()).isEmpty();
+            checked++;
+        }
+        assertThat(checked).isEqualTo(ORDER_TAB.size());
     }
 
     @Test
@@ -701,11 +759,17 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
-    void theOrderTabsOwnCancelOrderIsNoCancelOrdersFold() {
+    void theOrderTabsOwnCancelOrderFoldsIntoCancelOrderNotCancelOrders() {
         JsonNode button = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button','name':'Cancel order'}}");
         JsonNode yes = json("{'action':'answer','button':'Cancel order'}");
+        JsonNode keep = json("{'action':'answer','button':'Keep'}");
+        JsonNode tab = json("{'action':'click','target':{'window':'main','role':'tab','name':'ORD-1639'}}");
 
-        assertThat(choices(button, yes)).isEmpty();
+        assertThat(first(button, yes)).isEqualTo("cancelOrder");
+        assertThat(first(tab, button, yes)).isEqualTo("cancelOrder");
+        assertThat(choices(button, yes)).noneMatch(c -> c.step.equals("cancelOrders"));
+        assertThat(pattern("cancelOrder").match(Arrays.asList(button, yes)).params()).containsEntry("order", "ORD-1639");
+        assertThat(first(button, keep)).isEqualTo("keepOrder");
     }
 
     @Test
@@ -794,6 +858,115 @@ class OrderDeskVocabularyTest {
         }
         JsonNode delivery = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'tab','name':'Delivery'}}");
         assertThat(pattern("selectTab").match(Collections.singletonList(delivery)).params()).containsEntry("tab", "Delivery");
+    }
+
+    // ---- an order's own tab: what folds, and what only looks like it
+
+    private static final List<String> ITEMS_SCOPE = Arrays.asList("tab:ORD-1639", "tab:Items");
+
+    @Test
+    void thePersonsCheckOfAnItemsCellOffersOrderItemIsAndNoCartProductOrOrdersCheck() {
+        // the Check menu keys an Items line by its SKU (the first column with unique values)
+        JTable items = table(OrderTabFake.ITEM_COLUMNS, OrderTabFake.LINES.toArray(new List[0]));
+
+        List<String> qty = offered(CheckMenuForms.cell(items, 0, 2, "main", ITEMS_SCOPE));
+        List<String> sku = offered(CheckMenuForms.cell(items, 2, 0, "main", ITEMS_SCOPE));
+
+        assertThat(qty).contains("orderItemIs{column=Qty, order=ORD-1639, product=PEN-GEL-BLK, value=50}")
+                .noneMatch(c -> c.startsWith("cartLineIs") || c.startsWith("productIs") || c.startsWith("orderIs"));
+        assertThat(sku).contains("orderItemIs{column=SKU, order=ORD-1639, product=DSK-CLIPS, value=DSK-CLIPS}");
+        // both replay: the SKU names the line, and the key cell is read too
+        OrderDeskOrderTabSteps.orderItemIs(new OrderTabFake().client(), "ORD-1639", "PEN-GEL-BLK", "Qty", "50");
+        OrderDeskOrderTabSteps.orderItemIs(new OrderTabFake().client(), "ORD-1639", "DSK-CLIPS", "SKU", "DSK-CLIPS");
+        // a cart line is no order's line
+        JTable cart = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+        assertThat(offered(CheckMenuForms.cell(cart, 0, 1, "main", NEW_ORDER))).noneMatch(c -> c.startsWith("orderItemIs"));
+    }
+
+    @Test
+    void anAgentsCheckOfAnItemsCellFoldsIntoOrderItemIs() {
+        JsonNode cell = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639','tab:Items'],'role':'table',"
+                + "'row':{'SKU':'PEN-GEL-BLK','Product':'Gel pen, black','Qty':'50','Price':'€1.20','Line total':'€60.00'},"
+                + "'column':'Line total'},'text':'€60.00'}");
+
+        assertThat(matchAny("orderItemIs", cell)).containsEntry("order", "ORD-1639").containsEntry("product", "Gel pen, black")
+                .containsEntry("column", "Line total").containsEntry("value", "€60.00");
+        assertThat(matchAny("cartLineIs", cell)).isNull();
+        assertThat(first(cell)).isEqualTo("orderItemIs");
+    }
+
+    @Test
+    void theOrderTabsNamedValuesFoldWhereTheyReplay() {
+        JsonNode status = json("{'action':'expect','target':{'id':'orderStatus','window':'main','scope':['tab:ORD-1639'],"
+                + "'role':'label','name':'orderStatus'},'text':'Placed'}");
+        JsonNode facts = json("{'action':'expect','target':{'id':'orderFacts','window':'main','scope':['tab:ORD-1639'],"
+                + "'role':'label','name':'orderFacts'},'text':'Ada Shop Ltd · 9 Oct 2026 · €95.52'}");
+        JsonNode units = json("{'action':'expect','target':{'id':'itemsSummary','window':'main','scope':['tab:ORD-1639','tab:Items'],"
+                + "'role':'label','name':'itemsSummary'},'text':'55 units in 3 lines'}");
+        JsonNode total = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639','tab:Invoice'],'role':'label',"
+                + "'name':'Total'},'text':'€95.52'}");
+        JsonNode cartTotal = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'label','name':'Total'},'text':'€31.32'}");
+
+        assertThat(first(status)).isEqualTo("orderStatusIs");
+        assertThat(pattern("orderStatusIs").match(Collections.singletonList(status)).params())
+                .containsEntry("order", "ORD-1639").containsEntry("status", "Placed");
+        assertThat(first(facts)).isEqualTo("orderFactsAre");
+        assertThat(first(units)).isEqualTo("orderItemsSummaryIs");
+        assertThat(first(total)).isEqualTo("orderInvoiceIs");
+        assertThat(pattern("orderInvoiceIs").match(Collections.singletonList(total)).params()).containsEntry("detail", "Total");
+        assertThat(first(cartTotal)).isEqualTo("cartTotalIs");
+        assertThat(pattern("orderInvoiceIs").match(Collections.singletonList(cartTotal))).isNull();
+    }
+
+    @Test
+    void aDeliveryCheckOnlySuggestsOrderDeliveryIs() {
+        // the Delivery tab's caption and address lines are labels too: a pattern cannot tell them from a captioned value
+        JsonNode method = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639','tab:Delivery'],"
+                + "'role':'label','name':'Shipping method'},'text':'Standard · 3–5 business days · €4.90'}");
+
+        assertThat(pattern("orderDeliveryIs").match(Collections.singletonList(method)).params())
+                .containsEntry("detail", "Shipping method");
+        assertThat(step("orderDeliveryIs").autoFold()).isFalse();
+    }
+
+    @Test
+    void saveReceiptAndItsReplaceQuestionFoldIntoSaveReceiptOrKeepExistingReceipt() {
+        JsonNode save = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button','name':'Save receipt…'}}");
+        JsonNode file = json("{'action':'chooseFile','path':'/Users/ada/ORD-1639.txt'}");
+        JsonNode replace = json("{'action':'answer','button':'Replace'}");
+        JsonNode cancel = json("{'action':'answer','button':'Cancel'}");
+
+        assertThat(first(save, file)).isEqualTo("saveReceipt");
+        assertThat(first(save, file, replace)).isEqualTo("saveReceipt");
+        assertThat(pattern("saveReceipt").match(Arrays.asList(save, file, replace)).params())
+                .containsEntry("order", "ORD-1639").containsEntry("file", "/Users/ada/ORD-1639.txt");
+        assertThat(first(save, file, cancel)).isEqualTo("keepExistingReceipt");
+    }
+
+    @Test
+    void cancelOrdersStateOnItsTabIsReadByButtonIsDisabledAndButtonIsEnabled() {
+        JsonNode disabled = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1636'],'role':'button',"
+                + "'name':'Cancel order'},'state':['disabled']}");
+        JsonNode reason = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1636'],'role':'label',"
+                + "'name':'Only placed orders can be cancelled — this one is shipped'},'text':'Only placed orders can be cancelled — this one is shipped'}");
+        JsonNode enabled = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button',"
+                + "'name':'Save receipt…'},'state':['!disabled']}");
+
+        assertThat(choices(disabled, reason)).anyMatch(c -> c.step.equals("buttonIsDisabled")
+                && "Cancel order".equals(c.params.get("button")));
+        assertThat(first(enabled)).isEqualTo("buttonIsEnabled");
+    }
+
+    @Test
+    void anOrderTabsChecksThatCannotBePinnedDownOnlySuggestThemselves() {
+        for (String id : Arrays.asList("orderItemsAre", "orderDeliveryIs", "receiptSaveErrorIs")) {
+            assertThat(step(id).autoFold()).as(id).isFalse();
+        }
+        for (String id : Arrays.asList("saveReceipt", "keepExistingReceipt", "cancelOrder", "keepOrder", "orderStatusIs",
+                "orderFactsAre", "orderItemIs", "orderItemsSummaryIs", "orderInvoiceIs")) {
+            assertThat(step(id).autoFold()).as(id).isTrue();
+        }
     }
 
     // ---- helpers
@@ -960,6 +1133,11 @@ class OrderDeskVocabularyTest {
             body.run(app.client());
             return app.steps();
         }
+        if (ORDER_TAB.contains(s.id())) {
+            FakeApp app = orderTab(s.id());
+            body.run(app.client());
+            return app.steps();
+        }
         FakeApp app = app();
         body.run(app.client());
         return app.steps();
@@ -975,6 +1153,19 @@ class OrderDeskVocabularyTest {
         app.answer("dialog:Exit label", FakeApp.label("OptionPane.label", "Discard the open new orders?"));
         app.answer("dialog:About Order Desk label", FakeApp.label("OptionPane.label", "Order Desk"),
                 FakeApp.label("OptionPane.label", "A small, fictional order-entry app."));
+        return app;
+    }
+
+    /**
+     * ORD-1639's own tab as step {@code id} needs it: the file it saves to exists (so the question is answered), or the
+     * app cannot write it; the Delivery or Invoice tab showing for a check of it (a check of another tab clicks it first).
+     */
+    private static FakeApp orderTab(String id) {
+        OrderTabFake app = new OrderTabFake();
+        if ("saveReceipt".equals(id) || "keepExistingReceipt".equals(id)) app.withFile("ORD-1639.txt");
+        if ("receiptSaveErrorIs".equals(id)) app.failing("/nope/x.txt");
+        if ("orderDeliveryIs".equals(id)) app.onSubTab("Delivery");
+        if ("orderInvoiceIs".equals(id)) app.onSubTab("Invoice");
         return app;
     }
 

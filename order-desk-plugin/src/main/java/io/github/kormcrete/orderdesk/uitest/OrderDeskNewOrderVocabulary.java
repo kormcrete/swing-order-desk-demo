@@ -8,8 +8,10 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.ADD_TO_CART_BUTTON;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CANCEL_HINT;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CUSTOMER_FIELD;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CUSTOMER_TERMS_ID;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.HINT_DASH;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.IN_STOCK_WARNING;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.KEEP_ANSWER;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.LINE_TOTAL_COLUMN;
@@ -305,23 +307,33 @@ final class OrderDeskNewOrderVocabulary {
                                 + " Checkout… \"The cart is empty\", Add to cart \"Select a product first\", Remove"
                                 + " \"Select a cart line first\"; in the checkout Next (\"Fix the fields marked in red\","
                                 + " \"Enter the PO number\", \"Complete the card details\"), Express (\"Express delivers to"
-                                + " Germany and Austria only\") or Invoice (\"Café Lumen pays by card\")")
+                                + " Germany and Austria only\") or Invoice (\"Café Lumen pays by card\"); on the selected"
+                                + " order's own tab Cancel order (\"" + CANCEL_HINT + HINT_DASH + "this one is shipped\", or"
+                                + " just \"this one is shipped\")")
                         .param("button", ParamType.TEXT).choices(OrderDeskNewOrderVocabulary::reasonButtons)
                         .param("reason", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.buttonIsDisabled(ui, p.text("button"), p.text("reason")))
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['disabled']}",
                                 NEW_ORDER_SCOPE),
                                 json("{'action':'expect','target':{'scope':%s},'text':'{reason}'}", NEW_ORDER_SCOPE))
+                        // on an order's own tab: Cancel order, then the reason beside it
+                        .matchAlso(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['disabled']}",
+                                OrderDeskOrderTabVocabulary.anyOrderScope()),
+                                json("{'action':'expect','target':{'scope':%s,'role':'label'},'text':'{reason}'}",
+                                        OrderDeskOrderTabVocabulary.anyOrderScope()))
                         .autoFold(false)
                         .java(STEPS, "buttonIsDisabled(ui, {button}, {reason})")
                         .build(),
                 DomainStep.check("buttonIsEnabled", "{button} is enabled")
-                        .about("Reads that Add to cart, Remove or Checkout… (in the checkout: Next, Express or Invoice) is"
-                                + " enabled; when not, the failure gives the reason beside it")
+                        .about("Reads that Add to cart, Remove or Checkout… (in the checkout: Next, Express or Invoice; on"
+                                + " the selected order's own tab: Cancel order or Save receipt…) is enabled; when not, the"
+                                + " failure gives the reason beside it")
                         .param("button", ParamType.TEXT).choices(OrderDeskNewOrderVocabulary::reasonButtons)
                         .code((ui, p) -> OrderDeskNewOrderSteps.buttonIsEnabled(ui, p.text("button")))
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['!disabled']}",
                                 NEW_ORDER_SCOPE))
+                        .matchAlso(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['!disabled']}",
+                                OrderDeskOrderTabVocabulary.anyOrderScope()))
                         .java(STEPS, "buttonIsEnabled(ui, {button})")
                         .build());
     }
@@ -330,6 +342,7 @@ final class OrderDeskNewOrderVocabulary {
     static List<String> reasonButtons() {
         List<String> all = new java.util.ArrayList<String>(OrderDeskNewOrderSteps.REASON_BUTTONS);
         all.addAll(OrderDeskCheckoutSteps.REASON_CONTROLS);
+        all.addAll(OrderDeskOrderTabSteps.BUTTONS);
         return all;
     }
 

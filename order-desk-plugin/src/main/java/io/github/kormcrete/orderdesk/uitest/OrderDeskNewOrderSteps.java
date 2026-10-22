@@ -60,7 +60,7 @@ public final class OrderDeskNewOrderSteps {
             ADD_TO_CART_BUTTON, REMOVE_BUTTON, CHECKOUT_BUTTON));
     /** Where a button name that fits none was looked for. */
     private static final String REASON_BUTTONS_WHERE = "The buttons that give a reason (in the checkout also Next,"
-            + " Express, Invoice)";
+            + " Express, Invoice; on an order's own tab Cancel order)";
     private static final String ONE_LINE_ASKS_NOTHING = "Removing one line asks nothing: name two or more cart lines, parted by ;";
     /** What a step says when the new order it needs is not showing. */
     static final String NO_NEW_ORDER = "No new order is showing. Open one first with \"Open a new order for <customer>\","
@@ -419,12 +419,18 @@ public final class OrderDeskNewOrderSteps {
 
     /**
      * Checks that Add to cart, Remove or Checkout… is disabled, with the reason beside it ("The cart is empty"); or, in
-     * the checkout, Next, Express or Invoice ({@link OrderDeskCheckoutSteps}).
+     * the checkout, Next, Express or Invoice ({@link OrderDeskCheckoutSteps}); or, on an order's own tab, Cancel order
+     * ("Only placed orders can be cancelled — this one is shipped", {@link OrderDeskOrderTabSteps}).
      */
     public static void buttonIsDisabled(Client ui, String button, String reason) {
         String control = OrderDeskCheckoutSteps.controlName(button);
         if (control != null) {
             OrderDeskCheckoutSteps.controlIsDisabled(ui, control, reason);
+            return;
+        }
+        String onOrder = OrderDeskOrderTabSteps.button(button);
+        if (onOrder != null) {
+            OrderDeskOrderTabSteps.buttonIsDisabled(ui, onOrder, reason);
             return;
         }
         requireNewOrder(ui);
@@ -445,13 +451,18 @@ public final class OrderDeskNewOrderSteps {
     }
 
     /**
-     * Checks that Add to cart, Remove or Checkout… (in the checkout: Next, Express or Invoice) is enabled; when not, the
-     * failure gives its reason.
+     * Checks that Add to cart, Remove or Checkout… (in the checkout: Next, Express or Invoice; on an order's own tab:
+     * Cancel order or Save receipt…) is enabled; when not, the failure gives its reason.
      */
     public static void buttonIsEnabled(Client ui, String button) {
         String control = OrderDeskCheckoutSteps.controlName(button);
         if (control != null) {
             OrderDeskCheckoutSteps.controlIsEnabled(ui, control);
+            return;
+        }
+        String onOrder = OrderDeskOrderTabSteps.button(button);
+        if (onOrder != null) {
+            OrderDeskOrderTabSteps.buttonIsEnabled(ui, onOrder);
             return;
         }
         requireNewOrder(ui);

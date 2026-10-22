@@ -271,6 +271,9 @@ class FakeApp implements Verbs {
         return trace.contextMenu(target, path, timeout);
     }
     @Override public VerbOutcome answer(String button, Long timeout) { return trace.answer(button, timeout); }
+    @Override public VerbOutcome chooseFile(String path, Boolean approve, Long timeout) {
+        return trace.chooseFile(path, approve, timeout);
+    }
 
     /** Kept as a step, then judged at once on the given nodes. */
     @Override public VerbOutcome expect(Locator target, Expectation e, Long timeout) {

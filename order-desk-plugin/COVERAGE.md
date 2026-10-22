@@ -162,19 +162,19 @@ add `tab:Items` and so on.
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| The order's number (also the tab's title), its status (Placed, Shipped, Cancelled) and facts ("Ada Shop Ltd · 12 Oct 2026 · €122.34") | check | to write: number: `read {"role":"tab","name":"<order>"}`; status and facts: `read {"scope":["tab:<order>"],"role":"label","id":"orderStatus"}` (`orderFacts`) |
-| Switch between Items, Delivery and Invoice | act | to write: `click {"scope":["tab:<order>"],"role":"tab","name":"Delivery"}` |
-| Items: SKU, Product, Qty, Price, Line total | check | to write: `read {"scope":["tab:<order>","tab:Items"],"role":"table"}` (a cell: `"row":{"Product":"<product>"},"column":"Qty"`) |
-| "11 units in 2 lines" under the items | check | to write: `read {"scope":["tab:<order>","tab:Items"],"role":"label","id":"itemsSummary"}` |
-| Delivery: the address, the shipping method ("Standard · 3–5 business days · €4.90"), the delivery note ("—" when none) | check | to write: `read {"scope":["tab:<order>","tab:Delivery"],"role":"label","name":"Shipping method"}` (`Delivery note`); the address lines: `read {"scope":["tab:<order>","tab:Delivery","id:deliveryAddress"],"role":"label","nth":<0-3>}` |
-| Invoice: the payment ("Invoice (30 days) · PO PO-T3"), the order date | check | to write: `read {"scope":["tab:<order>","tab:Invoice"],"role":"label","name":"Payment"}` (`Order date`) |
-| Invoice: Subtotal, Volume discount, Shipping, VAT (20%), Total | check | to write: `read {"scope":["tab:<order>","tab:Invoice"],"role":"label","name":"Total"}` (`value`) |
-| Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | to write: `click {"scope":["tab:<order>"],"role":"button","name":"Save receipt…"}`, then `choose_file {"path":"<file>"}`; the status line: `read {"window":"main","role":"label","id":"statusMessage"}` |
-| Saving over a file asks "ORD-1640.txt already exists." / "Do you want to replace it?" (Replace, Cancel) | act | to write: as above, then `answer {"button":"Replace"}` or `{"button":"Cancel"}` |
-| Saving fails: "The receipt could not be saved: …" | check | to write: the `choose_file` result's `pending` (not provoked live: needs a path the app cannot write) |
+| The order's number (also the tab's title), its status (Placed, Shipped, Cancelled) and facts ("Ada Shop Ltd · 12 Oct 2026 · €122.34") | check | `orderStatusIs` (the status, any case), `orderFactsAre` (the whole line or one part: customer, date or total); the number is the tab's title: `selectedTabIs`, and every order tab step finds the order by it (number or digits) |
+| Switch between Items, Delivery and Invoice | act | `selectTab` (while the order's tab shows); each check of Items, Delivery or Invoice also shows that tab for its read, then the one that showed before |
+| Items: SKU, Product, Qty, Price, Line total | check | `orderItemsAre` (the lines in order, by name or its start), `orderItemIs` (one cell; the product by name, start or SKU; the Check menu keys a line by SKU) |
+| "11 units in 2 lines" under the items | check | `orderItemsSummaryIs` (whole, or "11 units" / "2 lines") |
+| Delivery: the address, the shipping method ("Standard · 3–5 business days · €4.90"), the delivery note ("—" when none) | check | `orderDeliveryIs` (address: its lines parted by ; or one line; shipping method; note, none or "—" for none). Suggest-only: see the note below |
+| Invoice: the payment ("Invoice (30 days) · PO PO-T3"), the order date | check | `orderInvoiceIs` (Payment, Order date) |
+| Invoice: Subtotal, Volume discount, Shipping, VAT (20%), Total | check | `orderInvoiceIs` (an amount by its caption; Volume discount none while it does not show) |
+| Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | `saveReceipt` (outcome: path, replaced); the status line: `statusLineIs` |
+| Saving over a file asks "ORD-1640.txt already exists." / "Do you want to replace it?" (Replace, Cancel) | act | `saveReceipt` answers Replace; `keepExistingReceipt` answers Cancel (fails, saying the receipt was saved, when the file did not exist: the app asks nothing then) |
+| Saving fails: "The receipt could not be saved: …" | check | `receiptSaveErrorIs` (whole text, the sentence before the colon or the reason after it; answers OK); `saveReceipt` fails with the app's message. Provoked live: a path in a folder that does not exist |
 | The saved receipt's text | check | Gap: not a tester's concern (every fact in the file shows on the order tab: number, date, status and customer in its header, the lines on Items, address, shipping method and note on Delivery, payment and totals on Invoice; covered there. The file only words some differently: a title line "Order Desk — receipt", free shipping as "€0.00" where the tab says "Free", the method without its price, no SKU, no Note line when there is none) |
-| Cancel the order (Cancel order, then "Cancel order ORD-1640?" with Cancel order / Keep; the status turns Cancelled, the status line says "Order ORD-1640 cancelled") | act | to write: `click {"scope":["tab:<order>"],"role":"button","name":"Cancel order"}`, `answer {"button":"Cancel order"}` (`"Keep"`) |
-| Cancel order is disabled for a shipped or cancelled order: "Only placed orders can be cancelled — this one is shipped" | check | to write: `read {"scope":["tab:<order>"],"role":"button","name":"Cancel order"}` (state `disabled`); `read {"scope":["tab:<order>"],"role":"label","name":"Only placed orders can be cancelled","match":"contains"}` |
+| Cancel the order (Cancel order, then "Cancel order ORD-1640?" with Cancel order / Keep; the status turns Cancelled, the status line says "Order ORD-1640 cancelled") | act | `cancelOrder` (waits for Cancelled), `keepOrder` (Keep); the status line: `statusLineIs` |
+| Cancel order is disabled for a shipped or cancelled order: "Only placed orders can be cancelled — this one is shipped" | check | `buttonIsDisabled` with Cancel order (on the selected order's tab; the reason whole or "this one is shipped"), `buttonIsEnabled` (Cancel order, Save receipt…); `cancelOrder` on such an order fails with the reason before clicking |
 
 ## Notes for the steps (found while surveying)
 
@@ -228,6 +228,25 @@ add `tab:Items` and so on.
   role, so the body's steps carry no name to compare with its patterns.
 - A checkout field, step, way to pay, section or answer is given by the tester's words: the name, its start, a word of
   it ("note": Delivery note), the label the app shows or the id ("postalCode"); "PO" is the PO number.
+
+- Order tab (sub-task e): an act goes to the order's tab itself (a click on it; the order's tab must be open: "Open
+  order …" first), and after a miss selects the tab that was selected before; a check needs the order's tab selected and
+  says so otherwise ("Switch to the tab ORD-1639"). An order is given by its number or its digits, among the open order
+  tabs. A check of Items, Delivery or Invoice clicks that tab for its read (their labels are in the tree only while their
+  tab shows) and the one that showed before after it, also when it fails. Switching tabs is `selectTab`; Cancel order's
+  state and reason are `buttonIsDisabled` / `buttonIsEnabled`, which take an order tab's buttons too (as they take the
+  checkout's), on the selected order's tab. No reach fix was needed.
+- Save receipt (sub-task e): the error "The receipt could not be saved: <path>" is long, so the option pane breaks it into
+  two labels; the first ends with a colon, so the agent's tree takes it for the caption of the second and drops it (the
+  second, named "OptionPane.label", holds only the path). The steps read the whole message from what the action changed
+  (`Client.outcomeOf` around the file chooser's choice, its outcome's `message`), not from the labels; a person's Check on
+  the error's label records the path only, which `receiptSaveErrorIs` takes too. A file chooser choice that saves at once
+  shows no message: the step then reads the status line. Provoked live with a path in a folder that does not exist.
+- `orderDeliveryIs` only suggests itself: the Delivery tab's caption "Delivery address" and the address lines are labels
+  named by their own text, which a pattern on a captioned label's name cannot tell from Shipping method or Delivery note
+  (a check of an address line would capture the line as the detail). `orderInvoiceIs` folds: every label on the Invoice
+  tab is a captioned value. `orderItemsAre` (one row where the step reads them all) and `receiptSaveErrorIs` (a person's
+  check of the error records the path label only) suggest themselves too.
 
 ## Reach fixes needed
 

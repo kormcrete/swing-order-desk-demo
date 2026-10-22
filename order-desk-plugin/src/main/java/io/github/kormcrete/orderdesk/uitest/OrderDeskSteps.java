@@ -13,8 +13,8 @@ import io.github.kormcrete.swingui.junit.Target;
  * the "Add to cart" button, change its constant and both kinds of test pass again, and a person's clicks still fold.
  *
  * <p>The steps of a new order's tab are in {@link OrderDeskNewOrderSteps}, the checkout's in
- * {@link OrderDeskCheckoutSteps}, the Orders list's in {@link OrderDeskOrdersSteps} and the main window's (tabs, menus,
- * status bar) in {@link OrderDeskMainSteps}; the ones here that act there (open a new order, add to the cart, set a
+ * {@link OrderDeskCheckoutSteps}, the Orders list's in {@link OrderDeskOrdersSteps}, the main window's (tabs, menus,
+ * status bar) in {@link OrderDeskMainSteps} and an order's own tab's in {@link OrderDeskOrderTabSteps}; the ones here that act there (open a new order, add to the cart, set a
  * quantity, the cart total, check out with a PO number, place the order, open an order) call them, and keep their names
  * for the Java tests and the recorded tests that use them.
  *
@@ -208,6 +208,50 @@ public final class OrderDeskSteps {
     static final String ABOUT_TITLE = "About Order Desk";
     /** The status bar's right side: "4 open orders", "1 open order" (no code name: found by these words). */
     static final String OPEN_ORDERS_LABEL = "open order";
+
+    // ---- an order's own tab (OrderDeskOrderTabSteps)
+
+    /** How every order number starts, e.g. "ORD-1640": an order's own tab is titled with it. */
+    static final String ORDER_NUMBER_PREFIX = "ORD-";
+    /** The tabs inside an order's own tab. */
+    static final String ITEMS_TAB = "Items";
+    static final String DELIVERY_TAB = "Delivery";
+    static final String INVOICE_TAB = "Invoice";
+    /** The status beside the number ("Placed"), by its code name. */
+    static final String ORDER_STATUS_ID = "orderStatus";
+    /** The line beside the status, by its code name: "Ada Shop Ltd · 9 Oct 2026 · €95.52". */
+    static final String ORDER_FACTS_ID = "orderFacts";
+    /** What parts the customer, the date and the total in that line. */
+    static final String FACTS_SEPARATOR = " · ";
+    /** The count under the lines on Items, by its code name: "55 units in 3 lines". */
+    static final String ITEMS_SUMMARY_ID = "itemsSummary";
+    /** What parts the units from the lines in that count. */
+    static final String SUMMARY_SEPARATOR = " in ";
+    /** The Delivery tab's captions; the address lines are in a column named {@link #DELIVERY_ADDRESS_ID}. */
+    static final String DELIVERY_ADDRESS_LABEL = "Delivery address";
+    static final String DELIVERY_ADDRESS_ID = "deliveryAddress";
+    static final String SHIPPING_METHOD_LABEL = "Shipping method";
+    static final String DELIVERY_NOTE_LABEL = "Delivery note";
+    /** The delivery note when there is none. */
+    static final String NO_NOTE = "—";
+    /** The Invoice tab's captions above its amounts ({@link #SUBTOTAL_LABEL} and the rest, as in the cart). */
+    static final String PAYMENT_LABEL = "Payment";
+    static final String ORDER_DATE_LABEL = "Order date";
+    static final String SAVE_RECEIPT_BUTTON = "Save receipt…";
+    static final String CANCEL_ORDER_BUTTON = "Cancel order";
+    /** Beside Cancel order while it is disabled, after {@link #CANCEL_HINT}: " — this one is shipped". */
+    static final String HINT_DASH = " — ";
+    /** The title of the file chooser, of "ORD-1640.txt already exists." and of "The receipt could not be saved: …". */
+    static final String SAVE_RECEIPT_TITLE = "Save receipt";
+    /** The status line after a save: "Receipt saved to /Users/ada/ORD-1640.txt". */
+    static final String RECEIPT_SAVED = "Receipt saved to ";
+    /** What Save receipt adds to a file name without it. */
+    static final String RECEIPT_EXTENSION = ".txt";
+    /** The question when the file exists ("ORD-1640.txt already exists." / "Do you want to replace it?"), its answer. */
+    static final String ALREADY_EXISTS = " already exists.";
+    static final String REPLACE_ANSWER = "Replace";
+    /** The error when the file cannot be written: "The receipt could not be saved: <the reason>". */
+    static final String RECEIPT_NOT_SAVED = "The receipt could not be saved";
 
     private OrderDeskSteps() {
     }
