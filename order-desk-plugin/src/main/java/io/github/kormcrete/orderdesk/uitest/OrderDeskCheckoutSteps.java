@@ -324,7 +324,7 @@ public final class OrderDeskCheckoutSteps {
     /**
      * As {@link #placeOrder}, and what it showed while placing: {@code {"number": "ORD-1640", "placing": "Order for
      * €37.20 · Ada Shop Ltd"}} ({@code placing} null when it was not seen). "The order could not be placed." fails with
-     * the app's detail.
+     * the app's detail, after answering it OK (the checkout is back on its Review step).
      */
     static Map<String, Object> placeOrderOutcome(final Client ui) {
         requireOn(ui, Step.REVIEW, "Place order");
@@ -599,6 +599,8 @@ public final class OrderDeskCheckoutSteps {
         Target failed = ui.dialog(PLACE_ORDER_TITLE).label(PLACING_FAILED);
         if (failed.presence() != Target.Presence.NONE) {
             List<String> lines = messageLines(ui.dialog(PLACE_ORDER_TITLE).label(null));
+            // OK closes the message: the checkout is back on its Review step, as the step found it
+            quietly(() -> ui.answer(OK_ANSWER));
             throw new DriverException(Reason.APP_ERROR, lines == null ? PLACING_FAILED : join(lines));
         }
         String message = shown(ui.main().byId(STATUS_MESSAGE_ID));

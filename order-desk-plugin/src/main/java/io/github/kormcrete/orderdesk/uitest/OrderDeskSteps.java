@@ -154,6 +154,8 @@ public final class OrderDeskSteps {
     static final String PLACING_ORDER = "Placing order…";
     static final String PLACING_FOR = "Order for ";
     static final String PLACING_FAILED = "The order could not be placed.";
+    /** The answer to "The order could not be placed.": back on the Review step. */
+    static final String OK_ANSWER = "OK";
     /** The review's totals panel, by its code name: its Shipping is told apart from the step indicator's. */
     static final String TOTALS_ID = "totals";
     /** The review's sections. */

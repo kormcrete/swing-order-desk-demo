@@ -101,7 +101,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 53;
+    private static final int CHECKED_PATTERN_ENTRIES = 51;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -446,6 +446,37 @@ class OrderDeskVocabularyTest {
 
         assertThat(pattern("chooseShipping").match(Collections.singletonList(express)).params()).containsEntry("method", "Express");
         assertThat(pattern("chooseShipping").match(Collections.singletonList(card))).isNull();
+    }
+
+    @Test
+    void aPersonsEnabledCheckOnACheckoutButtonOrRadioDoesNotFoldIntoButtonIsEnabled() {
+        // the Check menu's "Is enabled" records state !disabled; a pattern never compares the window, so only the new
+        // order's scope keeps Back, Place order or Standard (which buttonIsEnabled cannot replay) out
+        for (String target : Arrays.asList("'role':'button','name':'Back'", "'role':'button','name':'Place order'",
+                "'role':'radio','name':'Standard · 3–5 business days'", "'role':'button','name':'Next'")) {
+            JsonNode enabled = json("{'action':'expect','target':{'window':'dialog'," + target + "},'state':['!disabled']}");
+            for (Pattern p : patterns("buttonIsEnabled")) {
+                assertThat(p.match(Collections.singletonList(enabled))).as(target).isNull();
+            }
+        }
+        JsonNode checkout = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'button','name':'Checkout…'},'state':['!disabled']}");
+        assertThat(pattern("buttonIsEnabled").match(Collections.singletonList(checkout)).params()).containsEntry("button", "Checkout…");
+    }
+
+    @Test
+    void theBundledPostalCodeCheckIsSuggestedAsCheckoutFieldIsNeverFolded() {
+        // place-order.json's "The postal code is 10119", as the Check menu records a field's value
+        JsonNode postalCode = json("{'action':'expect','target':{'window':'dialog','role':'text','name':'Postal code'},'value':'10119'}");
+        JsonNode customer = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'text','name':'Customer'},'value':'Ada Shop Ltd'}");
+
+        assertThat(pattern("checkoutFieldIs").match(Collections.singletonList(postalCode)).params())
+                .containsEntry("field", "Postal code").containsEntry("value", "10119");
+        // the window is not compared, so a new order's Customer check fits too: the step only suggests itself
+        assertThat(pattern("checkoutFieldIs").match(Collections.singletonList(customer))).isNotNull();
+        assertThat(step("checkoutFieldIs").autoFold()).isFalse();
+        assertThat(step("reviewLineIs").autoFold()).isFalse();
     }
 
     @Test

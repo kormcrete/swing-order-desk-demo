@@ -122,6 +122,7 @@ class CheckoutFake extends FakeApp {
     public VerbOutcome answer(String button, Long timeout) {
         forget(CONFIRMATION);
         forget(CREDIT_WARNING);
+        forget("dialog:Place order label 'The order could not be placed.'");
         if ("Place order".equals(button)) {
             answer("dialog label 'Order for '", label("Order for €41.16 · Ada Shop Ltd"));
             if (placingFails) {

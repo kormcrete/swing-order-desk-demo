@@ -196,8 +196,11 @@ final class OrderDeskCheckoutVocabulary {
                         .param("field", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.FIELD_NAMES)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutFieldIs(ui, p.text("field"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'role':'text','name':'{field}'},'text':'{value}'}", DIALOG))
-                        .matchAlso(json("{'action':'expect','target':{%s,'role':'combo','name':'{field}'},'text':'{value}'}", DIALOG))
+                        // a person's Check menu records a field's or a combo's value as "value"; a pattern never
+                        // compares the window, so it fits any text field (Customer, Search): it only suggests the step
+                        .match(json("{'action':'expect','target':{%s,'role':'text','name':'{field}'},'value':'{value}'}", DIALOG))
+                        .matchAlso(json("{'action':'expect','target':{%s,'role':'combo','name':'{field}'},'value':'{value}'}", DIALOG))
+                        .autoFold(false)
                         .java(STEPS, "checkoutFieldIs(ui, {field}, {value})")
                         .build(),
                 DomainStep.check("checkoutFieldErrorIs", "The checkout's {field} error reads {error}")
@@ -284,6 +287,8 @@ final class OrderDeskCheckoutVocabulary {
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewLineIs(ui, p.text("product"), p.text("column"), p.text("value")))
                         .match(json("{'action':'expect','target':{%s,'role':'table','row':{%s:'{product}'},'column':'{column}'},"
                                 + "'text':'{value}'}", DIALOG, key(PRODUCT_COLUMN)))
+                        // the window is never compared, so this fits the cart's and an order tab's lines too: suggest only
+                        .autoFold(false)
                         .java(STEPS, "reviewLineIs(ui, {product}, {column}, {value})")
                         .build(),
                 DomainStep.check("reviewAmountIs", "The review's {amount} is {value}")

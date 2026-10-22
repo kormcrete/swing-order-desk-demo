@@ -401,6 +401,9 @@ class OrderDeskCheckoutStepsTest {
 
         assertThat(failed).isInstanceOf(DriverException.class).hasMessageContaining("The order could not be placed.")
                 .hasMessageContaining("Stapler: only 0 left");
+        // the message is answered OK, so the checkout is back on its Review step, as the step found it
+        assertThat(app.steps().get(app.steps().size() - 1)).isEqualTo(json("{'action':'answer','button':'OK'}"));
+        assertThat(app.reads().get(app.reads().size() - 1)).isNotEqualTo("element #statusMessage");
     }
 
     @Test

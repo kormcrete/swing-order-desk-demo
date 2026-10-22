@@ -310,10 +310,6 @@ final class OrderDeskNewOrderVocabulary {
                         .code((ui, p) -> OrderDeskNewOrderSteps.buttonIsEnabled(ui, p.text("button")))
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['!disabled']}",
                                 NEW_ORDER_SCOPE))
-                        .matchAlso(json("{'action':'expect','target':{'window':'dialog','role':'button','name':'{button}'},"
-                                + "'state':['!disabled']}"))
-                        .matchAlso(json("{'action':'expect','target':{'window':'dialog','role':'radio','name':'{button}'},"
-                                + "'state':['!disabled']}"))
                         .java(STEPS, "buttonIsEnabled(ui, {button})")
                         .build());
     }
