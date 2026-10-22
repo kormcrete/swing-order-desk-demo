@@ -11,7 +11,10 @@ import java.io.IOException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
-/** Each of Order Desk's steps as the steps it takes: traced on a Client that reaches no app. */
+/**
+ * Each of Order Desk's steps as the steps it takes: traced on a Client that reaches no app, or, for the steps of a new
+ * order's tab (which look at the app first), on a stand-in app ({@link FakeApp}).
+ */
 class OrderDeskStepsTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -22,38 +25,44 @@ class OrderDeskStepsTest {
 
     @Test
     void openNewOrderPicksTheCustomerInANewOrderTab() {
-        OrderDeskSteps.openNewOrder(ui, "Ada Shop Ltd");
+        FakeApp app = FakeApp.withNewOrder();
 
-        assertThat(trace()).isEqualTo(json("["
+        OrderDeskSteps.openNewOrder(app.client(), "Ada Shop Ltd");
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'menu','path':['File','New order']},"
                 + "{'action':'type','target':{'scope':['tab:New order'],'role':'text','name':'Customer'},'text':'Ada Shop Ltd'},"
                 + "{'action':'press','keys':'Enter'}]"));
-        assertThat(verbs.derivable()).isTrue();
     }
 
     @Test
     void addToCartSelectsTheProductByItsSkuCellThenAddsIt() {
-        OrderDeskSteps.addToCart(ui, "Gel pen, black");
+        FakeApp app = FakeApp.withNewOrder();
 
-        assertThat(trace()).isEqualTo(json("["
+        OrderDeskSteps.addToCart(app.client(), "Gel pen, black");
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{" + NEW_ORDER + ",'role':'table','row':{'Product':'Gel pen, black'},'column':'SKU'}},"
                 + "{'action':'click','target':{" + NEW_ORDER + ",'role':'button','name':'Add to cart'}}]"));
-        assertThat(verbs.derivable()).isTrue();
     }
 
     @Test
     void setQuantityTypesTheNumberIntoTheQtyCellAndCommits() {
-        OrderDeskSteps.setQuantity(ui, "A4 paper, 500 sheets", 3);
+        FakeApp app = FakeApp.withNewOrder("A4 paper, 500 sheets");
 
-        assertThat(trace()).isEqualTo(json("[{'action':'type','target':{" + NEW_ORDER + ",'role':'table',"
+        OrderDeskSteps.setQuantity(app.client(), "A4 paper, 500 sheets", 3);
+
+        assertThat(app.steps()).isEqualTo(json("[{'action':'type','target':{" + NEW_ORDER + ",'role':'table',"
                 + "'row':{'Product':'A4 paper, 500 sheets'},'column':'Qty'},'text':'3','commit':true}]"));
     }
 
     @Test
     void addQtyToCartAddsTheProductThenSetsItsQuantity() {
-        OrderDeskSteps.addQtyToCart(ui, "Gel pen, black", 10);
+        FakeApp app = FakeApp.withNewOrder("Gel pen, black");
 
-        assertThat(trace()).isEqualTo(json("["
+        OrderDeskSteps.addQtyToCart(app.client(), "Gel pen, black", 10);
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{" + NEW_ORDER + ",'role':'table','row':{'Product':'Gel pen, black'},'column':'SKU'}},"
                 + "{'action':'click','target':{" + NEW_ORDER + ",'role':'button','name':'Add to cart'}},"
                 + "{'action':'type','target':{" + NEW_ORDER + ",'role':'table','row':{'Product':'Gel pen, black'},'column':'Qty'},"
@@ -97,10 +106,12 @@ class OrderDeskStepsTest {
 
     @Test
     void cartTotalIsChecksTheLabelCaptionedTotal() {
-        OrderDeskSteps.cartTotalIs(ui, "€31.32");
+        FakeApp app = FakeApp.withNewOrder();
 
-        assertThat(trace()).isEqualTo(json("[{'action':'expect','target':{" + NEW_ORDER + ",'role':'label','name':'Total'},"
-                + "'text':'€31.32'}]"));
+        OrderDeskSteps.cartTotalIs(app.client(), "€31.32");
+
+        assertThat(app.steps()).isEqualTo(json("[{'action':'expect','target':{" + NEW_ORDER + ",'role':'label','name':'Total'},"
+                + "'text':'€31.32','timeout':1000}]"));
     }
 
     private JsonNode trace() {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kormcrete.swingui.agent.BodyTrace;
 import io.github.kormcrete.swingui.client.TracingVerbs;
+import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.junit.Client;
 import io.github.kormcrete.swingui.spi.DomainStep;
 import io.github.kormcrete.swingui.spi.ParamType;
@@ -25,6 +26,7 @@ import java.util.Map;
 
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskStepsTest.json;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 /** The vocabulary as the agent reads it when the plugin becomes ready, and how a person's steps fold into it. */
 class OrderDeskVocabularyTest {
@@ -33,12 +35,48 @@ class OrderDeskVocabularyTest {
 
     private final List<DomainStep> steps = new OrderDeskVocabulary(null).steps();
 
-    @Test
-    void theEightStepsWithTheirSentences() {
-        List<String> sentences = new ArrayList<String>();
-        for (DomainStep s : steps) sentences.add(s.id() + ": " + s.sentence());
+    /** A value for every param of every step, each one the stand-in app ({@link #app}) knows. */
+    private static final Map<String, String> SAMPLE = new HashMap<String, String>();
+    static {
+        String[] pairs = {"customer", "Ada Shop Ltd", "product", "Stapler", "qty", "3", "po", "PO-7781", "order", "ORD-1640",
+                "total", "€31.32", "text", "pen", "customers", "Ada Shop Ltd", "terms", "Card only", "category", "Desk",
+                "products", "Stapler", "lines", "Stapler; Gel pen, black", "column", "Stock", "value", "4",
+                "warning", "Low stock: 4 left", "count", "22 products", "amount", "Subtotal", "reason", "x",
+                "button", "Add to cart"};
+        for (int i = 0; i < pairs.length; i += 2) SAMPLE.put(pairs[i], pairs[i + 1]);
+    }
 
-        assertThat(sentences).containsExactly(
+    /** Where a step needs other values than {@link #SAMPLE}'s for its checks to pass on the stand-in app. */
+    private static final Map<String, Map<String, String>> OVERRIDES = new HashMap<String, Map<String, String>>();
+    static {
+        override("cartLineIs", "column", "Line total", "value", "€1.00");
+        override("buttonIsDisabled", "button", "Remove", "reason", "Select a cart line first");
+        override("keepCartLines", "products", "Stapler; Gel pen, black");
+        override("productsListedAre", "products", "A4 paper, 500 sheets; Gel pen, black; Gel pen, blue; Stapler; Desk lamp");
+        override("cartAmountIs", "value", "€26.70");
+        override("cartStockWarningIs", "warning", "Only 4 Staplers in stock");
+    }
+
+    private static void override(String id, String... pairs) {
+        Map<String, String> v = new HashMap<String, String>();
+        for (int i = 0; i < pairs.length; i += 2) v.put(pairs[i], pairs[i + 1]);
+        OVERRIDES.put(id, v);
+    }
+
+    /** The values step {@code id} runs with in these tests. */
+    private static Map<String, String> sample(String id) {
+        Map<String, String> v = new HashMap<String, String>(SAMPLE);
+        if (OVERRIDES.containsKey(id)) v.putAll(OVERRIDES.get(id));
+        return v;
+    }
+
+    /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
+    private static final int CHECKED_PATTERN_ENTRIES = 26;
+
+    @Test
+    void theFirstEightStepsKeepTheirSentences() {
+        // the bundled recorded tests run these by id and sentence
+        assertThat(sentences().subList(0, 8)).containsExactly(
                 "openNewOrder: Open a new order for {customer}",
                 "addToCart: Add {product} to the cart",
                 "setQuantity: Set the quantity of {product} to {qty}",
@@ -47,13 +85,52 @@ class OrderDeskVocabularyTest {
                 "placeOrder: Place the order",
                 "openOrder: Open order {order}",
                 "cartTotalIs: The cart total is {total}");
-        assertThat(step("cartTotalIs").kind()).isEqualTo(DomainStep.Kind.CHECK);
-        for (DomainStep s : steps) {
-            if (!s.id().equals("cartTotalIs")) assertThat(s.kind()).as(s.id()).isEqualTo(DomainStep.Kind.ACT);
-            assertThat(s.about()).as(s.id()).isNotBlank();
-        }
         assertThat(step("setQuantity").params().get(1).type()).isEqualTo(ParamType.INT);
         assertThat(step("addQtyToCart").params().get(1).type()).isEqualTo(ParamType.INT);
+    }
+
+    @Test
+    void theNewOrderStepsAndChecks() {
+        assertThat(sentences().subList(8, sentences().size())).containsExactly(
+                "chooseCustomer: Choose {customer} as the customer",
+                "typeCustomer: Type {text} into Customer without picking a customer",
+                "customerSuggestionsAre: The customer suggestions are {customers}",
+                "newOrderIsFor: The new order is for {customer}",
+                "customerTermsAre: The customer's terms are {terms}",
+                "recentCustomersAre: The recent customers are {customers}",
+                "browseCategory: Browse category {category}",
+                "selectedCategoryIs: The selected category is {category}",
+                "searchProducts: Search the products for {text}",
+                "clearProductSearch: Clear the product search",
+                "addProductsToCart: Add {products} to the cart together",
+                "showInCategory: Show {product} in its category",
+                "productsListedAre: The products listed are {products}",
+                "productIs: The {column} of {product} is {value}",
+                "lowStockWarningIs: The low-stock warning of {product} is {warning}",
+                "productCountIs: The product count reads {count}",
+                "removeFromCart: Remove {products} from the cart",
+                "keepCartLines: Ask to remove {products} from the cart, then keep them",
+                "cartLinesAre: The cart holds {lines}",
+                "cartLineIs: The {column} of {product} in the cart is {value}",
+                "cartAmountIs: The cart's {amount} is {value}",
+                "cartStockWarningIs: The cart warns {warning}",
+                "buttonIsDisabled: {button} is disabled: {reason}",
+                "buttonIsEnabled: {button} is enabled");
+    }
+
+    @Test
+    void anActStepSaysWhatItNeedsAndWhereItEndsAndACheckWhatItReads() {
+        List<String> acts = Arrays.asList("checkoutWithPo", "placeOrder", "openOrder");   // their screens come later
+        for (DomainStep s : steps) {
+            boolean check = s.id().endsWith("Is") || s.id().endsWith("Are") || s.id().equals("newOrderIsFor")
+                    || s.id().equals("buttonIsDisabled") || s.id().equals("buttonIsEnabled");
+            assertThat(s.kind()).as(s.id()).isEqualTo(check ? DomainStep.Kind.CHECK : DomainStep.Kind.ACT);
+            assertThat(s.about()).as(s.id()).isNotBlank();
+            if (s.kind() == DomainStep.Kind.ACT && !acts.contains(s.id())) {
+                assertThat(s.about()).as(s.id()).startsWith("Needs: ").contains(". Ends: ");
+            }
+            if (s.kind() == DomainStep.Kind.CHECK) assertThat(s.about()).as(s.id()).startsWith("Reads ");
+        }
     }
 
     @Test
@@ -66,47 +143,73 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
-    void everyStepNamesItsOrderDeskStepsMethod() throws Exception {
+    void everyStepNamesItsJavaMethod() throws Exception {
         for (DomainStep s : steps) {
-            assertThat(s.javaClass()).as(s.id()).isEqualTo(OrderDeskSteps.class.getName());
+            Class<?> type = Class.forName(s.javaClass());
+            assertThat(s.javaClass()).as(s.id()).isIn(OrderDeskSteps.class.getName(), OrderDeskNewOrderSteps.class.getName());
             String call = s.javaCall();
             String name = call.substring(0, call.indexOf('('));
             int args = call.split(",").length;
-            Method m = method(name);
+            Method m = method(type, name);
             assertThat(m).as(call).isNotNull();
             assertThat(Modifier.isStatic(m.getModifiers())).as(call).isTrue();
             assertThat(m.getParameterCount()).as(call).isEqualTo(args);
         }
         assertThat(step("placeOrder").javaCall()).isEqualTo("placeOrder(ui)");
-        assertThat(method("placeOrder").getReturnType()).isEqualTo(String.class);
+        assertThat(method(OrderDeskSteps.class, "placeOrder").getReturnType()).isEqualTo(String.class);
+        assertThat(step("addProductsToCart").outcomeBody()).isNotNull();
+        assertThat(method(OrderDeskNewOrderSteps.class, "addProductsToCart").getReturnType()).isEqualTo(Map.class);
     }
 
     @Test
-    void eachBodyTakesTheStepsOfItsOrderDeskStepsMethod() {
-        assertThat(run("openNewOrder", "customer", "Ada")).isEqualTo(traced(ui -> OrderDeskSteps.openNewOrder(ui, "Ada")));
-        assertThat(run("addToCart", "product", "Gel pen, black"))
-                .isEqualTo(traced(ui -> OrderDeskSteps.addToCart(ui, "Gel pen, black")));
-        assertThat(run("setQuantity", "product", "Gel pen, black", "qty", "10"))
-                .isEqualTo(traced(ui -> OrderDeskSteps.setQuantity(ui, "Gel pen, black", 10)));
-        assertThat(run("addQtyToCart", "product", "A4 paper, 500 sheets", "qty", "3"))
-                .isEqualTo(traced(ui -> OrderDeskSteps.addQtyToCart(ui, "A4 paper, 500 sheets", 3)));
-        assertThat(run("checkoutWithPo", "po", "PO-7781"))
-                .isEqualTo(traced(ui -> OrderDeskSteps.checkoutWithPo(ui, "PO-7781")));
-        assertThat(run("placeOrder")).isEqualTo(traced(OrderDeskSteps::placeOrder));
-        assertThat(run("openOrder", "order", "ORD-1640")).isEqualTo(traced(ui -> OrderDeskSteps.openOrder(ui, "ORD-1640")));
-        assertThat(run("cartTotalIs", "total", "€31.32")).isEqualTo(traced(ui -> OrderDeskSteps.cartTotalIs(ui, "€31.32")));
+    void eachBodyTakesTheStepsOfItsJavaMethod() throws Exception {
+        // every step, with a value for each param, on the same app: the body and the method its java() names
+        int compared = 0;
+        for (DomainStep s : steps) {
+            JsonNode body = run(s.id(), sample(s.id()));
+            JsonNode method = traced(s, ui -> invoke(s, ui, sample(s.id())));
+            assertThat(body).as(s.id()).isEqualTo(method);
+            compared++;
+        }
+        assertThat(compared).isEqualTo(steps.size());
+    }
+
+    @Test
+    void eachNewOrderStepFailsFastWhenItsScreenIsNotShowing() {
+        // the Orders tab selected, or no new order open: every step of a new order's tab says so within about a second
+        List<String> elsewhere = Arrays.asList("openNewOrder", "recentCustomersAre", "checkoutWithPo", "placeOrder", "openOrder");
+        int checked = 0;
+        for (final DomainStep s : steps) {
+            if (elsewhere.contains(s.id())) continue;
+            final FakeApp nothing = new FakeApp();
+            final Map<String, String> v = sample(s.id());
+            long start = System.currentTimeMillis();
+
+            Throwable gone = catchThrowable(() -> s.body().run(nothing.client(), new Params() {
+                @Override public String text(String name) { return v.get(name); }
+                @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
+            }));
+
+            assertThat(System.currentTimeMillis() - start).as(s.id()).isLessThan(2000);
+            assertThat(gone).as(s.id()).isInstanceOf(DriverException.class)
+                    .hasMessage("NOT_FOUND: " + OrderDeskNewOrderSteps.NO_NEW_ORDER);
+            assertThat(nothing.steps()).as(s.id()).isEmpty();
+            checked++;
+        }
+        assertThat(checked).isEqualTo(steps.size() - elsewhere.size());
     }
 
     @Test
     void everyWrittenPatternNamesWhatItsBodyClicks() throws IOException {
         // a written pattern (match) and the body take their names from OrderDeskSteps' constants; this pins that a
-        // rename there reaches both: each entry's fixed parts equal the body's step at the same place
+        // rename there reaches both: each entry's fixed parts equal the body's step at the same place. A pattern that
+        // only suggests its step (autoFold false) is looser than the body on purpose, and a check that only reads
+        // (newOrderIsFor) takes no steps to compare
         int checked = 0;
         for (DomainStep s : steps) {
-            if (s.match().isEmpty() || s.match().get(0).contains("\"use\"")) continue;
-            Map<String, String> values = new HashMap<String, String>();
-            for (DomainStep.Param p : s.params()) values.put(p.name(), "{" + p.name() + "}");
-            JsonNode body = run(s.id(), values);
+            if (s.match().isEmpty() || s.match().get(0).contains("\"use\"") || !s.autoFold()) continue;
+            JsonNode body = run(s.id(), sample(s.id()));
+            if (body.size() == 0) continue;
             assertThat(body.size()).as(s.id() + " steps").isGreaterThanOrEqualTo(s.match().size());
             for (int i = 0; i < s.match().size(); i++) {
                 JsonNode entry = JSON.readTree(s.match().get(i));
@@ -114,7 +217,7 @@ class OrderDeskVocabularyTest {
                 checked++;
             }
         }
-        assertThat(checked).isEqualTo(7);   // addToCart 2, placeOrder 2, openOrder 2, cartTotalIs 1
+        assertThat(checked).isEqualTo(CHECKED_PATTERN_ENTRIES);
     }
 
     @Test
@@ -196,6 +299,48 @@ class OrderDeskVocabularyTest {
         assertThat(pattern("cartTotalIs").match(Collections.singletonList(review))).isNull();
     }
 
+    @Test
+    void theSelectedNewOrderTabCheckFoldsIntoNewOrderIsFor() {
+        // the check the bundled recorded tests make after picking the customer
+        JsonNode tab = json("{'action':'expect','target':{'window':'main','role':'tab','name':'New order · Ada Shop Ltd'},"
+                + "'state':['selected']}");
+
+        assertThat(pattern("newOrderIsFor").match(Collections.singletonList(tab)).params())
+                .containsEntry("customer", "Ada Shop Ltd");
+    }
+
+    @Test
+    void aPersonsCheckOnALineTotalFoldsIntoCartLineIsNotIntoAProductCheck() {
+        JsonNode lineTotal = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'Product':'A4 paper, 500 sheets','Qty':'3','Price':'€4.90','Line total':'€14.70'},"
+                + "'column':'Line total'},'text':'€14.70'}");
+
+        Pattern.Match m = pattern("cartLineIs").match(Collections.singletonList(lineTotal));
+
+        assertThat(m.params()).containsEntry("product", "A4 paper, 500 sheets").containsEntry("column", "Line total")
+                .containsEntry("value", "€14.70");
+        assertThat(pattern("productIs").match(Collections.singletonList(lineTotal))).isNull();
+    }
+
+    @Test
+    void typingACustomerAndEnterInAnOpenOrderFoldsIntoChooseCustomer() {
+        JsonNode type = json("{'action':'type','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'text',"
+                + "'name':'Customer'},'text':'Birch'}");
+        JsonNode enter = json("{'action':'press','keys':'Enter'}");
+
+        assertThat(pattern("chooseCustomer").match(Arrays.asList(type, enter)).params()).containsEntry("customer", "Birch");
+    }
+
+    @Test
+    void aCartLineClickThenRemoveFoldsIntoRemoveFromCart() {
+        JsonNode line = json("{'action':'click','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},'column':'Product'}}");
+        JsonNode remove = json("{'action':'click','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'button','name':'Remove'}}");
+
+        assertThat(pattern("removeFromCart").match(Arrays.asList(line, remove)).params()).containsEntry("products", "Stapler");
+    }
+
     // ---- helpers
 
     private static JsonNode addToCartButton() {
@@ -226,37 +371,104 @@ class OrderDeskVocabularyTest {
         return r.derivable() ? PatternCompiler.Traced.steps(r.steps()) : PatternCompiler.Traced.none(r.why());
     }
 
-    private static Method method(String name) {
-        for (Method m : OrderDeskSteps.class.getMethods()) if (m.getName().equals(name)) return m;
+    private List<String> sentences() {
+        List<String> out = new ArrayList<String>();
+        for (DomainStep s : steps) out.add(s.id() + ": " + s.sentence());
+        return out;
+    }
+
+    private static Method method(Class<?> type, String name) {
+        for (Method m : type.getMethods()) if (m.getName().equals(name)) return m;
         return null;
     }
 
-    /** The steps {@code id}'s body takes with these values (name, value, ...), on a Client that reaches no app. */
+    /** The steps {@code id}'s body takes with these values (name, value, ...). */
     private JsonNode run(String id, String... values) {
         Map<String, String> v = new HashMap<String, String>();
         for (int i = 0; i < values.length; i += 2) v.put(values[i], values[i + 1]);
         return run(id, v);
     }
 
+    /**
+     * The steps {@code id}'s body takes with these values: the steps of a new order's tab on a stand-in app showing a
+     * new order ({@link #app}), the others traced on a Client that reaches no app (they do not look first).
+     */
     private JsonNode run(String id, final Map<String, String> v) {
-        Params params = new Params() {
+        final DomainStep s = step(id);
+        final Params params = new Params() {
             @Override public String text(String name) { return v.get(name); }
             @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
         };
-        return traced(ui -> step(id).body().run(ui, params));
+        return traced(s, ui -> s.body().run(ui, params));
     }
 
-    private static JsonNode traced(Body body) {
-        TracingVerbs verbs = new TracingVerbs();
+    /** The method the step's java() names, called with {@code values} in the order the call gives them. */
+    private static void invoke(DomainStep s, Client ui, Map<String, String> values) {
+        String call = s.javaCall();
+        String[] names = call.substring(call.indexOf('(') + 1, call.indexOf(')')).split(",\\s*");
         try {
-            body.run(new Client(verbs, verbs.app(), "trace"));
-        } catch (RuntimeException e) {
-            // placeOrder reads the new number, which a trace cannot answer: its steps up to there count; any other
-            // throw is a broken body
-            if (verbs.derivable()) throw e;
+            Method m = method(Class.forName(s.javaClass()), call.substring(0, call.indexOf('(')));
+            Object[] args = new Object[names.length];
+            args[0] = ui;
+            for (int i = 1; i < names.length; i++) {
+                String value = values.get(names[i].replace("{", "").replace("}", ""));
+                args[i] = m.getParameterTypes()[i] == int.class ? (Object) Integer.parseInt(value) : value;
+            }
+            m.invoke(null, args);
+        } catch (java.lang.reflect.InvocationTargetException e) {
+            if (e.getCause() instanceof RuntimeException) throw (RuntimeException) e.getCause();
+            if (e.getCause() instanceof Error) throw (Error) e.getCause();
+            throw new IllegalStateException(e.getCause());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(call, e);
         }
-        assertThat(verbs.steps()).as("the body's steps").isNotEmpty();
-        return JSON.valueToTree(verbs.steps());
+    }
+
+    /** The steps that run takes on the app {@code s} needs; a failure after them (a trace's unanswered read) counts. */
+    private static JsonNode traced(DomainStep s, Body body) {
+        if (Arrays.asList("checkoutWithPo", "placeOrder", "openOrder").contains(s.id())) {
+            TracingVerbs verbs = new TracingVerbs();
+            try {
+                body.run(new Client(verbs, verbs.app(), "trace"));
+            } catch (RuntimeException e) {
+                // placeOrder reads the new number, which a trace cannot answer: its steps up to there count; any other
+                // throw is a broken body
+                if (verbs.derivable()) throw e;
+            }
+            assertThat(verbs.steps()).as("the body's steps").isNotEmpty();
+            return JSON.valueToTree(verbs.steps());
+        }
+        FakeApp app = app();
+        body.run(app.client());
+        return app.steps();
+    }
+
+    /** A new order with every value the sample checks expect, so each check passes. */
+    private static FakeApp app() {
+        FakeApp app = FakeApp.withNewOrder("Stapler", "Gel pen, black");
+        app.answer("tab 'Orders'", FakeApp.label("Orders", "New order · Ada Shop Ltd"));
+        app.answer("element #customerTerms", FakeApp.label("customerTerms", "Card only"));
+        app.answer("button 'New order for a recent customer'", FakeApp.node("button", "New order for a recent customer"));
+        app.answer("popup menuitem", FakeApp.node("menuitem", "Ada Shop Ltd"));
+        app.answer("tree", treeOnDesk());
+        app.answer("button 'Remove'", FakeApp.withState(FakeApp.node("button", "Remove"), "disabled"));
+        app.answer("label 'Select a cart line first'", FakeApp.label("Select a cart line first"));
+        app.answer("text 'Search'", FakeApp.label("Search", "pen"));
+        app.answer("table row=DSK-STAPLER,Stapler col=Stock", FakeApp.withTooltip(FakeApp.cell("Stock", "4"), "Low stock: 4 left"));
+        app.answer("element #productCount", FakeApp.label("productCount", "22 products"));
+        app.answer("table row=Stapler col=Line total", FakeApp.cell("Line total", "€1.00"));
+        app.answer("label 'Subtotal'", FakeApp.label("Subtotal", "€26.70"));
+        app.answer("label 'in stock'", FakeApp.label("Only 4 Staplers in stock"));
+        return app;
+    }
+
+    /** The tree: its items, and "Desk" as what is selected (a remember of the tree reads its value). */
+    private static io.github.kormcrete.swingui.driver.model.Node treeOnDesk() {
+        io.github.kormcrete.swingui.driver.model.Node tree = FakeApp.items("tree", Arrays.asList("All products", "Office",
+                "Office > Paper", "Office > Pens", "Office > Desk", "Coffee", "Coffee > Beans", "Coffee > Machines",
+                "Cleaning"), 4);
+        tree.value = "Desk";
+        return tree;
     }
 
     /**

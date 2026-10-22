@@ -15,7 +15,7 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 | The app starts on the Orders list, no other tab open (no login, nothing to navigate to by name) | start | `reset` |
 | Open a new order (File ▸ New order, Ctrl/Cmd+N, toolbar New order) | act | `openNewOrder` |
 | Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrder` |
-| The recent customers the toolbar ▾ offers, newest first | check | to write: `click {"role":"button","name":"New order for a recent customer"}`, then the items as `pick` lists them (a `read` of the open popup was not tried) |
+| The recent customers the toolbar ▾ offers, newest first | check | `recentCustomersAre` |
 | Close the selected tab (File ▸ Close tab, Ctrl/Cmd+W, the tab's X) | act | to write: `menu {"path":["File","Close tab"]}` (the tab's X has no node; the menu covers it) |
 | Closing a new order with something in its cart asks "Discard this new order?" (Discard, Cancel) | act | to write: `menu {"path":["File","Close tab"]}`, then `answer {"button":"Discard"}` or `{"button":"Cancel"}` |
 | Close tab is disabled on the Orders tab, which never closes | check | to write: `describe_ui {"fields":["menuPaths"]}` (`File > Close tab [disabled]`) |
@@ -60,36 +60,36 @@ both have a `Product` column, so a row locator on either must also name a column
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| Pick the customer: type a name or city, Enter takes the highlighted suggestion (Down/Up move it, a click picks one, Esc hides them) | act | `openNewOrder` |
-| A tester's partial name that fits two customers fails naming both, never takes the first by chance (live: "am" fits Café Lumen in Amsterdam and Fjord Supplies in Hamburg; the app matches anywhere in the name or the city). Note: the example "Ada" fits only Ada Shop Ltd: Ada Lindqvist is the contact on its delivery address, not a customer | act | to write (Task 7, in `openNewOrder`): `read {"window":"popup","role":"list"}` after typing (items read "Café Lumen Amsterdam · Card only") |
-| A name that fits no customer: "No customer matches" | check | to write: `expect {"target":{"window":"popup","role":"label","name":"No customer matches"},"shown":true}` |
-| The suggestions for what was typed (name, then "Berlin · Account" or "… · Card only") | check | to write: `read {"window":"popup","role":"list"}` |
-| Editing the Customer text forgets the chosen customer (tab back to "New order", Checkout… blocked) | act | to write: `type {"scope":["tab:New order*"],"role":"text","name":"Customer"}` |
-| The tab's title: "New order", then "New order · Ada Shop Ltd" | check | to write: `describe_ui {"fields":["activeTab"]}` or `read {"role":"tab","name":"New order · <customer>"}` |
-| The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | to write: `read {"scope":["tab:New order*"],"role":"label","id":"customerTerms"}` |
-| Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | to write: `click {"scope":["tab:New order*"],"role":"tree","item":["Office","Desk"]}`; selected one: `read` of the tree (`selected`) |
-| Search products by SKU or name (Search; its X clears it) | act | to write: `type {"scope":["tab:New order*"],"role":"text","name":"Search"}`; clear: `click {"scope":["tab:New order*","text:Search"],"id":"clear"}` |
-| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | to write: `read {"scope":["tab:New order*"],"role":"table","column":"SKU"}`; one cell: `"row":{"Product":"<product>"},"column":"Stock"` |
-| Low stock: a warning icon in Stock at 5 or fewer, its tooltip "Low stock: 4 left" | check | to write: `read {"scope":["tab:New order*"],"role":"table","row":{"Product":"<product>"},"column":"Stock"}` (`tooltip`) |
-| How many products show and how many are selected ("22 products · 2 selected") | check | to write: `read {"scope":["tab:New order*"],"role":"label","id":"productCount"}` |
-| Nothing matches: "No products match ‘zzz’" | check | to write: `read {"scope":["tab:New order*"],"role":"label","name":"No products match","match":"contains"}` |
+| Pick the customer: type a name or city, Enter takes the highlighted suggestion (Down/Up move it, a click picks one, Esc hides them) | act | `openNewOrder`, `chooseCustomer` (the suggestion whose name starts with what was typed, or the only one) |
+| A tester's partial name that fits two customers fails naming both, never takes the first by chance (live: "am" fits Café Lumen in Amsterdam and Fjord Supplies in Hamburg; the app matches anywhere in the name or the city). Note: the example "Ada" fits only Ada Shop Ltd: Ada Lindqvist is the contact on its delivery address, not a customer | act | `openNewOrder`, `chooseCustomer` (fail as AMBIGUOUS naming the suggestions that fit; no fit: NOT_FOUND naming every customer the field offers) |
+| A name that fits no customer: "No customer matches" | check | `typeCustomer`, then `customerSuggestionsAre` with `none` |
+| The suggestions for what was typed (name, then "Berlin · Account" or "… · Card only") | check | `customerSuggestionsAre` |
+| Editing the Customer text forgets the chosen customer (tab back to "New order", Checkout… blocked) | act | `typeCustomer` (then `newOrderIsFor` `none`, `buttonIsDisabled` Checkout…) |
+| The tab's title: "New order", then "New order · Ada Shop Ltd" | check | `newOrderIsFor` |
+| The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` |
+| Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` (app bug, see Notes: a category chosen while a product further down the list is selected) |
+| Search products by SKU or name (Search; its X clears it) | act | `searchProducts`, `clearProductSearch` |
+| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` |
+| Low stock: a warning icon in Stock at 5 or fewer, its tooltip "Low stock: 4 left" | check | `lowStockWarningIs` |
+| How many products show and how many are selected ("22 products · 2 selected") | check | `productCountIs` |
+| Nothing matches: "No products match ‘zzz’" | check | `productsListedAre` with `none` |
 | Add a product to the cart (select it, Add to cart; double click it; its row menu ▸ Add to cart; again adds 1 to its line) | act | `addToCart` |
 | Add a product with a quantity | act | `addQtyToCart` |
-| Add several selected products at once (out-of-stock ones are left out) | act | to write: `click` product rows (`"column":"SKU"`) with `"modifiers":["Shift"]`, then `click {"scope":["tab:New order*"],"role":"button","name":"Add to cart"}` |
-| Add to cart is disabled, with its reason: "Select a product first", "The selected products are out of stock" | check | to write: button state via `read {"scope":["tab:New order*"],"role":"button","name":"Add to cart"}`; the reason: `read {"scope":["tab:New order*"],"role":"label","id":"addToCartReason"}` |
-| Show a product in its category (its row menu ▸ Show in category) | act | to write: `context_menu {"scope":["tab:New order*"],"role":"table","row":{"Product":"<product>"},"column":"SKU"},"path":["Show in category"]` |
+| Add several selected products at once (out-of-stock ones are left out) | act | `addProductsToCart` (the outcome lists the products left out) |
+| Add to cart is disabled, with its reason: "Select a product first", "The selected products are out of stock" | check | `buttonIsDisabled`, `buttonIsEnabled`; `addToCart` fails with the reason |
+| Show a product in its category (its row menu ▸ Show in category) | act | `showInCategory` (app bug, see Notes: fails unless the product's row number fits the target category) |
 | Change a cart line's quantity (its Qty cell: digits and Enter, or the spinner's arrows) | act | `setQuantity` |
-| A quantity below 1 or not a whole number is ignored: the line keeps its quantity | check | to write: `read {"scope":["tab:New order*"],"role":"table","row":{"Product":"<product>"},"column":"Qty"}` after `setQuantity` |
-| Remove a line (select it, Remove; its row menu ▸ Remove; Delete or Backspace in the cart; Order ▸ Remove from cart) | act | to write: `click {"scope":["tab:New order*"],"role":"table","row":{"Product":"<product>"},"column":"Line total"}`, then `click {"scope":["tab:New order*"],"role":"button","name":"Remove"}` |
-| Removing several lines asks "Remove 2 lines from the cart?" (Remove lines, Keep) | act | to write: as above with `"modifiers":["Shift"]`, then `answer {"button":"Remove lines"}` or `{"button":"Keep"}` |
-| Remove is disabled with "Select a cart line first" while lines are in the cart and none is selected | check | to write: `expect {"target":{"scope":["tab:New order*"],"role":"label","name":"Select a cart line first"},"shown":true}` |
-| A cart line's quantity, price and line total (one check for any line and column) | check | to write: `read {"scope":["tab:New order*"],"role":"table","row":{"Product":"<product>"},"column":"Line total"}` (or `Qty`, `Price`) |
-| The cart's lines, in the order they were added | check | to write: `read {"scope":["tab:New order*"],"role":"table","column":"Line total"}` (`rows`) |
-| An empty cart says "Select products and press Add to cart." | check | to write: `expect {"target":{"scope":["tab:New order*"],"role":"label","name":"Select products and press Add to cart."},"shown":true}` |
-| A line over stock: "Only 4 Staplers in stock" under the cart (one per line, joined by "; "), its Qty outlined red | check | to write: `read {"scope":["tab:New order*"],"role":"label","name":"in stock","match":"contains"}` (the red outline is painted; the message names the line) |
-| The cart's Subtotal, Volume discount (5% off a line of 10 or more; shown only then), Shipping ("chosen at checkout") and VAT (20%) | check | to write: `read {"scope":["tab:New order*"],"role":"label","name":"Subtotal"}` (`value`; also `Volume discount`, `Shipping`, `VAT (20%)`) |
+| A quantity below 1 or not a whole number is ignored: the line keeps its quantity | check | `setQuantity`, then `cartLineIs` (Qty) |
+| Remove a line (select it, Remove; its row menu ▸ Remove; Delete or Backspace in the cart; Order ▸ Remove from cart) | act | `removeFromCart` |
+| Removing several lines asks "Remove 2 lines from the cart?" (Remove lines, Keep) | act | `removeFromCart` (Remove lines), `keepCartLines` (Keep) |
+| Remove is disabled with "Select a cart line first" while lines are in the cart and none is selected | check | `buttonIsDisabled` |
+| A cart line's quantity, price and line total (one check for any line and column) | check | `cartLineIs` |
+| The cart's lines, in the order they were added | check | `cartLinesAre` |
+| An empty cart says "Select products and press Add to cart." | check | `cartLinesAre` with `none` |
+| A line over stock: "Only 4 Staplers in stock" under the cart (one per line, joined by "; "), its Qty outlined red | check | `cartStockWarningIs` |
+| The cart's Subtotal, Volume discount (5% off a line of 10 or more; shown only then), Shipping ("chosen at checkout") and VAT (20%) | check | `cartAmountIs` |
 | The cart total | check | `cartTotalIs` |
-| Checkout… is disabled, with its reason: "Choose a customer first", "The cart is empty", "Fix quantities above stock" | check | to write: button state via `read {"scope":["tab:New order*"],"role":"button","name":"Checkout…"}`; the reason: `read {"scope":["tab:New order*"],"role":"label","id":"checkoutReason"}` |
+| Checkout… is disabled, with its reason: "Choose a customer first", "The cart is empty", "Fix quantities above stock" | check | `buttonIsDisabled`, `buttonIsEnabled` |
 | Check out (Checkout…, Order ▸ Checkout…) | act | `checkoutWithPo` (PO number customers only; the other ways to pay are in Checkout below) |
 
 ## Checkout
@@ -174,10 +174,22 @@ add `tab:Items` and so on.
 
 ## Notes for the steps (found while surveying)
 
-- `openNewOrder` types the name and presses Enter, which takes the highlighted (first, by name) suggestion: "am"
-  opens an order for Café Lumen though Fjord Supplies fits too. See the row above (Task 7).
-- `openNewOrder`'s `choices` read the Customer column of the Orders list: every customer with an order (6), not
-  the toolbar ▾'s 4 recent ones, and they fail while another tab is selected.
+- Fixed: `openNewOrder` (and `chooseCustomer`) read the suggestions after typing and take the one whose text starts
+  with what was typed, or the only one; "am" fails naming Café Lumen and Fjord Supplies. A name that fits none
+  fails naming every customer the field offers (emptied, Down lists them all; Escape closes the list).
+- `openNewOrder`'s `choices` still read the Orders list's customers (every customer with an order), or the open
+  Customer suggestions: no screen lists every customer without acting. The step itself resolves against the app's
+  suggestions, so a customer outside the choices still works.
+- A product, a cart line or a category is given by its name or the start of it, any case; several names in one param
+  are parted by `;` (product names hold commas); `none` stands for "not shown" in every check.
+- A read of a table gives its first 20 rows: the products past them (Cleaning) are read one by one (row index, then
+  SKU).
+- App bug (found writing the steps, NOT fixed: needs the person's OK): choosing a category, by a click in Categories
+  or by Show in category, while the selected product's row number is past the new category's row count (e.g. the
+  Espresso machine selected, then Desk; or Show in category on the Stapler from All products) throws
+  `ArrayIndexOutOfBoundsException` on the event thread (`ProductsPanel.applyFilter` → `updateAdd` →
+  `selectedProducts` → `JTable.convertRowIndexToModel`). `browseCategory` passes when no such product is selected;
+  `showInCategory` passes only when the product's row fits its category (it already shows that category).
 - `checkoutWithPo` presses Next on the Address step without looking: for a customer whose address is incomplete
   (Elm Street Studio) Next is disabled. It types into "PO number", which exists only for customers that require a
   PO number; for Birch & Co and Elm Street Studio the field is "PO number (optional)", and card-only customers

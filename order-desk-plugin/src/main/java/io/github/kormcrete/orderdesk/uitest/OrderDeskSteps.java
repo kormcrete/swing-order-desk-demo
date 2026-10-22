@@ -5,7 +5,6 @@ import io.github.kormcrete.swingui.junit.Target;
 
 import java.time.Duration;
 
-import static io.github.kormcrete.swingui.junit.UiAssertions.assertThat;
 import static io.github.kormcrete.swingui.junit.UiAssertions.eventually;
 
 /**
@@ -16,6 +15,10 @@ import static io.github.kormcrete.swingui.junit.UiAssertions.eventually;
  * <p>Each name the app shows (a button, a column, a tab) is written once, in the constants below: the methods use them,
  * and so do the vocabulary's patterns that recognise a person's recorded clicks. When the app renames something, say
  * the "Add to cart" button, change its constant and both kinds of test pass again, and a person's clicks still fold.
+ *
+ * <p>The steps of a new order's tab are in {@link OrderDeskNewOrderSteps}; the ones here that act there (open a new
+ * order, add to the cart, set a quantity, the cart total) call it, and keep their names for the Java tests and the
+ * recorded tests that use them.
  *
  * <p>Client calls only: no app classes, so the plugin needs nothing from the app's build.
  */
@@ -51,35 +54,77 @@ public final class OrderDeskSteps {
     /** The caption of the cart's total. */
     static final String TOTAL_LABEL = "Total";
 
+    // ---- a new order's tab (OrderDeskNewOrderSteps)
+
+    /** The Customer field's suggestion when nothing fits what was typed. */
+    static final String NO_CUSTOMER_MATCHES = "No customer matches";
+    /** The terms card beside the Customer field, by its code name. */
+    static final String CUSTOMER_TERMS_ID = "customerTerms";
+    /** The products' Search field (the Orders tab has one too, outside a new order). */
+    static final String SEARCH_FIELD = "Search";
+    static final String PRICE_COLUMN = "Price";
+    static final String STOCK_COLUMN = "Stock";
+    /** Only the cart table has it. */
+    static final String LINE_TOTAL_COLUMN = "Line total";
+    /** The products count under the products, by its code name: "22 products · 2 selected". */
+    static final String PRODUCT_COUNT_ID = "productCount";
+    /** The text that replaces the products table when nothing fits the search: "No products match ‘zzz’". */
+    static final String NO_PRODUCTS_MATCH = "No products match";
+    /** Add to cart's reason while it is disabled, by its code name. */
+    static final String ADD_TO_CART_REASON_ID = "addToCartReason";
+    /** The products table's context menu item. */
+    static final String SHOW_IN_CATEGORY_ITEM = "Show in category";
+    /** The category every product is in, first in the tree. */
+    static final String ALL_PRODUCTS_CATEGORY = "All products";
+    /** How the tree's read names a category under another: "Office > Desk". */
+    static final String CATEGORY_PATH_SEPARATOR = " > ";
+    /** The cart's text while it is empty. */
+    static final String EMPTY_CART = "Select products and press Add to cart.";
+    /** Under the cart while a line asks for more than is in stock: "Only 4 Staplers in stock". */
+    static final String IN_STOCK_WARNING = "in stock";
+    static final String REMOVE_BUTTON = "Remove";
+    /** Remove's reason while lines are in the cart and none is selected (fixed text, no code name). */
+    static final String SELECT_A_CART_LINE_FIRST = "Select a cart line first";
+    /** The answers to "Remove 2 lines from the cart?". */
+    static final String REMOVE_LINES_ANSWER = "Remove lines";
+    static final String KEEP_ANSWER = "Keep";
+    /** Checkout…'s reason while it is disabled, by its code name. */
+    static final String CHECKOUT_REASON_ID = "checkoutReason";
+    /** The captions of the cart's amounts, as they show under the cart. */
+    static final String SUBTOTAL_LABEL = "Subtotal";
+    static final String VOLUME_DISCOUNT_LABEL = "Volume discount";
+    static final String SHIPPING_LABEL = "Shipping";
+    static final String VAT_LABEL = "VAT (20%)";
+    /** What a new order's title puts between "New order" and the customer: "New order · Ada Shop Ltd". */
+    static final String TITLE_SEPARATOR = " · ";
+    /** The key a multi-select click holds: Cmd on a Mac, Ctrl elsewhere. */
+    static final String ADD_TO_SELECTION = "Mod";
+
     private OrderDeskSteps() {
     }
 
     /**
-     * Opens a new order and picks its customer: File ▸ New order, the customer's name (or its start, e.g. "Ada") into
-     * Customer, Enter. The tab is then titled "New order · Ada Shop Ltd".
+     * Opens a new order and picks its customer: File ▸ New order, then the customer as
+     * {@link OrderDeskNewOrderSteps#openNewOrder} picks it (its name, or the start of it, e.g. "Ada"). The tab is then
+     * titled "New order · Ada Shop Ltd".
      */
     public static void openNewOrder(Client ui, String customer) {
-        ui.menu(FILE_MENU, NEW_ORDER_ITEM);
-        ui.tab(NEW_ORDER_TAB).field(CUSTOMER_FIELD).type(customer);
-        ui.press("Enter");
+        OrderDeskNewOrderSteps.openNewOrder(ui, customer);
     }
 
-    /** Adds one of {@code product} to the cart of the open new order: selects the product, then Add to cart. */
+    /** Adds one of {@code product} (its name or the start of it) to the cart of the open new order. */
     public static void addToCart(Client ui, String product) {
-        // the SKU cell: the cart table lists the product too once it is in the cart, but has no SKU column
-        newOrder(ui).table().row(PRODUCT_COLUMN, product).cell(SKU_COLUMN).click();
-        newOrder(ui).button(ADD_TO_CART_BUTTON).click();
+        OrderDeskNewOrderSteps.addToCart(ui, product);
     }
 
     /** Sets the quantity of {@code product}, already in the cart, to {@code qty}. */
     public static void setQuantity(Client ui, String product, int qty) {
-        newOrder(ui).table().row(PRODUCT_COLUMN, product).cell(QTY_COLUMN).type(String.valueOf(qty), null, Boolean.TRUE);
+        OrderDeskNewOrderSteps.setQuantity(ui, product, qty);
     }
 
     /** Adds {@code product} to the cart and sets its quantity to {@code qty}. */
     public static void addQtyToCart(Client ui, String product, int qty) {
-        addToCart(ui, product);
-        setQuantity(ui, product, qty);
+        OrderDeskNewOrderSteps.addQtyToCart(ui, product, qty);
     }
 
     /**
@@ -118,11 +163,11 @@ public final class OrderDeskSteps {
 
     /** Checks the cart total of the open new order, e.g. {@code €31.32}. */
     public static void cartTotalIs(Client ui, String total) {
-        assertThat(newOrder(ui).label(TOTAL_LABEL)).hasText(total);
+        OrderDeskNewOrderSteps.cartTotalIs(ui, total);
     }
 
     /** The open new order's tab: "New order", or "New order · Ada Shop Ltd" once its customer is chosen. */
-    private static Target newOrder(Client ui) {
+    static Target newOrder(Client ui) {
         return ui.tab(NEW_ORDER_TAB + "*");
     }
 }
