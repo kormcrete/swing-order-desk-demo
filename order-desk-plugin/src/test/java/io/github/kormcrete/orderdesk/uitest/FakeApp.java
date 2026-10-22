@@ -60,6 +60,14 @@ class FakeApp implements Verbs {
         return app;
     }
 
+    /** An app showing the checkout's Review step: its dialog, Cancel and Place order (no step heading on Review). */
+    static FakeApp onCheckoutReview() {
+        FakeApp app = new FakeApp();
+        app.answer("dialog:Checkout — * button 'Cancel'", node("button", "Cancel"));
+        app.answer("dialog:Checkout — * button 'Place order'", node("button", "Place order"));
+        return app;
+    }
+
     /** What a read of the element {@code key} answers; several nodes for a readAll. Replaces an earlier answer. */
     FakeApp answer(String key, Node... answer) {
         nodes.put(key, new ArrayList<Node>(Arrays.asList(answer)));
@@ -156,6 +164,13 @@ class FakeApp implements Verbs {
         }
         if (l.column != null) b.append(" col=").append(l.column);
         if (l.item != null) b.append(" item=").append(String.join(" > ", l.item));
+        if (l.scope != null) {
+            // a section or an id scope tells apart elements of one window that look alike (a review section's labels,
+            // the totals' Shipping); a tab scope does not (the tests answer one tab at a time)
+            List<String> inside = new ArrayList<String>();
+            for (String step : l.scope) if (step.startsWith("section:") || step.startsWith("id:")) inside.add(step);
+            if (!inside.isEmpty()) b.append(" in ").append(String.join(",", inside));
+        }
         return b.toString();
     }
 
@@ -163,7 +178,28 @@ class FakeApp implements Verbs {
 
     @Override public CapabilityReport capabilities() { throw Verbs.missing("capabilities"); }
     @Override public Watch watch() { throw Verbs.missing("watch"); }
-    @Override public Node snapshot(String window, String ref, Integer maxNodes, Integer maxRows) { throw Verbs.missing("snapshot"); }
+    private Node windows;
+
+    /** What a snapshot of the windows answers (the app node, with one child per window): for describeModal. */
+    FakeApp windows(Node app) {
+        windows = app;
+        return this;
+    }
+
+    /** An app node whose one window is the modal dialog titled {@code title}, its first label {@code label}. */
+    static Node modal(String title, String label) {
+        Node dialog = new Node("dialog", title);
+        dialog.modal = Boolean.TRUE;
+        dialog.children = new ArrayList<Node>(Arrays.asList(label(label)));
+        Node app = new Node("app", null);
+        app.children = new ArrayList<Node>(Arrays.asList(dialog));
+        return app;
+    }
+
+    @Override public Node snapshot(String window, String ref, Integer maxNodes, Integer maxRows) {
+        if (windows == null) throw Verbs.missing("snapshot");
+        return windows;
+    }
 
     @Override public Node read(Locator target, Integer maxRows) {
         List<Node> found = find(target);

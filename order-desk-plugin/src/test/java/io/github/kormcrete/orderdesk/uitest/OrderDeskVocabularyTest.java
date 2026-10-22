@@ -42,7 +42,10 @@ class OrderDeskVocabularyTest {
                 "total", "€31.32", "text", "pen", "customers", "Ada Shop Ltd", "terms", "Card only", "category", "Desk",
                 "products", "Stapler", "lines", "Stapler; Gel pen, black", "column", "Stock", "value", "4",
                 "warning", "Low stock: 4 left", "count", "22 products", "amount", "Subtotal", "reason", "x",
-                "button", "Add to cart"};
+                "button", "Add to cart", "field", "Street", "method", "Express", "number", "4242424242424242",
+                "expiry", "12/29", "name", "Ada Lindqvist", "section", "Payment", "step", "Address", "answer", "card",
+                "message", "Owes €940.00 now, this order adds €96.60.", "error", "none", "note", "Debit or credit card",
+                "price", "€14.90"};
         for (int i = 0; i < pairs.length; i += 2) SAMPLE.put(pairs[i], pairs[i + 1]);
     }
 
@@ -55,7 +58,34 @@ class OrderDeskVocabularyTest {
         override("productsListedAre", "products", "A4 paper, 500 sheets; Gel pen, black; Gel pen, blue; Stapler; Desk lamp");
         override("cartAmountIs", "value", "€26.70");
         override("cartStockWarningIs", "warning", "Only 4 Staplers in stock");
+        override("setCheckoutField", "value", "Elmstraße 9");
+        override("checkoutFieldIs", "value", "Torstraße 118");
+        override("placeOrderConfirmationIs", "message", "Place order for €41.16?");
+        override("reviewSectionIs", "section", "Shipping", "text", "Standard · 3–5 business days · €4.90");
+        override("reviewLinesAre", "lines", "A4 paper, 500 sheets; Stapler; Gel pen, black");
+        override("reviewLineIs", "column", "Qty", "value", "1");
+        override("reviewAmountIs", "amount", "Total", "value", "€41.16");
+        override("paymentNoteIs", "method", "Card");
     }
+
+    /** The checkout step each checkout step runs on in these tests (the credit-limit ones with its warning open). */
+    private static final Map<String, String> CHECKOUT_ON = new HashMap<String, String>();
+    static {
+        String[] pairs = {"checkoutWithPo", "Address", "placeOrder", "Review", "startCheckout", "Address",
+                "setCheckoutField", "Address", "chooseShipping", "Shipping", "payByInvoice", "Payment", "payByCard", "Payment",
+                "checkoutNext", "Address", "checkoutBack", "Shipping", "editReviewSection", "Review",
+                "answerCreditLimit", "Payment", "cancelCheckout", "Address", "cancelPlaceOrder", "Review",
+                "checkoutCustomerIs", "Address", "checkoutStepIs", "Address", "checkoutFieldIs", "Address",
+                "checkoutFieldErrorIs", "Address", "shippingPriceIs", "Shipping", "paymentNoteIs", "Payment",
+                "creditLimitWarningIs", "Payment", "placeOrderConfirmationIs", "Review", "reviewSectionIs", "Review",
+                "reviewLinesAre", "Review", "reviewLineIs", "Review", "reviewAmountIs", "Review"};
+        for (int i = 0; i < pairs.length; i += 2) CHECKOUT_ON.put(pairs[i], pairs[i + 1]);
+    }
+
+    /** The steps that need the credit-limit warning, not the checkout. */
+    private static final List<String> CREDIT_WARNING_STEPS = Arrays.asList("answerCreditLimit", "creditLimitWarningIs");
+    /** The checkout steps that start from a new order. */
+    private static final List<String> FROM_NEW_ORDER = Arrays.asList("startCheckout", "checkoutWithPo");
 
     private static void override(String id, String... pairs) {
         Map<String, String> v = new HashMap<String, String>();
@@ -71,7 +101,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 26;
+    private static final int CHECKED_PATTERN_ENTRIES = 53;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -91,7 +121,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theNewOrderStepsAndChecks() {
-        assertThat(sentences().subList(8, sentences().size())).containsExactly(
+        assertThat(sentences().subList(8, 32)).containsExactly(
                 "chooseCustomer: Choose {customer} as the customer",
                 "typeCustomer: Type {text} into Customer without picking a customer",
                 "customerSuggestionsAre: The customer suggestions are {customers}",
@@ -119,8 +149,37 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
+    void theCheckoutStepsAndChecks() {
+        assertThat(sentences().subList(32, sentences().size())).containsExactly(
+                "startCheckout: Start the checkout",
+                "setCheckoutField: Set the checkout's {field} to {value}",
+                "chooseShipping: Choose {method} shipping",
+                "payByInvoice: Pay by invoice with PO number {po}",
+                "payByCard: Pay by card {number}, expiry {expiry}, name on card {name}",
+                "checkoutNext: Go on to the next checkout step",
+                "checkoutBack: Go back a checkout step",
+                "editReviewSection: Edit the {section} on the review",
+                "answerCreditLimit: Answer the credit-limit warning with {answer}",
+                "cancelCheckout: Cancel the checkout",
+                "cancelPlaceOrder: Ask to place the order, then cancel",
+                "checkoutCustomerIs: The checkout is for {customer}",
+                "checkoutStepIs: The checkout is on the {step} step",
+                "checkoutFieldIs: The checkout's {field} reads {value}",
+                "checkoutFieldErrorIs: The checkout's {field} error reads {error}",
+                "shippingPriceIs: The {method} shipping price is {price}",
+                "paymentNoteIs: The note under {method} reads {note}",
+                "creditLimitWarningIs: The credit-limit warning reads {message}",
+                "placeOrderConfirmationIs: The place-order confirmation reads {message}",
+                "reviewSectionIs: The review's {section} reads {text}",
+                "reviewLinesAre: The review lists {lines}",
+                "reviewLineIs: The {column} of {product} on the review is {value}",
+                "reviewAmountIs: The review's {amount} is {value}");
+        assertThat(step("placeOrder").outcomeBody()).isNotNull();
+    }
+
+    @Test
     void anActStepSaysWhatItNeedsAndWhereItEndsAndACheckWhatItReads() {
-        List<String> acts = Arrays.asList("checkoutWithPo", "placeOrder", "openOrder");   // their screens come later
+        List<String> acts = Collections.singletonList("openOrder");   // its screen comes later
         for (DomainStep s : steps) {
             boolean check = s.id().endsWith("Is") || s.id().endsWith("Are") || s.id().equals("newOrderIsFor")
                     || s.id().equals("buttonIsDisabled") || s.id().equals("buttonIsEnabled");
@@ -146,7 +205,8 @@ class OrderDeskVocabularyTest {
     void everyStepNamesItsJavaMethod() throws Exception {
         for (DomainStep s : steps) {
             Class<?> type = Class.forName(s.javaClass());
-            assertThat(s.javaClass()).as(s.id()).isIn(OrderDeskSteps.class.getName(), OrderDeskNewOrderSteps.class.getName());
+            assertThat(s.javaClass()).as(s.id()).isIn(OrderDeskSteps.class.getName(), OrderDeskNewOrderSteps.class.getName(),
+                    OrderDeskCheckoutSteps.class.getName());
             String call = s.javaCall();
             String name = call.substring(0, call.indexOf('('));
             int args = call.split(",").length;
@@ -177,7 +237,8 @@ class OrderDeskVocabularyTest {
     @Test
     void eachNewOrderStepFailsFastWhenItsScreenIsNotShowing() {
         // the Orders tab selected, or no new order open: every step of a new order's tab says so within about a second
-        List<String> elsewhere = Arrays.asList("openNewOrder", "recentCustomersAre", "checkoutWithPo", "placeOrder", "openOrder");
+        List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre", "openOrder"));
+        for (String id : CHECKOUT_ON.keySet()) if (!FROM_NEW_ORDER.contains(id)) elsewhere.add(id);
         int checked = 0;
         for (final DomainStep s : steps) {
             if (elsewhere.contains(s.id())) continue;
@@ -197,6 +258,30 @@ class OrderDeskVocabularyTest {
             checked++;
         }
         assertThat(checked).isEqualTo(steps.size() - elsewhere.size());
+    }
+
+    @Test
+    void eachCheckoutStepFailsFastWhenItsScreenIsNotShowing() {
+        // no checkout open (the credit-limit steps: no warning): each says so within about a second and takes no step
+        int checked = 0;
+        for (final DomainStep s : steps) {
+            if (!CHECKOUT_ON.containsKey(s.id()) || FROM_NEW_ORDER.contains(s.id())) continue;
+            final FakeApp nothing = new FakeApp();
+            final Map<String, String> v = sample(s.id());
+            long start = System.currentTimeMillis();
+
+            Throwable gone = catchThrowable(() -> s.body().run(nothing.client(), new Params() {
+                @Override public String text(String name) { return v.get(name); }
+                @Override public int integer(String name) { return Integer.parseInt(v.get(name)); }
+            }));
+
+            assertThat(System.currentTimeMillis() - start).as(s.id()).isLessThan(2000);
+            assertThat(gone).as(s.id()).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: "
+                    + (CREDIT_WARNING_STEPS.contains(s.id()) ? OrderDeskCheckoutSteps.NO_CREDIT_WARNING : OrderDeskCheckoutSteps.NO_CHECKOUT));
+            assertThat(nothing.steps()).as(s.id()).isEmpty();
+            checked++;
+        }
+        assertThat(checked).isEqualTo(CHECKOUT_ON.size() - FROM_NEW_ORDER.size());
     }
 
     @Test
@@ -341,6 +426,38 @@ class OrderDeskVocabularyTest {
         assertThat(pattern("removeFromCart").match(Arrays.asList(line, remove)).params()).containsEntry("products", "Stapler");
     }
 
+    @Test
+    void theBundledPlaceOrderRecordingsCheckoutFoldsIntoCheckoutWithPo() {
+        String dialog = "'window':'dialog','role':'button','name':'Next'";
+        List<JsonNode> recorded = Arrays.asList(
+                json("{'action':'click','target':{'scope':['tab:New order · Ada Shop Ltd'],'role':'button','name':'Checkout…'}}"),
+                json("{'action':'click','target':{" + dialog + "}}"),
+                json("{'action':'click','target':{" + dialog + "}}"),
+                json("{'action':'type','target':{'window':'dialog','role':'text','name':'PO number'},'text':'PO-7781'}"),
+                json("{'action':'click','target':{" + dialog + "}}"));
+
+        assertThat(pattern("checkoutWithPo").match(recorded).params()).containsEntry("po", "PO-7781");
+    }
+
+    @Test
+    void anExpressClickFoldsIntoChooseShippingAndACardClickDoesNot() {
+        JsonNode express = json("{'action':'click','target':{'window':'dialog','role':'radio','name':'Express · next business day'}}");
+        JsonNode card = json("{'action':'click','target':{'window':'dialog','role':'radio','name':'Card'}}");
+
+        assertThat(pattern("chooseShipping").match(Collections.singletonList(express)).params()).containsEntry("method", "Express");
+        assertThat(pattern("chooseShipping").match(Collections.singletonList(card))).isNull();
+    }
+
+    @Test
+    void aPersonsCheckOfAFieldErrorFoldsIntoCheckoutFieldErrorIs() {
+        JsonNode error = json("{'action':'expect','target':{'window':'dialog','id':'postalCodeError'},'text':'Postal code is required'}");
+
+        Pattern.Match m = pattern("checkoutFieldErrorIs").match(Collections.singletonList(error));
+
+        assertThat(m.params()).containsEntry("field", "postalCode").containsEntry("error", "Postal code is required");
+        assertThat(OrderDeskCheckoutSteps.field(m.params().get("field")).name).isEqualTo("Postal code");
+    }
+
     // ---- helpers
 
     private static JsonNode addToCartButton() {
@@ -426,7 +543,13 @@ class OrderDeskVocabularyTest {
 
     /** The steps that run takes on the app {@code s} needs; a failure after them (a trace's unanswered read) counts. */
     private static JsonNode traced(DomainStep s, Body body) {
-        if (Arrays.asList("checkoutWithPo", "placeOrder", "openOrder").contains(s.id())) {
+        if (CHECKOUT_ON.containsKey(s.id())) {
+            CheckoutFake checkout = new CheckoutFake(CHECKOUT_ON.get(s.id()));
+            if (CREDIT_WARNING_STEPS.contains(s.id())) checkout.creditWarning();
+            body.run(checkout.client());
+            return checkout.steps();
+        }
+        if ("openOrder".equals(s.id())) {
             TracingVerbs verbs = new TracingVerbs();
             try {
                 body.run(new Client(verbs, verbs.app(), "trace"));

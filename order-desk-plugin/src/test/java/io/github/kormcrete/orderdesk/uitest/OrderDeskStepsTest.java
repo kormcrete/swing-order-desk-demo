@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * Each of Order Desk's steps as the steps it takes: traced on a Client that reaches no app, or, for the steps of a new
@@ -71,27 +70,42 @@ class OrderDeskStepsTest {
 
     @Test
     void checkoutWithPoEndsOnTheReviewStep() {
-        OrderDeskSteps.checkoutWithPo(ui, "PO-7781");
+        CheckoutFake app = new CheckoutFake("Address");
 
-        assertThat(trace()).isEqualTo(json("["
+        OrderDeskSteps.checkoutWithPo(app.client(), "PO-7781");
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{" + NEW_ORDER + ",'role':'button','name':'Checkout…'}},"
                 + "{'action':'click','target':{'window':'dialog','role':'button','name':'Next'}},"
                 + "{'action':'click','target':{'window':'dialog','role':'button','name':'Next'}},"
                 + "{'action':'type','target':{'window':'dialog','role':'text','name':'PO number'},'text':'PO-7781'},"
                 + "{'action':'click','target':{'window':'dialog','role':'button','name':'Next'}}]"));
-        assertThat(verbs.derivable()).isTrue();
     }
 
     @Test
-    void placeOrderConfirmsThenReadsTheNewNumberFromTheStatusBar() {
-        Throwable read = catchThrowable(() -> OrderDeskSteps.placeOrder(ui));
+    void placeOrderConfirmsThenReadsTheNewNumberFromTheStatusLine() {
+        CheckoutFake app = new CheckoutFake("Review");
 
-        assertThat(trace()).isEqualTo(json("["
+        String number = OrderDeskSteps.placeOrder(app.client());
+
+        assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{'window':'dialog','role':'button','name':'Place order'}},"
                 + "{'action':'answer','button':'Place order'}]"));
-        // the number comes from the app: a trace has no answer, which is why the vocabulary gives placeOrder a match
-        assertThat(read).isNotNull();
-        assertThat(verbs.derivable()).isFalse();
+        assertThat(number).isEqualTo("ORD-1640");
+    }
+
+    @Test
+    void placeOrderReadsTheNewNumberFromTheStatusLineByItsCodeName() {
+        // the status line is named "statusMessage" (reach fix R1), so a label found by the text it holds ("placed")
+        // reads that code name as its name: cutting the number out of it threw "String index out of range: -7"
+        FakeApp app = FakeApp.onCheckoutReview();
+        app.answer("label 'placed'", FakeApp.label("statusMessage", "Order ORD-1640 placed"));
+        app.answer("element #statusMessage", FakeApp.label("statusMessage", "Order ORD-1640 placed"));
+        app.answer("tab 'ORD-1640'", FakeApp.withState(FakeApp.node("tab", "ORD-1640"), "selected"));
+
+        String number = OrderDeskSteps.placeOrder(app.client());
+
+        assertThat(number).isEqualTo("ORD-1640");
     }
 
     @Test

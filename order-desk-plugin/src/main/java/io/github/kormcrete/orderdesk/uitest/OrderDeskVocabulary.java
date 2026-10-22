@@ -19,16 +19,20 @@ import java.util.Set;
 
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.ADD_TO_CART_BUTTON;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.ADD_TO_CART_ITEM;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CHECKOUT_BUTTON;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CUSTOMER_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.CUSTOMER_FIELD;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.FILE_MENU;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.NEW_ORDER_BUTTON;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.NEW_ORDER_ITEM;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.NEW_ORDER_TAB;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.NEXT_BUTTON;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.ORDERS_TAB;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.ORDER_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PLACE_ORDER_ANSWER;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PLACE_ORDER_BUTTON;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PO_NUMBER_FIELD;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PO_NUMBER_OPTIONAL_FIELD;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PRODUCT_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.QTY_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.RECENT_CUSTOMER_BUTTON;
@@ -43,8 +47,9 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.TOTAL_LABEL;
  * The others say theirs: every step of a new order's tab first looks at the app (the new order it needs, the product,
  * cart line or customer a name means), which a trace cannot follow; {@code addToCart} matches a click anywhere on a
  * product's row, not only its SKU cell; {@code addQtyToCart} is {@code addToCart} then {@code setQuantity};
- * {@code openOrder} matches with or without the click on the Orders tab; {@code placeOrder} reads the new number. The
- * rest of a new order's steps and checks are in {@link OrderDeskNewOrderVocabulary}. The patterns take the app's names
+ * {@code openOrder} matches with or without the click on the Orders tab; {@code checkoutWithPo} and {@code placeOrder}
+ * look at the checkout first, and {@code placeOrder} reads the new number. The rest of a new order's steps and checks
+ * are in {@link OrderDeskNewOrderVocabulary}, the checkout's in {@link OrderDeskCheckoutVocabulary}. The patterns take the app's names
  * from {@link OrderDeskSteps}' constants, so a rename is one change there.
  */
 public final class OrderDeskVocabulary implements Vocabulary {
@@ -72,6 +77,7 @@ public final class OrderDeskVocabulary implements Vocabulary {
         List<DomainStep> steps = new ArrayList<DomainStep>(firstSteps());
         steps.addAll(new OrderDeskNewOrderVocabulary(this::knownCustomers, this::productNames, this::cartLines,
                 this::categories).steps());
+        steps.addAll(new OrderDeskCheckoutVocabulary(this::knownCustomers, this::reviewProducts).steps());
         return steps;
     }
 
@@ -128,14 +134,26 @@ public final class OrderDeskVocabulary implements Vocabulary {
                         .java(STEPS, "addQtyToCart(ui, {product}, {qty})")
                         .build(),
                 DomainStep.act("checkoutWithPo", "Check out with PO number {po}")
-                        .about("Checks out the open new order, paid by PO number; ends on the Review step, before Place order")
+                        .about("Needs: a new order showing, its Checkout… enabled, a customer that pays on invoice. Ends:"
+                                + " on the checkout's Review step, before Place order (over the customer's credit limit: on"
+                                + " the credit-limit warning, see Answer the credit-limit warning with …). Keeps the"
+                                + " customer's address and Standard shipping; {po} goes into \"PO number\" (\"PO number"
+                                + " (optional)\" for customers that need none; none: nothing typed). A step that blocks fails"
+                                + " with the app's reason (an incomplete address: \"Postal code is required\"; a card-only"
+                                + " customer), the checkout cancelled")
                         .param("po", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskSteps.checkoutWithPo(ui, p.text("po")))
+                        .match(checkoutWithPo(PO_NUMBER_FIELD))
+                        .matchAlso(checkoutWithPo(PO_NUMBER_OPTIONAL_FIELD))
                         .java(STEPS, "checkoutWithPo(ui, {po})")
                         .build(),
                 DomainStep.act("placeOrder", "Place the order")
-                        .about("Places the order on the checkout's Review step and confirms it; ends on the new order's tab")
-                        .code((ui, p) -> OrderDeskSteps.placeOrder(ui))
+                        .about("Needs: the checkout's Review step. Ends: on the new order's own tab (it takes the new"
+                                + " order's place, titled with its number), the status line \"Order ORD-1640 placed\"."
+                                + " Presses Place order and confirms (\"Place order for €122.34?\"), then waits while the"
+                                + " app places it (about 2 s). The outcome: the number (number) and what showed while"
+                                + " placing (placing: \"Order for €122.34 · Ada Shop Ltd\")")
+                        .codeWithOutcome((ui, p) -> OrderDeskCheckoutSteps.placeOrderOutcome(ui))
                         .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(PLACE_ORDER_BUTTON)),
                                 json("{'action':'answer','button':%s}", text(PLACE_ORDER_ANSWER)))
                         .java(STEPS, "placeOrder(ui)")
@@ -163,6 +181,27 @@ public final class OrderDeskVocabulary implements Vocabulary {
     private List<String> productNames() {
         Client ui = needsNewOrder("the products are listed in a new order tab, and none is showing");
         return OrderDeskNewOrderSteps.listedProducts(ui);
+    }
+
+    /** The products the checkout's Review step lists. */
+    private List<String> reviewProducts() {
+        Client ui = live.timeout(READ);
+        try {
+            OrderDeskCheckoutSteps.requireOn(ui, OrderDeskCheckoutSteps.Step.REVIEW, "The review's lines");
+        } catch (DriverException e) {
+            throw new IllegalStateException("the order's lines are on the checkout's Review step, and it is not showing", e);
+        }
+        return OrderDeskCheckoutSteps.reviewProducts(ui);
+    }
+
+    /** checkoutWithPo's steps when the PO number's caption is {@code poCaption}. */
+    private static String[] checkoutWithPo(String poCaption) {
+        String next = json("{'action':'click','target':{'window':'dialog','role':'button','name':%s}}", text(NEXT_BUTTON));
+        return new String[]{
+                json("{'action':'click','target':{'scope':%s,'role':'button','name':%s}}", NEW_ORDER_SCOPE, text(CHECKOUT_BUTTON)),
+                next, next,
+                json("{'action':'type','target':{'window':'dialog','role':'text','name':%s},'text':'{po}'}", text(poCaption)),
+                next};
     }
 
     /** The products in the showing new order's cart. */

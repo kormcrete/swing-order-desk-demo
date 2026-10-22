@@ -90,66 +90,70 @@ both have a `Product` column, so a row locator on either must also name a column
 | The cart's Subtotal, Volume discount (5% off a line of 10 or more; shown only then), Shipping ("chosen at checkout") and VAT (20%) | check | `cartAmountIs` |
 | The cart total | check | `cartTotalIs` |
 | Checkout… is disabled, with its reason: "Choose a customer first", "The cart is empty", "Fix quantities above stock" | check | `buttonIsDisabled`, `buttonIsEnabled` |
-| Check out (Checkout…, Order ▸ Checkout…) | act | `checkoutWithPo` (PO number customers only; the other ways to pay are in Checkout below) |
+| Check out (Checkout…, Order ▸ Checkout…) | act | `startCheckout`, `checkoutWithPo` (see Checkout below) |
 
 ## Checkout
 
 The modal "Checkout — <customer>" dialog (`CheckoutPanel`, `AddressStep`, `ShippingStep`, `PaymentStep`,
-`ReviewStep`): `"window":"dialog"`. Only the showing step's fields are in the tree.
+`ReviewStep`): `"window":"dialog"`. Only the showing step's fields are in the tree. Every checkout step first looks for
+the checkout (`dialog:Checkout — *`) and the step it needs, and fails fast naming where the checkout is and the step
+that gets there; while the credit-limit warning or Place order's question is open over it, it says "answer it first".
 
 ### The whole wizard
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| The dialog's title names the customer ("Checkout — Ada Shop Ltd") | check | to write: `read {"window":"dialog:Checkout — <customer>","role":"button","name":"Cancel"}` found (or `pending.title` of the Checkout… click) |
-| Which step shows (1 Address · 2 Shipping · 3 Payment · 4 Review; done steps ticked, the current one bold) | check | to write: `read {"window":"dialog","role":"label","id":"checkoutStep"}` ("Delivery address", "Shipping method", "Payment"; NOT_FOUND on Review, known by its Place order button) |
-| Go back or on (Back, Next or Enter) | act | to write: `click {"window":"dialog","role":"button","name":"Next"}` (`Back`) |
-| Leave the checkout (Cancel, Esc, closing the window): no question, the new order stays as it was | act | to write: `click {"window":"dialog","role":"button","name":"Cancel"}` |
-| Next is disabled, with its reason: "Fix the fields marked in red", the first error ("Postal code is required"), "Enter the PO number", "Complete the card details" | check | to write: Next's state via `read {"window":"dialog","role":"button","name":"Next"}`; the reason: `read {"window":"dialog","role":"label","id":"nextReason"}` |
+| Check out (Checkout…, Order ▸ Checkout…) | act | `startCheckout` (a disabled Checkout… fails with its reason); `checkoutWithPo` (whole checkout on invoice with a PO number) |
+| The dialog's title names the customer ("Checkout — Ada Shop Ltd") | check | `checkoutCustomerIs` |
+| Which step shows (1 Address · 2 Shipping · 3 Payment · 4 Review; done steps ticked, the current one bold) | check | `checkoutStepIs` (reads the `checkoutStep` heading; Review: no heading, Place order instead) |
+| Go back or on (Back, Next or Enter) | act | `checkoutNext` (a disabled Next fails with its reason and the fields' errors), `checkoutBack` |
+| Leave the checkout (Cancel, Esc, closing the window): no question, the new order stays as it was | act | `cancelCheckout` |
+| Next is disabled, with its reason: "Fix the fields marked in red", the first error ("Postal code is required"), "Enter the PO number", "Complete the card details" | check | `buttonIsDisabled` / `buttonIsEnabled` with Next (reason by id `nextReason`) |
 
 ### Address step
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| The delivery address, filled in from the customer: Name, Street, Postal code, City, Country, Phone (optional) | check | to write: `read {"window":"dialog","role":"text","name":"Street"}` (`value`; `combo` `Country`) |
-| Change the delivery address (any field; Country: Germany, Austria, Netherlands, France) | act | to write: `type {"window":"dialog","role":"text","name":"<caption>"}`; `select {"window":"dialog","role":"combo","name":"Country"},"item":"<country>"` |
-| A field's error under it ("Street is required", "Germany uses a 5-digit postal code", "The Netherlands use the form 1234 AB", "Only +, digits and spaces, 6–20 characters"), once the field was left, or at once when the customer's own address is incomplete (Elm Street Studio has no postal code) | check | to write: `read {"window":"dialog","role":"label","id":"streetError"}` (`nameError`, `postalCodeError`, `cityError`, `phoneError`) |
+| The delivery address, filled in from the customer: Name, Street, Postal code, City, Country, Phone (optional) | check | `checkoutFieldIs` (a text field's content; Country: the combo's value) |
+| Change the delivery address (any field; Country: Germany, Austria, Netherlands, France) | act | `setCheckoutField` (types, then Tab so the field's error shows; Country: chosen from its list; `none` empties) |
+| A field's error under it ("Street is required", "Germany uses a 5-digit postal code", "The Netherlands use the form 1234 AB", "Only +, digits and spaces, 6–20 characters"), once the field was left, or at once when the customer's own address is incomplete (Elm Street Studio has no postal code) | check | `checkoutFieldErrorIs` (by id `<field>Error`; `none`: absent) |
 
 ### Shipping step
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| Choose Standard or Express | act | to write: `click {"window":"dialog","role":"radio","name":"Express · next business day"}` (`Standard · 3–5 business days`) |
-| The prices: Standard €4.90, free from €100.00 after the discount; Express €14.90 | check | to write: `read {"window":"dialog","role":"label","id":"standardPrice"}` (`expressPrice`) |
-| Express is disabled outside Germany and Austria: "Express delivers to Germany and Austria only" | check | to write: `read {"window":"dialog","role":"radio","name":"Express · next business day"}` (state `disabled`); `expect {"target":{"window":"dialog","role":"label","name":"Express delivers to Germany and Austria only"},"shown":true}` |
-| Write a delivery note | act | to write: `type {"window":"dialog","role":"text","name":"Delivery note (optional)"}` |
+| Choose Standard or Express | act | `chooseShipping` ("express", "standard" or the radio's label; Express outside Germany/Austria fails with the app's reason) |
+| The prices: Standard €4.90, free from €100.00 after the discount; Express €14.90 | check | `shippingPriceIs` (ids `standardPrice`, `expressPrice`) |
+| Express is disabled outside Germany and Austria: "Express delivers to Germany and Austria only" | check | `buttonIsDisabled` with Express (radio state; the reason by its fixed text) |
+| Write a delivery note | act | `setCheckoutField` with Delivery note; read back with `checkoutFieldIs` |
 
 ### Payment step
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| Pay on invoice with a PO number (customers that require one: "PO number") | act | `checkoutWithPo` |
-| Pay on invoice, PO number optional ("PO number (optional)": Birch & Co, Elm Street Studio) | act | to write: `type {"window":"dialog","role":"text","name":"PO number (optional)"}` (`checkoutWithPo` types into "PO number" only) |
-| Pay by card: Card, then Card number (shown in groups of four), Expiry (MM/YY), Name on card | act | to write: `click {"window":"dialog","role":"radio","name":"Card"}`; `type {"window":"dialog","role":"text","name":"Card number"}` (`Expiry`, `Name on card`) |
-| A card-only customer: Invoice is disabled, "Café Lumen pays by card", no PO number field | check | to write: `read {"window":"dialog","role":"radio","name":"Invoice (30 days)"}` (state `disabled`); the note: `read {"window":"dialog","role":"label","id":"invoiceNote"}` |
-| The invoice note: "Credit limit €2,000.00 · owes €450.00" | check | to write: `read {"window":"dialog","role":"label","id":"invoiceNote"}` |
-| A field's error: "PO number is required", "Enter the 16 digits of the card", "Use MM/YY", "Month must be 01–12", "This card has expired", "Name on card is required" | check | to write: `read {"window":"dialog","role":"label","id":"cardNumberError"}` (`poNumberError`, `expiryError`, `nameOnCardError`) |
-| Next on an invoice over the credit limit warns ("This order takes Birch & Co to €1,036.60 of its €1,000.00 credit limit." / "Owes €940.00 now, this order adds €96.60."): Pay by card instead (Card gets chosen) or Continue with invoice | act | to write: `click {"window":"dialog","role":"button","name":"Next"}` (its `pending` carries the message), then `answer {"button":"Pay by card instead"}` or `{"button":"Continue with invoice"}` |
+| Pay on invoice with a PO number (customers that require one: "PO number") | act | `payByInvoice`, `checkoutWithPo` |
+| Pay on invoice, PO number optional ("PO number (optional)": Birch & Co, Elm Street Studio) | act | `payByInvoice` (`none`: left empty), `checkoutWithPo` (types into whichever caption shows) |
+| Pay by card: Card, then Card number (shown in groups of four), Expiry (MM/YY), Name on card | act | `payByCard`; the grouping: `checkoutFieldIs` Card number ("4242 4242 4242 4242") |
+| The Card choice's hint "Debit or credit card" (fixed text under Card) | check | `paymentNoteIs` with Card (found by its text) |
+| A card-only customer: Invoice is disabled, "Café Lumen pays by card", no PO number field | check | `buttonIsDisabled` with Invoice (reason: the invoice note), `paymentNoteIs` Invoice; `payByInvoice` and `checkoutWithPo` fail with that note |
+| The invoice note: "Credit limit €2,000.00 · owes €450.00" | check | `paymentNoteIs` with Invoice (id `invoiceNote`) |
+| A field's error: "PO number is required", "Enter the 16 digits of the card", "Use MM/YY", "Month must be 01–12", "This card has expired", "Name on card is required" | check | `checkoutFieldErrorIs` (`poNumberError`, `cardNumberError`, `expiryError`, `nameOnCardError`) |
+| Next on an invoice over the credit limit warns ("This order takes Birch & Co to €1,036.60 of its €1,000.00 credit limit." / "Owes €940.00 now, this order adds €96.60."): Pay by card instead (Card gets chosen) or Continue with invoice | act | `checkoutNext` (or `checkoutWithPo`) ends on the warning; `answerCreditLimit` ("card", "continue"); `creditLimitWarningIs` reads it (message, detail or both) |
 
 ### Review step and placing
 
 | What the user does or sees | Kind (act/check/start) | Covered by (step id) or Gap (reason) |
 |---|---|---|
-| The Delivery address, Shipping ("Standard · 3–5 business days · €4.90", "Note: …") and Payment ("Invoice (30 days) · PO PO-2026-131", "Card ending 4242") sections | check | to write: `read {"window":"dialog","role":"section","name":"Delivery address"}` (its label children); `read {"window":"dialog","scope":["section:Shipping"],"role":"label"}` (`section:Payment`; the Shipping section has a second label with the note) |
-| Edit a section (its Edit goes back to that step) | act | to write: `click {"window":"dialog","scope":["section:Payment"],"role":"button","name":"Edit"}` |
-| The order's lines: Product, Qty, Price, Line total | check | to write: `read {"window":"dialog","role":"table"}` (a cell: `"row":{"Product":"<product>"},"column":"Line total"`) |
-| The order's Subtotal, Volume discount, Shipping, VAT (20%) and Total | check | to write: `read {"window":"dialog","role":"label","name":"Total"}` (`Subtotal`, `Volume discount`, `VAT (20%)`); Shipping: `read {"window":"dialog","scope":["id:totals"],"role":"label","name":"Shipping"}` (unscoped, `label 'Shipping'` also matches the step indicator) |
+| The Delivery address, Shipping ("Standard · 3–5 business days · €4.90", "Note: …") and Payment ("Invoice (30 days) · PO PO-2026-131", "Card ending 4242") sections | check | `reviewSectionIs` (the section's lines parted by `;`) |
+| Edit a section (its Edit goes back to that step) | act | `editReviewSection` |
+| The order's lines: Product, Qty, Price, Line total | check | `reviewLinesAre`, `reviewLineIs` |
+| The order's Subtotal, Volume discount, Shipping, VAT (20%) and Total | check | `reviewAmountIs` (ruling R20: by caption inside `id:totals`; `none` for a Volume discount not shown) |
 | Place the order and confirm it ("Place order for €122.34?" / "Order for Ada Shop Ltd, 11 items.") | act | `placeOrder` |
-| Back out at the confirmation (Cancel): still on Review | act | to write: `click {"window":"dialog","role":"button","name":"Place order"}`, `answer {"button":"Cancel"}` |
-| The confirmation's total and item count | check | to write: the Place order click's `pending.message` |
-| Placing: "Placing order…", "Order for €122.34 · Ada Shop Ltd", every button disabled, about 2 s | check | to write: `expect {"target":{"window":"dialog","role":"label","name":"Placing order…"},"shown":true}` |
-| Placing fails: "The order could not be placed." (OK; back on Review) | check | Gap: needs app internals even after an app change (provoking it needs stock to change inside the modal 2 s placing window) |
-| Once placed: the new order's tab takes the new order's place, titled with its number; the status line says "Order ORD-1640 placed" | check | `placeOrder` (returns the number) |
+| Back out at the confirmation (Cancel): still on Review | act | `cancelPlaceOrder` |
+| The confirmation's total and item count | check | `placeOrderConfirmationIs` (presses Place order, reads, answers Cancel) |
+| Placing: "Placing order…", "Order for €122.34 · Ada Shop Ltd", every button disabled, about 2 s | check | `placeOrder`'s outcome `placing` ("Order for €49.20 · Ada Shop Ltd"); a checkout step during placing fails saying the order is being placed. The disabled buttons: not checked (2 s window, inside `placeOrder`) |
+| Placing fails: "The order could not be placed." (OK; back on Review) | check | Gap: needs app internals even after an app change (provoking it needs stock to change inside the modal 2 s placing window). `placeOrder` fails with the app's message if it ever shows |
+| Once placed: the new order's tab takes the new order's place, titled with its number; the status line says "Order ORD-1640 placed" | check | `placeOrder` (outcome `number`, read from the status line by id `statusMessage` once that number's tab is selected) |
 
 ## Order tab
 
@@ -188,6 +192,15 @@ add `tab:Items` and so on.
   a category, by a click in Categories or by Show in category, while the selected product's row lay past the new
   category's rows threw `ArrayIndexOutOfBoundsException` on the event thread. It came from the rows-updated event the
   tab fired each time it showed (`ProductsPanel.refresh`).
+
+- Checkout (sub-task c): `placeOrder` read the status line as "a label containing ‘placed’" and cut the number out of
+  its name. Since R1 that label's name is its code name `statusMessage`, so the cut threw "String index out of range:
+  -7" after the order was placed (runs against an app before R1 passed). It now reads the label by id and its shown text
+  ("Order ORD-1640 placed"), and waits until that number's tab is selected. `checkoutWithPo` no longer presses Next
+  blind: a disabled Next fails with the app's reason and the fields' errors, a card-only customer fails with the invoice
+  note, the PO goes into "PO number" or "PO number (optional)", and on a failure the checkout it opened is cancelled.
+- A checkout field, step, way to pay, section or answer is given by the tester's words: the name, its start, a word of
+  it ("note": Delivery note), the label the app shows or the id ("postalCode"); "PO" is the PO number.
 
 ## Reach fixes needed
 

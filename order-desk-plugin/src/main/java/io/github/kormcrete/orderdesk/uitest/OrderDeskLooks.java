@@ -118,6 +118,58 @@ final class OrderDeskLooks {
                 + (choices.isEmpty() ? "none" : join(choices)));
     }
 
+    /**
+     * The choice a tester means by {@code wanted} among names that have other words for them too: {@code words} maps
+     * each word (a choice's name, the label the app shows, an id) to its choice. Compared by letters and digits only,
+     * any case ("postalCode" is "Postal code", "Express · next business day" is "Express"): a word equal to it, else the
+     * words that start with it, else those with a word that starts with it ("note": Delivery note), else the word it
+     * starts with (the whole label given). Each level counts choices, not words; several fail naming them, none names
+     * them all, as {@link #pick} does.
+     */
+    static String resolve(String wanted, Map<String, String> words, String kind, String kinds, String where) {
+        String w = letters(wanted);
+        List<String> choices = new ArrayList<String>(new java.util.LinkedHashSet<String>(words.values()));
+        if (!w.isEmpty()) {
+            for (int level = 0; level < 4; level++) {
+                java.util.Set<String> fit = new java.util.LinkedHashSet<String>();
+                for (Map.Entry<String, String> e : words.entrySet()) {
+                    String word = letters(e.getKey());
+                    boolean fits = level == 0 ? word.equals(w)
+                            : level == 1 ? word.startsWith(w)
+                            : level == 2 ? anyWordStarts(e.getKey(), w)
+                            : w.startsWith(word);
+                    if (fits) fit.add(e.getValue());
+                }
+                if (fit.size() == 1) return fit.iterator().next();
+                if (fit.size() > 1) {
+                    throw new DriverException(Reason.AMBIGUOUS, quoted(wanted) + " fits " + fit.size() + " " + kinds + ": "
+                            + join(new ArrayList<String>(fit)) + ". Give more of the name");
+                }
+            }
+        }
+        throw new DriverException(Reason.NOT_FOUND, "No " + kind + " fits " + quoted(wanted) + ". " + where + ": "
+                + join(choices));
+    }
+
+    /** {@code text} by its letters and digits only, lower case: "Postal code" and "postalCode" read "postalcode". */
+    static String letters(String text) {
+        StringBuilder b = new StringBuilder();
+        for (char c : text.toLowerCase(Locale.ROOT).toCharArray()) if (Character.isLetterOrDigit(c)) b.append(c);
+        return b.toString();
+    }
+
+    private static boolean anyWordStarts(String text, String start) {
+        for (String word : text.split("[^\\p{L}\\p{N}]+")) {
+            if (!word.isEmpty() && letters(word).startsWith(start)) return true;
+        }
+        return false;
+    }
+
+    /** Text with its runs of white space as one space, trimmed: a message's lines compare as one sentence. */
+    static String oneLine(String text) {
+        return text == null ? "" : text.replaceAll("\\s+", " ").trim();
+    }
+
     /** The values of {@code column} in every row of {@code table}'s read, in order. */
     static List<String> column(List<Map<String, String>> rows, String column) {
         List<String> out = new ArrayList<String>();

@@ -3,10 +3,6 @@ package io.github.kormcrete.orderdesk.uitest;
 import io.github.kormcrete.swingui.junit.Client;
 import io.github.kormcrete.swingui.junit.Target;
 
-import java.time.Duration;
-
-import static io.github.kormcrete.swingui.junit.UiAssertions.eventually;
-
 /**
  * Order Desk's domain steps as Java: the one place that knows how to add a product to the cart, check out or place
  * an order. The plugin's vocabulary ({@link OrderDeskVocabulary}) runs these methods for a recorded test's {@code do}
@@ -16,8 +12,9 @@ import static io.github.kormcrete.swingui.junit.UiAssertions.eventually;
  * and so do the vocabulary's patterns that recognise a person's recorded clicks. When the app renames something, say
  * the "Add to cart" button, change its constant and both kinds of test pass again, and a person's clicks still fold.
  *
- * <p>The steps of a new order's tab are in {@link OrderDeskNewOrderSteps}; the ones here that act there (open a new
- * order, add to the cart, set a quantity, the cart total) call it, and keep their names for the Java tests and the
+ * <p>The steps of a new order's tab are in {@link OrderDeskNewOrderSteps}, the checkout's in
+ * {@link OrderDeskCheckoutSteps}; the ones here that act there (open a new order, add to the cart, set a quantity, the
+ * cart total, check out with a PO number, place the order) call them, and keep their names for the Java tests and the
  * recorded tests that use them.
  *
  * <p>Client calls only: no app classes, so the plugin needs nothing from the app's build.
@@ -102,6 +99,70 @@ public final class OrderDeskSteps {
     /** The key a multi-select click holds: Cmd on a Mac, Ctrl elsewhere. */
     static final String ADD_TO_SELECTION = "Mod";
 
+    // ---- the checkout (OrderDeskCheckoutSteps)
+
+    /** The checkout dialog's title before the customer's name: "Checkout — Ada Shop Ltd". */
+    static final String CHECKOUT_TITLE = "Checkout — ";
+    /** Each checkout step's heading, by its code name (none on the Review step). */
+    static final String CHECKOUT_STEP_ID = "checkoutStep";
+    static final String ADDRESS_HEADING = "Delivery address";
+    static final String SHIPPING_HEADING = "Shipping method";
+    static final String PAYMENT_HEADING = "Payment";
+    /** The step indicator's words for the four steps. */
+    static final String ADDRESS_STEP = "Address";
+    static final String SHIPPING_STEP = "Shipping";
+    static final String PAYMENT_STEP = "Payment";
+    static final String REVIEW_STEP = "Review";
+    /** Next's reason while it is disabled, by its code name. */
+    static final String NEXT_REASON_ID = "nextReason";
+    static final String BACK_BUTTON = "Back";
+    static final String CANCEL_BUTTON = "Cancel";
+    /** Each review section's Edit. */
+    static final String EDIT_BUTTON = "Edit";
+    /** The Address step's fields, by caption. */
+    static final String NAME_FIELD = "Name";
+    static final String STREET_FIELD = "Street";
+    static final String POSTAL_CODE_FIELD = "Postal code";
+    static final String CITY_FIELD = "City";
+    static final String COUNTRY_COMBO = "Country";
+    static final String PHONE_FIELD = "Phone (optional)";
+    /** The Shipping step: its two choices, their prices by code name, Express's reason, the note. */
+    static final String STANDARD_RADIO = "Standard · 3–5 business days";
+    static final String EXPRESS_RADIO = "Express · next business day";
+    static final String STANDARD_PRICE_ID = "standardPrice";
+    static final String EXPRESS_PRICE_ID = "expressPrice";
+    static final String EXPRESS_REASON = "Express delivers to Germany and Austria only";
+    static final String DELIVERY_NOTE_FIELD = "Delivery note (optional)";
+    /** The Payment step: Invoice and its note (code name), Card and its fixed hint, the fields. */
+    static final String INVOICE_RADIO = "Invoice (30 days)";
+    static final String INVOICE_NOTE_ID = "invoiceNote";
+    static final String CARD_RADIO = "Card";
+    static final String CARD_HINT = "Debit or credit card";
+    /** The PO number's caption for a customer that does not need one (those that do see {@link #PO_NUMBER_FIELD}). */
+    static final String PO_NUMBER_OPTIONAL_FIELD = "PO number (optional)";
+    static final String CARD_NUMBER_FIELD = "Card number";
+    static final String EXPIRY_FIELD = "Expiry";
+    static final String NAME_ON_CARD_FIELD = "Name on card";
+    /** The question after Next on an invoice over the credit limit, and its answers. */
+    static final String CREDIT_LIMIT_TITLE = "Credit limit";
+    static final String PAY_BY_CARD_ANSWER = "Pay by card instead";
+    static final String CONTINUE_WITH_INVOICE_ANSWER = "Continue with invoice";
+    /** The confirmation's title (also the title of "The order could not be placed."), and its other answer. */
+    static final String PLACE_ORDER_TITLE = "Place order";
+    static final String CANCEL_ANSWER = "Cancel";
+    /** While the order is placed: "Placing order…", then "Order for €37.20 · Ada Shop Ltd". */
+    static final String PLACING_ORDER = "Placing order…";
+    static final String PLACING_FOR = "Order for ";
+    static final String PLACING_FAILED = "The order could not be placed.";
+    /** The review's totals panel, by its code name: its Shipping is told apart from the step indicator's. */
+    static final String TOTALS_ID = "totals";
+    /** The review's sections. */
+    static final String DELIVERY_ADDRESS_SECTION = "Delivery address";
+    static final String SHIPPING_SECTION = "Shipping";
+    static final String PAYMENT_SECTION = "Payment";
+    /** The status line, by its code name: "Order ORD-1640 placed". */
+    static final String STATUS_MESSAGE_ID = "statusMessage";
+
     private OrderDeskSteps() {
     }
 
@@ -130,31 +191,20 @@ public final class OrderDeskSteps {
     }
 
     /**
-     * Checks out the open new order and pays by PO: Checkout…, Next past the address and the shipping, {@code po} into
-     * PO number, Next. Ends on the Review step, with Place order to press.
+     * Checks out the open new order and pays on invoice with a PO number, as {@link OrderDeskCheckoutSteps#checkoutWithPo}
+     * does: Checkout…, Next past the address and the shipping, {@code po} into PO number, Next. Ends on the Review step,
+     * with Place order to press; a step that blocks fails with the app's reason, the checkout cancelled.
      */
     public static void checkoutWithPo(Client ui, String po) {
-        newOrder(ui).button(CHECKOUT_BUTTON).click();
-        ui.dialog().button(NEXT_BUTTON).click();
-        ui.dialog().button(NEXT_BUTTON).click();
-        ui.dialog().field(PO_NUMBER_FIELD).type(po);
-        ui.dialog().button(NEXT_BUTTON).click();
+        OrderDeskCheckoutSteps.checkoutWithPo(ui, po);
     }
 
     /**
      * Places the order on the checkout's Review step and confirms it; returns the new order's number, e.g.
-     * {@code ORD-1640}, once its tab is open.
+     * {@code ORD-1640}, once its tab is open ({@link OrderDeskCheckoutSteps#placeOrder}).
      */
     public static String placeOrder(Client ui) {
-        ui.dialog().button(PLACE_ORDER_BUTTON).click();
-        ui.answer(PLACE_ORDER_ANSWER);
-        // the status bar names the new order; a rerun against a running app still shows the last one's until this one
-        // replaces it, so wait for the number whose tab is selected
-        return eventually("the status bar naming the new order", Duration.ofSeconds(8), () -> {
-            String placed = ui.main().label("placed").contains().text();   // "Order ORD-1640 placed"
-            String number = placed.substring("Order ".length(), placed.indexOf(" placed"));
-            return ui.tab(number).states().contains("selected") ? number : null;
-        }, number -> number != null);
+        return OrderDeskCheckoutSteps.placeOrder(ui);
     }
 
     /** Opens the order {@code order} (e.g. {@code ORD-1640}) from the Orders list in a tab of its own. */

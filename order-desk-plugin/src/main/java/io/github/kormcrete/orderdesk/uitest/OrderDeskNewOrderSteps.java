@@ -57,6 +57,9 @@ public final class OrderDeskNewOrderSteps {
     /** The new order's buttons that show a reason while disabled. */
     static final List<String> REASON_BUTTONS = Collections.unmodifiableList(Arrays.asList(
             ADD_TO_CART_BUTTON, REMOVE_BUTTON, CHECKOUT_BUTTON));
+    /** Where a button name that fits none was looked for. */
+    private static final String REASON_BUTTONS_WHERE = "The buttons that give a reason (in the checkout also Next,"
+            + " Express, Invoice)";
     private static final String ONE_LINE_ASKS_NOTHING = "Removing one line asks nothing: name two or more cart lines, parted by ;";
     /** What a step says when the new order it needs is not showing. */
     static final String NO_NEW_ORDER = "No new order is showing. Open one first with \"Open a new order for <customer>\","
@@ -405,10 +408,18 @@ public final class OrderDeskNewOrderSteps {
         else shows(label, "The cart's stock warning", warning);
     }
 
-    /** Checks that Add to cart, Remove or Checkout… is disabled, with the reason beside it ("The cart is empty"). */
+    /**
+     * Checks that Add to cart, Remove or Checkout… is disabled, with the reason beside it ("The cart is empty"); or, in
+     * the checkout, Next, Express or Invoice ({@link OrderDeskCheckoutSteps}).
+     */
     public static void buttonIsDisabled(Client ui, String button, String reason) {
+        String control = OrderDeskCheckoutSteps.controlName(button);
+        if (control != null) {
+            OrderDeskCheckoutSteps.controlIsDisabled(ui, control, reason);
+            return;
+        }
         requireNewOrder(ui);
-        String name = pick(button, REASON_BUTTONS, "button", "buttons", "A new order's buttons that give a reason");
+        String name = pick(button, REASON_BUTTONS, "button", "buttons", REASON_BUTTONS_WHERE);
         try {
             assertThat(newOrder(ui).button(name)).within(LOOK).isDisabled();
         } catch (UiAssertionError e) {
@@ -424,10 +435,18 @@ public final class OrderDeskNewOrderSteps {
         shows(beside, name + "'s reason", reason);
     }
 
-    /** Checks that Add to cart, Remove or Checkout… is enabled; when not, the failure gives its reason. */
+    /**
+     * Checks that Add to cart, Remove or Checkout… (in the checkout: Next, Express or Invoice) is enabled; when not, the
+     * failure gives its reason.
+     */
     public static void buttonIsEnabled(Client ui, String button) {
+        String control = OrderDeskCheckoutSteps.controlName(button);
+        if (control != null) {
+            OrderDeskCheckoutSteps.controlIsEnabled(ui, control);
+            return;
+        }
         requireNewOrder(ui);
-        String name = pick(button, REASON_BUTTONS, "button", "buttons", "A new order's buttons that give a reason");
+        String name = pick(button, REASON_BUTTONS, "button", "buttons", REASON_BUTTONS_WHERE);
         try {
             assertThat(newOrder(ui).button(name)).within(LOOK).isEnabled();
         } catch (UiAssertionError e) {
