@@ -164,12 +164,12 @@ add `tab:Items` and so on.
 |---|---|---|
 | The order's number (also the tab's title), its status (Placed, Shipped, Cancelled) and facts ("Ada Shop Ltd · 12 Oct 2026 · €122.34") | check | `orderStatusIs` (the status, any case), `orderFactsAre` (the whole line or one part: customer, date or total); the number is the tab's title: `selectedTabIs`, and every order tab step finds the order by it (number or digits) |
 | Switch between Items, Delivery and Invoice | act | `selectTab` (while the order's tab shows); each check of Items, Delivery or Invoice also shows that tab for its read, then the one that showed before |
-| Items: SKU, Product, Qty, Price, Line total | check | `orderItemsAre` (the lines in order, by name or its start), `orderItemIs` (one cell; the product by name, start or SKU; the Check menu keys a line by SKU) |
+| Items: SKU, Product, Qty, Price, Line total | check | `orderItemsAre` (the lines in order, by name or its start; no pattern), `orderItemIs` (one cell; the product by name, start or SKU; the Check menu keys a line by SKU) |
 | "11 units in 2 lines" under the items | check | `orderItemsSummaryIs` (whole, or "11 units" / "2 lines") |
 | Delivery: the address, the shipping method ("Standard · 3–5 business days · €4.90"), the delivery note ("—" when none) | check | `orderDeliveryIs` (address: its lines parted by ; or one line; shipping method; note, none or "—" for none). Suggest-only: see the note below |
 | Invoice: the payment ("Invoice (30 days) · PO PO-T3"), the order date | check | `orderInvoiceIs` (Payment, Order date) |
 | Invoice: Subtotal, Volume discount, Shipping, VAT (20%), Total | check | `orderInvoiceIs` (an amount by its caption; Volume discount none while it does not show) |
-| Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | `saveReceipt` (outcome: path, replaced); the status line: `statusLineIs` |
+| Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | `saveReceipt` (outcome: path, replaced; suggest-only, see the folding note); the status line: `statusLineIs` |
 | Saving over a file asks "ORD-1640.txt already exists." / "Do you want to replace it?" (Replace, Cancel) | act | `saveReceipt` answers Replace; `keepExistingReceipt` answers Cancel (fails, saying the receipt was saved, when the file did not exist: the app asks nothing then) |
 | Saving fails: "The receipt could not be saved: …" | check | `receiptSaveErrorIs` (whole text, the sentence before the colon or the reason after it; answers OK); `saveReceipt` fails with the app's message. Provoked live: a path in a folder that does not exist |
 | The saved receipt's text | check | Gap: not a tester's concern (every fact in the file shows on the order tab: number, date, status and customer in its header, the lines on Items, address, shipping method and note on Delivery, payment and totals on Invoice; covered there. The file only words some differently: a title line "Order Desk — receipt", free shipping as "€0.00" where the tab says "Free", the method without its price, no SKU, no Note line when there is none) |
@@ -242,11 +242,23 @@ add `tab:Items` and so on.
   (`Client.outcomeOf` around the file chooser's choice, its outcome's `message`), not from the labels; a person's Check on
   the error's label records the path only, which `receiptSaveErrorIs` takes too. A file chooser choice that saves at once
   shows no message: the step then reads the status line. Provoked live with a path in a folder that does not exist.
+- Folding an order's tab (fix round 1 of sub-task e): a recording folds a run of a person's act steps as soon as it
+  fits a step, and a check is a barrier no run crosses. `saveReceipt` only suggests itself: Save receipt… and the file
+  chooser's choice fit it before the app has said whether it saved, asks "ORD-1640.txt already exists." or fails, and a
+  person's Check of that question or error stops the run there; folded, the replay would answer Replace (over a file the
+  person kept) or fail on the error the person answered OK. `keepExistingReceipt` folds: its run holds the Cancel that
+  decides it (only the replace question has a Cancel; the error has OK only), so it folds only when that Cancel follows
+  in the same run, never across a check. `cancelOrder` and `keepOrder` hold their deciding answer the same way.
 - `orderDeliveryIs` only suggests itself: the Delivery tab's caption "Delivery address" and the address lines are labels
   named by their own text, which a pattern on a captioned label's name cannot tell from Shipping method or Delivery note
   (a check of an address line would capture the line as the detail). `orderInvoiceIs` folds: every label on the Invoice
-  tab is a captioned value. `orderItemsAre` (one row where the step reads them all) and `receiptSaveErrorIs` (a person's
-  check of the error records the path label only) suggest themselves too.
+  tab is a captioned value. `orderItemsAre` has no pattern: a recording holds one row of the lines it reads, and that
+  row's pattern would offer "The lines on order ORD-1639's Items tab are Gel pen, black" for an order of several lines.
+  `receiptSaveErrorIs` is a check of several steps: a check never folds, and the Check menu offers only checks of one
+  step, so its pattern is never used (an agent runs it as a do step).
+- Cancel order's state: the Check menu offers `buttonIsEnabled` for an order tab's enabled Cancel order or Save receipt…
+  (one step). A disabled Cancel order with its reason is two reads, which no single check the menu records can be:
+  `buttonIsDisabled` reads both when an agent runs it.
 
 ## Reach fixes needed
 

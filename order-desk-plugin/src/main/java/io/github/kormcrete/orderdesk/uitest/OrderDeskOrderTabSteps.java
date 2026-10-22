@@ -84,6 +84,9 @@ public final class OrderDeskOrderTabSteps {
      * "ORD-1640.txt already exists." is answered Replace. Returns where it was saved, as the status line says it
      * ({@code {"path":"/Users/ada/ORD-1640.txt","replaced":false}}). When the app cannot save it, the step answers its
      * message OK, selects the tab selected before and fails with that message.
+     *
+     * <p>It reads what the file chooser's choice made show with {@code ui.outcomeOf}: a hand-written Java test must not
+     * call it inside its own {@code ui.outcomeOf(...)} (IllegalStateException: one at a time).
      */
     public static Map<String, Object> saveReceipt(Client ui, String order, String file) {
         String name = receiptName(file);
@@ -115,7 +118,8 @@ public final class OrderDeskOrderTabSteps {
     /**
      * Asks to save the order's receipt over a file that exists, then keeps the file: Save receipt…, {@code file}, and
      * Cancel to "ORD-1640.txt already exists. Do you want to replace it?". A file that does not exist is saved at once (the
-     * app asks nothing): the step then fails saying so.
+     * app asks nothing): the step then fails saying so. Not inside a Java test's own {@code ui.outcomeOf} (see
+     * {@link #saveReceipt}).
      */
     public static void keepExistingReceipt(Client ui, String order, String file) {
         String name = receiptName(file);
@@ -139,7 +143,8 @@ public final class OrderDeskOrderTabSteps {
     /**
      * Checks the error Save receipt… shows when the app cannot write {@code file} (a folder that does not exist, say):
      * "The receipt could not be saved: <the reason>". {@code message}: the whole text, the sentence before the colon, or
-     * the reason after it. The error is answered OK; a file the app can write is saved, and the check fails.
+     * the reason after it. The error is answered OK and the tab selected before shows again; a file the app can write is
+     * saved, and the check fails. Not inside a Java test's own {@code ui.outcomeOf} (see {@link #saveReceipt}).
      */
     public static void receiptSaveErrorIs(Client ui, String order, String file, String message) {
         receiptName(file);
@@ -152,8 +157,8 @@ public final class OrderDeskOrderTabSteps {
                     + "), expected the error " + quoted(oneLine(message)));
         }
         dismiss(ui, shown);
+        back(ui, at);
         if (!errorFits(oneLine(shown), oneLine(message))) {
-            back(ui, at);
             throw new AssertionError("Save receipt says " + quoted(oneLine(shown)) + ", expected " + quoted(oneLine(message)));
         }
     }
@@ -170,6 +175,7 @@ public final class OrderDeskOrderTabSteps {
         ui.answer(CANCEL_ORDER_ANSWER);
         final Target pill = ui.tab(at.number).byId(ORDER_STATUS_ID);
         if (look(() -> CANCELLED_STATUS.equals(shown(pill)) ? Boolean.TRUE : null) == null) {
+            back(ui, at);
             throw new DriverException(Reason.NOT_ACTIONABLE, at.number + "'s status reads " + quoted(String.valueOf(shown(pill)))
                     + " after Cancel order, expected " + quoted(CANCELLED_STATUS));
         }
@@ -418,6 +424,11 @@ public final class OrderDeskOrderTabSteps {
      */
     private static void onSubTab(final Client ui, final String number, String sub, Runnable read) {
         final String was = selectedSubTab(ui, number);
+        if (was == null) {
+            // a click without knowing what showed could not be undone
+            throw new DriverException(Reason.NOT_FOUND, number + "'s " + ITEMS_TAB + ", " + DELIVERY_TAB + " and " + INVOICE_TAB
+                    + " tabs are not found");
+        }
         boolean go = !sub.equals(was);
         if (go) {
             requireMain(ui);
@@ -426,7 +437,7 @@ public final class OrderDeskOrderTabSteps {
         try {
             read.run();
         } finally {
-            if (go && was != null) quietly(() -> ui.tab(number).tab(was).click());
+            if (go) quietly(() -> ui.tab(number).tab(was).click());
         }
     }
 
@@ -553,74 +564,8 @@ public final class OrderDeskOrderTabSteps {
      * link against, and a read by path would wait for a message that never comes when the receipt was saved.
      */
     private static String messageOf(Client ui, Runnable action) {
-        String message = topLevelText(ui.outcomeOf(action).toString(), "message");
+        String message = OrderDeskLooks.topLevelText(ui.outcomeOf(action).toString(), "message");
         return message == null || message.isEmpty() ? null : message;
-    }
-
-    /** The text value of {@code key} in the JSON object {@code json} (its top level only); null when it has none. */
-    static String topLevelText(String json, String key) {
-        int depth = 0;
-        int i = 0;
-        boolean keyNext = false;
-        while (i < json.length()) {
-            char c = json.charAt(i);
-            if (c == '{' || c == '[') {
-                depth++;
-                keyNext = c == '{' && depth == 1;
-                i++;
-            } else if (c == '}' || c == ']') {
-                depth--;
-                i++;
-            } else if (c == ',') {
-                keyNext = depth == 1;
-                i++;
-            } else if (c == '"') {
-                StringBuilder text = new StringBuilder();
-                i = string(json, i, text);
-                if (keyNext && depth == 1) {
-                    keyNext = false;
-                    if (key.equals(text.toString())) {
-                        while (i < json.length() && (json.charAt(i) == ':' || Character.isWhitespace(json.charAt(i)))) i++;
-                        if (i >= json.length() || json.charAt(i) != '"') return null;
-                        StringBuilder value = new StringBuilder();
-                        string(json, i, value);
-                        return value.toString();
-                    }
-                }
-            } else {
-                i++;
-            }
-        }
-        return null;
-    }
-
-    /** Reads the JSON string starting at {@code at} (its opening quote) into {@code out}; returns the index after it. */
-    private static int string(String json, int at, StringBuilder out) {
-        int i = at + 1;
-        while (i < json.length()) {
-            char c = json.charAt(i++);
-            if (c == '"') return i;
-            if (c != '\\' || i >= json.length()) {
-                out.append(c);
-                continue;
-            }
-            char e = json.charAt(i++);
-            switch (e) {
-                case 'n': out.append('\n'); break;
-                case 't': out.append('\t'); break;
-                case 'r': out.append('\r'); break;
-                case 'b': out.append('\b'); break;
-                case 'f': out.append('\f'); break;
-                case 'u':
-                    if (i + 4 <= json.length()) {
-                        out.append((char) Integer.parseInt(json.substring(i, i + 4), 16));
-                        i += 4;
-                    }
-                    break;
-                default: out.append(e);
-            }
-        }
-        return i;
     }
 
     private static boolean isReplaceQuestion(String message) {

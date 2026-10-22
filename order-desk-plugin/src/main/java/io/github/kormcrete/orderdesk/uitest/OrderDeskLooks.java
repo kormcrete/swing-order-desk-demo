@@ -254,4 +254,74 @@ final class OrderDeskLooks {
         for (String line : lines) if (want.equals(oneLine(line))) return;
         throw new AssertionError(what + " reads " + quoted(all) + ", expected " + quoted(want));
     }
+
+    /**
+     * The text value of {@code key} in the JSON object {@code json} (its top level only); null when it has none. For an
+     * outcome's text ({@code Outcome.toString()}): its JSON objects are the agent's own shaded classes, which a plugin
+     * built against the plain library does not link against.
+     */
+    static String topLevelText(String json, String key) {
+        int depth = 0;
+        int i = 0;
+        boolean keyNext = false;
+        while (i < json.length()) {
+            char c = json.charAt(i);
+            if (c == '{' || c == '[') {
+                depth++;
+                keyNext = c == '{' && depth == 1;
+                i++;
+            } else if (c == '}' || c == ']') {
+                depth--;
+                i++;
+            } else if (c == ',') {
+                keyNext = depth == 1;
+                i++;
+            } else if (c == '"') {
+                StringBuilder text = new StringBuilder();
+                i = string(json, i, text);
+                if (keyNext && depth == 1) {
+                    keyNext = false;
+                    if (key.equals(text.toString())) {
+                        while (i < json.length() && (json.charAt(i) == ':' || Character.isWhitespace(json.charAt(i)))) i++;
+                        if (i >= json.length() || json.charAt(i) != '"') return null;
+                        StringBuilder value = new StringBuilder();
+                        string(json, i, value);
+                        return value.toString();
+                    }
+                }
+            } else {
+                i++;
+            }
+        }
+        return null;
+    }
+
+    /** Reads the JSON string starting at {@code at} (its opening quote) into {@code out}; returns the index after it. */
+    private static int string(String json, int at, StringBuilder out) {
+        int i = at + 1;
+        while (i < json.length()) {
+            char c = json.charAt(i++);
+            if (c == '"') return i;
+            if (c != '\\' || i >= json.length()) {
+                out.append(c);
+                continue;
+            }
+            char e = json.charAt(i++);
+            switch (e) {
+                case 'n': out.append('\n'); break;
+                case 't': out.append('\t'); break;
+                case 'r': out.append('\r'); break;
+                case 'b': out.append('\b'); break;
+                case 'f': out.append('\f'); break;
+                case 'u':
+                    if (i + 4 <= json.length()) {
+                        out.append((char) Integer.parseInt(json.substring(i, i + 4), 16));
+                        i += 4;
+                    }
+                    break;
+                default: out.append(e);
+            }
+        }
+        return i;
+    }
 }

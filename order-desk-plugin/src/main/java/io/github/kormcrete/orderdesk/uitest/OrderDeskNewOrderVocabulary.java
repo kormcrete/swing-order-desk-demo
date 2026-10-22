@@ -316,11 +316,6 @@ final class OrderDeskNewOrderVocabulary {
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['disabled']}",
                                 NEW_ORDER_SCOPE),
                                 json("{'action':'expect','target':{'scope':%s},'text':'{reason}'}", NEW_ORDER_SCOPE))
-                        // on an order's own tab: Cancel order, then the reason beside it
-                        .matchAlso(json("{'action':'expect','target':{'scope':%s,'role':'button','name':'{button}'},'state':['disabled']}",
-                                OrderDeskOrderTabVocabulary.anyOrderScope()),
-                                json("{'action':'expect','target':{'scope':%s,'role':'label'},'text':'{reason}'}",
-                                        OrderDeskOrderTabVocabulary.anyOrderScope()))
                         .autoFold(false)
                         .java(STEPS, "buttonIsDisabled(ui, {button}, {reason})")
                         .build(),

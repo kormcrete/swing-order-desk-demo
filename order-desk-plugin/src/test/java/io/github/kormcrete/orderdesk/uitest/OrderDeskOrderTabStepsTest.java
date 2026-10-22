@@ -88,10 +88,10 @@ class OrderDeskOrderTabStepsTest {
         String changed = "{\"texts\":{\"message\":\"x\"},\"opened\":{\"dialogs\":[\"Save receipt\"]},"
                 + "\"message\":\"ORD-1639.txt already exists.\\nDo you want \\\"it\\\"? \\u00e9\"}";
 
-        assertThat(OrderDeskOrderTabSteps.topLevelText(changed, "message"))
+        assertThat(OrderDeskLooks.topLevelText(changed, "message"))
                 .isEqualTo("ORD-1639.txt already exists.\nDo you want \"it\"? é");
-        assertThat(OrderDeskOrderTabSteps.topLevelText("{\"texts\":{\"message\":\"x\"}}", "message")).isNull();
-        assertThat(OrderDeskOrderTabSteps.topLevelText("{}", "message")).isNull();
+        assertThat(OrderDeskLooks.topLevelText("{\"texts\":{\"message\":\"x\"}}", "message")).isNull();
+        assertThat(OrderDeskLooks.topLevelText("{}", "message")).isNull();
     }
 
     @Test
@@ -154,6 +154,42 @@ class OrderDeskOrderTabStepsTest {
 
         assertThat(saves.steps()).isEqualTo(json("[" + TO_TAB + "," + SAVE + "," + chooseFile("new") + back));
         assertThat(failing.steps()).isEqualTo(json("[" + TO_TAB + "," + SAVE + "," + chooseFile("/nope/x") + "," + answer("OK") + back));
+    }
+
+    @Test
+    void receiptSaveErrorIsThatPassesSelectsTheTabThatWasSelectedAgain() {
+        // a check leaves the screen as it found it: the error answered, the Orders tab shown again
+        OrderTabFake app = new OrderTabFake().showTabs("Orders", "Orders", "ORD-1639").failing("/nope/x.txt");
+
+        OrderDeskOrderTabSteps.receiptSaveErrorIs(app.client(), "ORD-1639", "/nope/x", "The receipt could not be saved");
+
+        assertThat(app.steps()).isEqualTo(json("[" + TO_TAB + "," + SAVE + "," + chooseFile("/nope/x") + "," + answer("OK")
+                + ",{'action':'click','target':{'role':'tab','name':'Orders'}}]"));
+    }
+
+    @Test
+    void cancelOrderWhoseStatusDoesNotTurnCancelledFailsAndSelectsTheTabThatWasSelectedAgain() {
+        OrderTabFake app = new OrderTabFake().showTabs("Orders", "Orders", "ORD-1639").notCancelling();
+
+        Throwable stays = catchThrowable(() -> OrderDeskOrderTabSteps.cancelOrder(app.client(), "ORD-1639"));
+
+        assertThat(stays).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_ACTIONABLE: ORD-1639's status reads “Placed” after Cancel order, expected “Cancelled”");
+        assertThat(app.steps()).isEqualTo(json("[" + TO_TAB + "," + CANCEL + "," + answer("Cancel order")
+                + ",{'action':'click','target':{'role':'tab','name':'Orders'}}]"));
+    }
+
+    @Test
+    void aSubTabCheckFailsFastWhenTheOrdersTabsInsideItAreNotFound() {
+        // which of Items, Delivery and Invoice shows cannot be read: a click would leave the screen changed for good
+        OrderTabFake app = new OrderTabFake();
+        app.forget("tab 'Items' in tab:ORD-1639");
+
+        Throwable none = catchThrowable(() -> OrderDeskOrderTabSteps.orderInvoiceIs(app.client(), "ORD-1639", "Total", "€95.52"));
+
+        assertThat(none).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_FOUND: ORD-1639's Items, Delivery and Invoice tabs are not found");
+        assertThat(app.steps()).isEqualTo(json("[]"));
     }
 
     @Test
@@ -305,6 +341,16 @@ class OrderDeskOrderTabStepsTest {
                 + "'Product':'Gel pen, black'},'column':'Qty'},'text':'50','timeout':1000},"
                 + "{'action':'expect','target':{'scope':['tab:ORD-1639','tab:Items'],'role':'table','row':{'SKU':'PEN-GEL-BLU',"
                 + "'Product':'Gel pen, blue'},'column':'SKU'},'text':'PEN-GEL-BLU','timeout':1000}]"));
+    }
+
+    @Test
+    void orderItemIsOfAProductThatFitsNoLineNamesTheLines() {
+        OrderTabFake app = new OrderTabFake();
+
+        Throwable none = catchThrowable(() -> OrderDeskOrderTabSteps.orderItemIs(app.client(), "ORD-1639", "zz", "Qty", "1"));
+
+        assertThat(none).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: No line fits “zz”. ORD-1639's lines:"
+                + " Gel pen, black; A4 paper, 500 sheets; Paper clips, box of 100; Gel pen, blue");
     }
 
     @Test

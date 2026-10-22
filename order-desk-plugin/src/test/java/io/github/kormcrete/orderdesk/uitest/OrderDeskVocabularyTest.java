@@ -137,7 +137,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 90;
+    private static final int CHECKED_PATTERN_ENTRIES = 86;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -279,12 +279,22 @@ class OrderDeskVocabularyTest {
 
     @Test
     void everyStepHasAPatternAndNoProblems() {
+        // orderItemsAre has none on purpose: a recording holds one row of the lines it reads, and a pattern of that row
+        // would put a false sentence in the Check menu ("The lines … are Gel pen, black" for a 4-line order)
         for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
             assertThat(c.problems()).as(c.step().id()).isEmpty();
+            if (NO_PATTERN.contains(c.step().id())) {
+                assertThat(c.patterns()).as(c.step().id()).isEmpty();
+                assertThat(c.step().match()).as(c.step().id()).isEmpty();
+                continue;
+            }
             assertThat(c.why()).as(c.step().id()).isNull();
             assertThat(c.patterns()).as(c.step().id()).isNotEmpty();
         }
     }
+
+    /** The steps a recording never folds into or offers: no pattern at all. */
+    private static final List<String> NO_PATTERN = Collections.singletonList("orderItemsAre");
 
     @Test
     void everyStepNamesItsJavaMethod() throws Exception {
@@ -930,40 +940,65 @@ class OrderDeskVocabularyTest {
         assertThat(step("orderDeliveryIs").autoFold()).isFalse();
     }
 
-    @Test
-    void saveReceiptAndItsReplaceQuestionFoldIntoSaveReceiptOrKeepExistingReceipt() {
-        JsonNode save = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button','name':'Save receipt…'}}");
-        JsonNode file = json("{'action':'chooseFile','path':'/Users/ada/ORD-1639.txt'}");
-        JsonNode replace = json("{'action':'answer','button':'Replace'}");
-        JsonNode cancel = json("{'action':'answer','button':'Cancel'}");
+    private static final JsonNode SAVE = json("{'action':'click','target':{'window':'main','scope':['tab:ORD-1639'],"
+            + "'role':'button','name':'Save receipt…'}}");
+    private static final JsonNode CHOOSE = json("{'action':'chooseFile','path':'/Users/ada/ORD-1639.txt'}");
+    /** A person's Check between two steps, as the recording holds it: a barrier. */
+    private static final Object CHECK = "check";
 
-        assertThat(first(save, file)).isEqualTo("saveReceipt");
-        assertThat(first(save, file, replace)).isEqualTo("saveReceipt");
-        assertThat(pattern("saveReceipt").match(Arrays.asList(save, file, replace)).params())
+    @Test
+    void aSaveWhoseOutcomeTheClicksCannotSayNeverFoldsOnItsOwn() {
+        // Save receipt… and the file chooser's choice end in a save, the replace question or the error: the fold is made
+        // as soon as the choice is recorded, before the answer, so saveReceipt (it answers Replace, fails on the error)
+        // only suggests itself
+        JsonNode replace = json("{'action':'answer','button':'Replace'}");
+        JsonNode ok = json("{'action':'answer','button':'OK'}");
+        JsonNode cancel = json("{'action':'answer','button':'Cancel'}");
+        JsonNode tab = json("{'action':'click','target':{'window':'main','role':'tab','name':'ORD-1639'}}");
+
+        assertThat(folds(SAVE, CHOOSE)).isEmpty();
+        assertThat(folds(SAVE, CHOOSE, replace)).isEmpty();
+        // the error, checked or not, then OK
+        assertThat(folds(SAVE, CHOOSE, CHECK, ok)).isEmpty();
+        assertThat(folds(SAVE, CHOOSE, ok)).isEmpty();
+        // the replace question checked, then kept: the check splits the run, nothing folds
+        assertThat(folds(SAVE, CHOOSE, CHECK, cancel)).isEmpty();
+        assertThat(folds(tab, SAVE, CHOOSE, CHECK, cancel)).isEmpty();
+        // saveReceipt is still suggested, with its values
+        assertThat(pattern("saveReceipt").match(Arrays.asList(SAVE, CHOOSE, replace)).params())
                 .containsEntry("order", "ORD-1639").containsEntry("file", "/Users/ada/ORD-1639.txt");
-        assertThat(first(save, file, cancel)).isEqualTo("keepExistingReceipt");
+        assertThat(step("saveReceipt").autoFold()).isFalse();
     }
 
     @Test
-    void cancelOrdersStateOnItsTabIsReadByButtonIsDisabledAndButtonIsEnabled() {
-        JsonNode disabled = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1636'],'role':'button',"
-                + "'name':'Cancel order'},'state':['disabled']}");
-        JsonNode reason = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1636'],'role':'label',"
-                + "'name':'Only placed orders can be cancelled — this one is shipped'},'text':'Only placed orders can be cancelled — this one is shipped'}");
+    void keepingAFileThatExistsFoldsOnlyWithItsCancelInTheSameRun() {
+        // Cancel answers only the replace question (the error has OK only), and a fold never spans a check
+        JsonNode cancel = json("{'action':'answer','button':'Cancel'}");
+
+        assertThat(folds(SAVE, CHOOSE, cancel)).containsExactly("keepExistingReceipt");
+        assertThat(folds(SAVE, CHOOSE, CHECK, cancel)).isEmpty();
+    }
+
+    @Test
+    void anOrderTabsButtonStateIsOfferedAsTheCheckMenuRecordsIt() {
+        // the Check menu offers one-step checks only: Save receipt… enabled is buttonIsEnabled; a disabled Cancel order
+        // and its reason are read by buttonIsDisabled in a do step, which no single check the menu records can be
         JsonNode enabled = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639'],'role':'button',"
                 + "'name':'Save receipt…'},'state':['!disabled']}");
+        JsonNode disabled = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1636'],'role':'button',"
+                + "'name':'Cancel order'},'state':['disabled']}");
 
-        assertThat(choices(disabled, reason)).anyMatch(c -> c.step.equals("buttonIsDisabled")
-                && "Cancel order".equals(c.params.get("button")));
-        assertThat(first(enabled)).isEqualTo("buttonIsEnabled");
+        assertThat(offered(Collections.singletonList(enabled))).contains("buttonIsEnabled{button=Save receipt…}");
+        assertThat(offered(Collections.singletonList(disabled))).noneMatch(c -> c.startsWith("buttonIsDisabled"));
+        assertThat(step("buttonIsDisabled").matchAlso()).isEmpty();
     }
 
     @Test
     void anOrderTabsChecksThatCannotBePinnedDownOnlySuggestThemselves() {
-        for (String id : Arrays.asList("orderItemsAre", "orderDeliveryIs", "receiptSaveErrorIs")) {
+        for (String id : Arrays.asList("saveReceipt", "orderItemsAre", "orderDeliveryIs", "receiptSaveErrorIs")) {
             assertThat(step(id).autoFold()).as(id).isFalse();
         }
-        for (String id : Arrays.asList("saveReceipt", "keepExistingReceipt", "cancelOrder", "keepOrder", "orderStatusIs",
+        for (String id : Arrays.asList("keepExistingReceipt", "cancelOrder", "keepOrder", "orderStatusIs",
                 "orderFactsAre", "orderItemIs", "orderItemsSummaryIs", "orderInvoiceIs")) {
             assertThat(step(id).autoFold()).as(id).isTrue();
         }
@@ -1030,6 +1065,27 @@ class OrderDeskVocabularyTest {
             if (m != null) return m.params();
         }
         return null;
+    }
+
+    /**
+     * The steps a recording of {@code recorded} folds into on its own, in order, as the agent's session folds a person's
+     * steps while they are recorded: each step in turn, the act steps only (a check is the person's, never a fold), a
+     * {@link #CHECK} a barrier between them.
+     */
+    private List<String> folds(Object... recorded) {
+        List<Matcher.Candidate> vocabulary = new ArrayList<Matcher.Candidate>();
+        for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
+            if (c.step().kind() != DomainStep.Kind.ACT || c.patterns().isEmpty()) continue;
+            vocabulary.add(new Matcher.Candidate(c.step().id(), c.patterns(), c.step().autoFold()));
+        }
+        List<Matcher.Item> items = new ArrayList<Matcher.Item>();
+        for (int i = 0; i < recorded.length; i++) {
+            items.add(recorded[i] == CHECK ? Matcher.Item.check(i, "person")
+                    : Matcher.Item.raw(i, "person", (JsonNode) recorded[i], false, true));
+        }
+        List<String> out = new ArrayList<String>();
+        for (Matcher.Fold f : Matcher.fold(items, vocabulary, System.nanoTime() + 5_000_000_000L).folds) out.add(f.choice.step);
+        return out;
     }
 
     /** The step the run {@code raw} folds into first; null for none. */

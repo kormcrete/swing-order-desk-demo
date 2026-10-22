@@ -39,9 +39,11 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskVocabulary.text;
  * take an order tab's buttons too. Each body calls {@link OrderDeskOrderTabSteps}.
  *
  * <p>Every body looks at the app first, so each says its {@code match}, scoped to the order's tab ({@code tab:{order}}
- * captures its number) and, for a check of Items, Delivery or Invoice, that tab inside it. A check of a list (the
- * lines), of the Delivery tab (its caption and address lines are labels a pattern cannot tell from its captioned
- * values) and the save-error check, which a recording cannot pin down, only suggest themselves.
+ * captures its number) and, for a check of Items, Delivery or Invoice, that tab inside it. {@code saveReceipt} only
+ * suggests itself: its clicks fit before the app has said whether it saved, asks to replace or fails. The Delivery check
+ * (its caption and address lines are labels a pattern cannot tell from its captioned values) only suggests itself too;
+ * the lines' check has no pattern (a recording holds one row of them); the save-error check's pattern is never offered
+ * (the Check menu offers checks of one step).
  */
 final class OrderDeskOrderTabVocabulary {
 
@@ -78,12 +80,17 @@ final class OrderDeskOrderTabVocabulary {
                                 + " file that exists is replaced (answers Replace to \"ORD-1640.txt already exists.\"). The"
                                 + " outcome: where it was saved (path) and whether a file was replaced (replaced). When the"
                                 + " app cannot write it, it fails with the app's message (\"" + RECEIPT_NOT_SAVED + ": …\","
-                                + " answered OK). " + ORDER)
+                                + " answered OK). " + ORDER + ". In a hand-written Java test, do not wrap it in your own"
+                                + " ui.outcomeOf(...): it uses one itself (IllegalStateException)")
                         .param("order", ParamType.TEXT).choices(orderTabs)
                         .param("file", ParamType.TEXT)
                         .codeWithOutcome((ui, p) -> OrderDeskOrderTabSteps.saveReceipt(ui, p.text("order"), p.text("file")))
                         .match(TO_ORDER, save, choose,
                                 json("{'optional':true,'action':'answer','button':%s}", text(REPLACE_ANSWER)))
+                        // a recording folds a run as soon as it fits: Save receipt… and the file chooser's choice fit
+                        // before the app answers with a save, the replace question or the error (and a person's Check of
+                        // that question or error stops the run there), so the fold could not say which: suggest only
+                        .autoFold(false)
                         .java(STEPS, "saveReceipt(ui, {order}, {file})")
                         .build(),
                 DomainStep.act("keepExistingReceipt", "Ask to save the receipt of order {order} over {file}, then keep the file")
@@ -163,8 +170,8 @@ final class OrderDeskOrderTabVocabulary {
                         .param("order", ParamType.TEXT).choices(orderTabs)
                         .param("lines", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskOrderTabSteps.orderItemsAre(ui, p.text("order"), p.text("lines")))
-                        .match(json("{'action':'expect','target':{'scope':%s,'role':'table','row':{%s:'{lines}'}},'shown':true}",
-                                itemsScope(), key(PRODUCT_COLUMN)))
+                        // no pattern: a recording holds one row of the lines this reads, and that row's pattern would put
+                        // "The lines on order … are <one product>" in the Check menu for an order of several lines
                         .autoFold(false)
                         .java(STEPS, "orderItemsAre(ui, {order}, {lines})")
                         .build(),

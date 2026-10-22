@@ -105,6 +105,14 @@ class OrderTabFake extends OrdersFake {
         return this;
     }
 
+    /** Cancel order's question answered Cancel order leaves the order as it was (the app did not cancel it). */
+    OrderTabFake notCancelling() {
+        notCancelling = true;
+        return this;
+    }
+
+    private boolean notCancelling;
+
     String status() {
         return status;
     }
@@ -164,7 +172,7 @@ class OrderTabFake extends OrdersFake {
         String was = dialog;
         dialog = null;
         if (was == null) return out;
-        if (was.startsWith("Cancel order ") && "Cancel order".equals(button)) {
+        if (was.startsWith("Cancel order ") && "Cancel order".equals(button) && !notCancelling) {
             status = "Cancelled";
             answer("element #statusMessage", label("statusMessage", "Order " + number + " cancelled"));
             showOrder();
