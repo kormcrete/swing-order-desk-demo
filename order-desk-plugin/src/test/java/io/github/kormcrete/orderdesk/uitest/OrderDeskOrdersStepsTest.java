@@ -3,6 +3,14 @@ package io.github.kormcrete.orderdesk.uitest;
 import io.github.kormcrete.swingui.driver.DriverException;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.RowSorter;
+import javax.swing.SortOrder;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableRowSorter;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import static io.github.kormcrete.orderdesk.uitest.FakeApp.label;
@@ -92,6 +100,37 @@ class OrderDeskOrdersStepsTest {
         Throwable shut = catchThrowable(() -> OrderDeskOrdersSteps.openOrder(app.client(), "ORD-1639"));
 
         assertThat(shut).isInstanceOf(DriverException.class).hasMessage("NOT_ACTIONABLE: The tab of ORD-1639 did not open");
+    }
+
+    @Test
+    void openOrderThatFailsClosesTheTabsItOpenedAndGivesBackTheSelectionAndTheTab() {
+        // of two orders only ORD-1639's tab opens: it is closed again, ORD-1634 is selected again as it was, and the
+        // new order shows again
+        OrdersFake app = new OrdersFake().tabs("New order · Ada Shop Ltd", "Orders", "New order · Ada Shop Ltd")
+                .selecting(3).opening("ORD-1639");
+
+        Throwable shut = catchThrowable(() -> OrderDeskOrdersSteps.openOrder(app.client(), "ORD-1639; ORD-1638"));
+
+        assertThat(shut).isInstanceOf(DriverException.class).hasMessage("NOT_ACTIONABLE: The tab of ORD-1638 did not open");
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + "}"
+                + ",{'action':'click','target':" + row("ORD-1638") + ",'modifiers':['Mod']}"
+                + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Open']}"
+                + ",{'action':'click','target':{'role':'tab','name':'ORD-1639'}}"
+                + ",{'action':'menu','path':['File','Close tab']}"
+                + ",{'action':'click','target':" + row("ORD-1634") + "}"
+                + ",{'action':'click','target':{'role':'tab','name':'New order · Ada Shop Ltd'}}]"));
+    }
+
+    @Test
+    void openOrderThatFailsWithNothingSelectedBeforeUnselectsItsRow() {
+        OrdersFake app = new OrdersFake();
+
+        catchThrowable(() -> OrderDeskOrdersSteps.openOrder(app.client(), "ORD-1639"));
+
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + ",'count':2}"
+                + ",{'action':'click','target':" + row("ORD-1639") + ",'modifiers':['Mod']}]"));
     }
 
     @Test
@@ -193,6 +232,38 @@ class OrderDeskOrdersStepsTest {
     }
 
     @Test
+    void sortOrdersReadsTheOrderNumbersAndNamesAsTheAppsSorterSortsThem() {
+        // the app's table sorter compares a String column (Order, Customer) with Collator.getInstance(), in the app's
+        // locale: ORD-1000 sorts before ORD-999, and in Swedish Ärlig AB after Zeta AB
+        Locale was = Locale.getDefault();
+        Locale.setDefault(new Locale("sv", "SE"));
+        try {
+            assertThat(OrderDeskOrdersSteps.directionOf(sortedByTheApp("ORD-999", "ORD-1640", "ORD-1000"),
+                    OrderDeskOrdersSteps.comparator("Order"))).isEqualTo(1);
+            assertThat(OrderDeskOrdersSteps.directionOf(sortedByTheApp("Zeta AB", "Ärlig AB", "Ada Shop Ltd"),
+                    OrderDeskOrdersSteps.comparator("Customer"))).isEqualTo(1);
+        } finally {
+            Locale.setDefault(was);
+        }
+    }
+
+    /** {@code values} in one String column, as the app's TableRowSorter shows them sorted ascending. */
+    private static List<String> sortedByTheApp(String... values) {
+        DefaultTableModel model = new DefaultTableModel(new Object[] {"Column"}, 0) {
+            @Override
+            public Class<?> getColumnClass(int column) {
+                return String.class;
+            }
+        };
+        for (String v : values) model.addRow(new Object[] {v});
+        TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<DefaultTableModel>(model);
+        sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(0, SortOrder.ASCENDING)));
+        List<String> shown = new ArrayList<String>();
+        for (int i = 0; i < sorter.getViewRowCount(); i++) shown.add((String) model.getValueAt(sorter.convertRowIndexToModel(i), 0));
+        return shown;
+    }
+
+    @Test
     void sortOrdersByAStatusFollowsTheFiltersOrder() {
         OrdersFake app = new OrdersFake().sortable();
 
@@ -233,7 +304,27 @@ class OrderDeskOrdersStepsTest {
                 + " by Total, ascending after 3 clicks on its header: Total reads €181.44; €95.52; €542.58");
     }
 
-    // ---- select, cancel, keep, copy
+    @Test
+    void sortOrdersThatFailsBringsBackTheOrderAndTheTabItFound() {
+        // the stand-in sorts Total as text, so it never reads sorted by amount: the step fails, clicks the Order header
+        // (the list read newest first by Order when it began) until the orders read as they did, and shows the new
+        // order again
+        OrdersFake app = new OrdersFake().tabs("New order · Ada Shop Ltd", "Orders", "New order · Ada Shop Ltd")
+                .sortableAsText();
+
+        Throwable unsorted = catchThrowable(() -> OrderDeskOrdersSteps.sortOrders(app.client(), "Total", "ascending"));
+
+        assertThat(unsorted).isInstanceOf(DriverException.class).hasMessageStartingWith("NOT_ACTIONABLE: The orders do not"
+                + " read sorted by Total, ascending after 3 clicks on its header");
+        assertThat(OrderDeskOrdersSteps.listedOrders(app.client())).containsExactly("ORD-1639", "ORD-1638", "ORD-1636", "ORD-1634");
+        String header = "{'action':'click','target':{" + O + ",'role':'table','column':'%s'}}";
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS + "," + String.format(header, "Total") + ","
+                + String.format(header, "Total") + "," + String.format(header, "Total") + ","
+                + String.format(header, "Order") + "," + String.format(header, "Order")
+                + ",{'action':'click','target':{'role':'tab','name':'New order · Ada Shop Ltd'}}]"));
+    }
+
+    // ---- select, cancel, keep, copy    // ---- select, cancel, keep, copy
 
     @Test
     void selectOrdersClicksTheFirstThenTheOthersWithModHeld() {
@@ -352,6 +443,17 @@ class OrderDeskOrdersStepsTest {
         OrderDeskOrdersSteps.orderIs(app.client(), "ORD-1639", "Total", "€95.52");
         OrderDeskOrdersSteps.orderIs(app.client(), "1636", "status", "shipped");
         OrderDeskOrdersSteps.orderIs(app.client(), "birch", "Customer", "Birch & Co");
+    }
+
+    @Test
+    void orderIsReadsTheOrderCellThatNamesTheRow() {
+        // the palette's Check menu offers a check of the Order cell too ("The Order of order ORD-1639 is ORD-1639")
+        OrdersFake app = new OrdersFake();
+
+        OrderDeskOrdersSteps.orderIs(app.client(), "ORD-1639", "Order", "ORD-1639");
+
+        assertThat(app.steps()).isEqualTo(json("[{'action':'expect','target':{" + O + ",'role':'table','row':{'Order':"
+                + "'ORD-1639'},'column':'Order'},'text':'ORD-1639','timeout':1000}]"));
     }
 
     @Test

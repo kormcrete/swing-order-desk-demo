@@ -43,7 +43,7 @@ The pinned Orders tab (`OrdersPanel`). Its table is the only table on the tab: `
 | Search orders by number or customer (Search; its X clears it) | act | `searchOrders`, `clearOrderSearch` |
 | Filter by status (Status: All, Placed, Shipped, Cancelled) | act | `filterOrders` ("placed", "cancel") |
 | Sort by a column (click its header; again reverses; Order, newest first, at start) | act | `sortOrders` (clicks the header until the column's values read in the asked direction; outcome: the column and direction left, `either` when every value is the same) |
-| An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed") |
+| An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed"; the Order cell too, as the Check menu offers it) |
 | Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one) |
 | Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | `ordersEmptyMessageIs` (by id `ordersEmpty`), `ordersListedAre` with `none` |
 | Select one or several orders | act | `selectOrders` (Cmd/Ctrl for the others), `selectedOrdersAre` |
@@ -69,7 +69,7 @@ both have a `Product` column, so a row locator on either must also name a column
 | The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` |
 | Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` |
 | Search products by SKU or name (Search; its X clears it) | act | `searchProducts`, `clearProductSearch` |
-| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` |
+| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` (the product by name or SKU) |
 | Low stock: a warning icon in Stock at 5 or fewer, its tooltip "Low stock: 4 left" | check | `lowStockWarningIs` |
 | How many products show and how many are selected ("22 products · 2 selected") | check | `productCountIs` |
 | Nothing matches: "No products match ‘zzz’" | check | `productsListedAre` with `none` |
@@ -199,7 +199,12 @@ add `tab:Items` and so on.
   naming their numbers. `openOrder` keeps its id, sentence and steps for one order (tab click, double click) and now
   fails fast, resolves the order, takes several, and waits for the order's tab. Sorting cannot be undone in the app (a
   third click reverses again), so `sortOrders` clicks the header until the column's values, read as shown (amounts,
-  dates, the Status filter's order, names), are in the asked direction, and says what it left. No step ends the app:
+  dates, the Status filter's order; Order and Customer as text with the collator of the app's locale, as the app's
+  table sorter compares a text column: "ORD-1000" before "ORD-999"), are in the asked direction, and says what it left.
+  A sort that never reads so fails after three clicks and puts the list back in the order it had (header clicks on a
+  column that read sorted then, Order first), then shows the tab that was selected before; an `openOrder` whose tab
+  does not open closes the tabs it opened, selects the orders that were selected before (or unselects its rows) and
+  shows the tab that was selected before. No step ends the app:
   `cancelExit` and `exitQuestionIs` choose File ▸ Exit only while a new order with something in its cart shows, so the
   app asks; otherwise they fail and choose nothing. The open orders count moves with every placed or cancelled order:
   `openOrdersCountIs` takes the count the tester expects.
@@ -209,6 +214,16 @@ add `tab:Items` and so on.
   ("Order ORD-1640 placed"), and waits until that number's tab is selected. `checkoutWithPo` no longer presses Next
   blind: a disabled Next fails with the app's reason and the fields' errors, a card-only customer fails with the invoice
   note, the PO goes into "PO number" or "PO number (optional)", and on a failure the checkout it opened is cancelled.
+- A person's check of a table cell (fix round 1 of sub-task d): the Check menu records it as the bare table and a
+  `cell` (the row by its key, the table's first column with unique values: Order, the cart's Product, the products'
+  SKU, the review's Product; the column; the value), not as a target with a row and column. `orderIs`, `cartLineIs`,
+  `productIs` and `reviewLineIs` match that shape (pinned by `CheckMenuForms`, a test helper that runs the library's
+  own Check menu code on a table); a check of the key cell itself is offered too, so each of them also reads its
+  key column (Order, Product) and `productIs` takes a SKU for the product. `orderIs`, `cartLineIs` and `productIs`
+  fit only their own table (the Orders tab's scope with the Order key; a new order's scope with the Product key for
+  the cart, the SKU key for the products; an order tab's Items have neither scope). `reviewLineIs` only suggests itself:
+  a pattern never compares the window and the review's table has no scope, so a cart line's cell fits it too (the
+  Check menu then offers both, `cartLineIs` and `reviewLineIs`).
 - A checkout field, step, way to pay, section or answer is given by the tester's words: the name, its start, a word of
   it ("note": Delivery note), the label the app shows or the id ("postalCode"); "PO" is the PO number.
 

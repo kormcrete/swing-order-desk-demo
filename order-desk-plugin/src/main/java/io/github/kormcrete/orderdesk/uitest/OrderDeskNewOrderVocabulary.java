@@ -193,12 +193,16 @@ final class OrderDeskNewOrderVocabulary {
                         .build(),
                 DomainStep.check("productIs", "The {column} of {product} is {value}")
                         .about("Reads one value of a listed product: its SKU, Price or Stock (\"Out of stock\" at 0),"
-                                + " e.g. the Price of Stapler is €12.50")
+                                + " e.g. the Price of Stapler is €12.50. {product}: its name, the start of it, or its SKU (\"DSK-STAPLER\")")
                         .param("column", ParamType.TEXT).choices(() -> OrderDeskNewOrderSteps.PRODUCT_CHECK_COLUMNS)
                         .param("product", ParamType.TEXT).choices(products)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.productIs(ui, p.text("product"), p.text("column"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", productRow("product")))
+                        // as the Check menu records a cell check: the products table's rows by their key, the
+                        // first column (SKU); the cart's are keyed by Product
+                        .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
+                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
+                                NEW_ORDER_SCOPE, key(SKU_COLUMN)))
                         .java(STEPS, "productIs(ui, {product}, {column}, {value})")
                         .build(),
                 DomainStep.check("lowStockWarningIs", "The low-stock warning of {product} is {warning}")
@@ -264,7 +268,11 @@ final class OrderDeskNewOrderVocabulary {
                         .param("product", ParamType.TEXT).choices(cartLines)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.cartLineIs(ui, p.text("product"), p.text("column"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", cartRow("product")))
+                        // as the Check menu records a cell check: the cart's lines by their key, the first column
+                        // (Product); the products table's are keyed by SKU
+                        .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
+                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
+                                NEW_ORDER_SCOPE, key(PRODUCT_COLUMN)))
                         .java(STEPS, "cartLineIs(ui, {product}, {column}, {value})")
                         .build(),
                 DomainStep.check("cartAmountIs", "The cart's {amount} is {value}")

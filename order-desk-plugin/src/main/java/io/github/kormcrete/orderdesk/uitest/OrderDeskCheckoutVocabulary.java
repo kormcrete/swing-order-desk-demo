@@ -285,9 +285,12 @@ final class OrderDeskCheckoutVocabulary {
                         .param("product", ParamType.TEXT).choices(reviewProducts)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewLineIs(ui, p.text("product"), p.text("column"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'role':'table','row':{%s:'{product}'},'column':'{column}'},"
-                                + "'text':'{value}'}", DIALOG, key(PRODUCT_COLUMN)))
-                        // the window is never compared, so this fits the cart's and an order tab's lines too: suggest only
+                                                // as the Check menu records a cell check: the table, then the cell by its row's key (Product)
+                        .match(json("{'action':'expect','target':{%s,'role':'table'},"
+                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
+                                DIALOG, key(PRODUCT_COLUMN)))
+                        // the window is never compared and the review's table has no scope, so this fits the cart's
+                        // lines too (the Check menu offers both there): suggest only
                         .autoFold(false)
                         .java(STEPS, "reviewLineIs(ui, {product}, {column}, {value})")
                         .build(),

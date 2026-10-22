@@ -150,7 +150,11 @@ final class OrderDeskOrdersVocabulary {
                         .param("order", ParamType.TEXT).choices(orders)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskOrdersSteps.orderIs(ui, p.text("order"), p.text("column"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", orderRow("order")))
+                        // as the Check menu records a cell check: the table, then the cell by its row's key (the
+                        // first column, Order) and its column
+                        .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
+                                + "'cell':{'row':{%s:'{order}'},'column':'{column}','expected':'{value}'}}",
+                                ORDERS_SCOPE, key(ORDER_COLUMN)))
                         .java(STEPS, "orderIs(ui, {order}, {column}, {value})")
                         .build(),
                 DomainStep.check("ordersListedAre", "The orders listed are {orders}")

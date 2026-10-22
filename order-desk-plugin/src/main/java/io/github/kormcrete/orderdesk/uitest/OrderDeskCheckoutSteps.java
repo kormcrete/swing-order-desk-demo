@@ -464,7 +464,9 @@ public final class OrderDeskCheckoutSteps {
     public static void reviewLineIs(Client ui, String product, String column, String value) {
         requireOn(ui, Step.REVIEW, "The review");
         String name = pick(product, reviewProducts(ui), "order line", "order lines", "The review lists");
+        // the Product column names the line: the Check menu offers its check too
         String col = column.trim().toLowerCase(Locale.ROOT).startsWith("quant") ? QTY_COLUMN
+                : PRODUCT_COLUMN.equalsIgnoreCase(column.trim()) ? PRODUCT_COLUMN
                 : pick(column, REVIEW_LINE_COLUMNS, "column", "columns", "The review's columns");
         shows(ui.dialog().table().row(PRODUCT_COLUMN, name).cell(col), name + "'s " + col + " on the review", value);
     }

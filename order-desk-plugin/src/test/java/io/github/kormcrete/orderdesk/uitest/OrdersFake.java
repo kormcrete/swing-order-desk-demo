@@ -30,6 +30,10 @@ class OrdersFake extends FakeApp {
     private boolean sortable;
     private String sortedBy;
     private boolean ascending;
+    /** The header sorts every column as plain text (not as the app does): a sort by Total never reads sorted. */
+    private boolean asText;
+    /** The orders whose tab a double click on their row, or the row menu's Open, opens. */
+    private final List<String> opening = new ArrayList<String>();
 
     OrdersFake() {
         answer("text 'Search'", field("Search", ""));
@@ -94,6 +98,22 @@ class OrdersFake extends FakeApp {
         return this;
     }
 
+    /** As {@link #sortable}, but every column sorts as plain text, unlike the app (Total: "€181.44" before "€40.56"). */
+    OrdersFake sortableAsText() {
+        asText = true;
+        return sortable();
+    }
+
+    /** A double click on these orders' rows, or the row menu's Open, opens their tabs (no other tab opens). */
+    OrdersFake opening(String... numbers) {
+        opening.addAll(Arrays.asList(numbers));
+        return this;
+    }
+
+    private void opened(String number) {
+        if (opening.contains(number)) answer("tab '" + number + "'", node("tab", number));
+    }
+
     private void show() {
         if (rows.isEmpty()) {
             forget("table");
@@ -104,7 +124,7 @@ class OrdersFake extends FakeApp {
         table.selected = selected;
         answer("table", table);
         for (List<String> r : rows) {
-            for (int c = 1; c < COLUMNS.size(); c++) {
+            for (int c = 0; c < COLUMNS.size(); c++) {
                 answer("table row=" + r.get(0) + " col=" + COLUMNS.get(c), cell(COLUMNS.get(c), r.get(c)));
             }
         }
@@ -116,12 +136,19 @@ class OrdersFake extends FakeApp {
             ascending = !target.column.equals(sortedBy) || !ascending;
             sortedBy = target.column;
             final int c = COLUMNS.indexOf(sortedBy);
-            final Comparator<String> order = OrderDeskOrdersSteps.comparator(sortedBy);
+            final Comparator<String> order = asText ? Comparator.<String>naturalOrder() : OrderDeskOrdersSteps.comparator(sortedBy);
             Comparator<List<String>> byColumn = (a, b) -> order.compare(a.get(c), b.get(c));
             rows.sort(ascending ? byColumn : byColumn.reversed());
             show();
         }
+        if (count != null && count == 2 && target.row != null) opened(String.valueOf(target.row.get("Order")));
         return super.click(target, button, count, modifiers, timeout);
+    }
+
+    @Override
+    public VerbOutcome contextMenu(Locator target, List<String> path, Long timeout) {
+        if (path.equals(Collections.singletonList("Open"))) for (String n : new ArrayList<String>(opening)) opened(n);
+        return super.contextMenu(target, path, timeout);
     }
 
     static Node field(String caption, String value) {

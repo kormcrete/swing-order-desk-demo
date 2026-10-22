@@ -382,6 +382,22 @@ class OrderDeskNewOrderStepsTest {
     }
 
     @Test
+    void productIsTakesTheSkuForTheProductAndReadsItsProductCell() {
+        // the palette's Check menu names a product's row by its SKU, the products table's first column
+        newOrderShowing();
+        products();
+        app.answer("table row=DSK-STAPLER,Stapler col=Price", cell("Price", "€12.50"));
+        app.answer("table row=DSK-STAPLER,Stapler col=Product", cell("Product", "Stapler"));
+
+        OrderDeskNewOrderSteps.productIs(ui, "DSK-STAPLER", "Price", "€12.50");
+        OrderDeskNewOrderSteps.productIs(ui, "dsk-stapler", "product", "Stapler");
+
+        assertThat(app.steps().get(0)).isEqualTo(json("{'action':'expect','target':{" + NO + ",'role':'table',"
+                + "'row':{'SKU':'DSK-STAPLER','Product':'Stapler'},'column':'Price'},'text':'€12.50','timeout':1000}"));
+        assertThat(app.steps().get(1).get("target").get("column").asText()).isEqualTo("Product");
+    }
+
+    @Test
     void lowStockWarningIsReadsTheStockCellsTooltip() {
         newOrderShowing();
         products();
@@ -532,6 +548,20 @@ class OrderDeskNewOrderStepsTest {
         assertThat(wrong).isInstanceOf(AssertionError.class)
                 .hasMessage("A4 paper, 500 sheets's Line total in the cart reads “€14.70”, expected “€9.80”");
         assertThat(column).isInstanceOf(DriverException.class).hasMessageContaining("Qty; Price; Line total");
+    }
+
+    @Test
+    void cartLineIsReadsTheProductCellThatNamesTheLine() {
+        // the palette's Check menu offers a check of the Product cell too; Product is a products column too, so the
+        // line's own Line total tells the cart's row apart (live: without it the cell was not found)
+        newOrderShowing();
+        cart("Stapler");
+        app.answer("table row=Stapler,€1.00 col=Product", cell("Product", "Stapler"));
+
+        OrderDeskNewOrderSteps.cartLineIs(ui, "Stapler", "Product", "Stapler");
+
+        assertThat(app.steps().get(0)).isEqualTo(json("{'action':'expect','target':{" + NO + ",'role':'table',"
+                + "'row':{'Product':'Stapler','Line total':'€1.00'},'column':'Product'},'text':'Stapler','timeout':1000}"));
     }
 
     @Test

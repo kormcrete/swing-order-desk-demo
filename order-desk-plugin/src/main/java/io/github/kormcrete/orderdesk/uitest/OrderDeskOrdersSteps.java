@@ -89,10 +89,16 @@ public final class OrderDeskOrdersSteps {
     /**
      * Opens an order in a tab of its own from the Orders list: a double click on its row (the app selects the tab of an
      * order already open instead). Several, parted by ;, are selected and opened together through the row menu's Open.
+     * When a tab does not open, the screen is left as found: the tabs this step opened close again, the orders
+     * selected before are selected again, and the tab selected before shows again.
      */
     public static void openOrder(final Client ui, String order) {
         String before = goToOrders(ui);
-        final List<String> numbers = resolveOrders(ui, order, before);
+        List<Map<String, String>> rows = orderRows(ui);
+        final List<String> numbers = resolveOrders(ui, order, before, rows);
+        List<String> selected = selectedNumbers(ui, rows);
+        List<String> wereOpen = new ArrayList<String>();
+        for (String n : numbers) if (presentNow(ui.tab(n))) wereOpen.add(n);
         if (numbers.size() == 1) {
             row(ui, numbers.get(0)).doubleClick();
         } else {
@@ -103,7 +109,15 @@ public final class OrderDeskOrdersSteps {
             for (String n : numbers) if (!presentNow(ui.tab(n))) return null;
             return Boolean.TRUE;
         });
-        if (open == null) throw new DriverException(Reason.NOT_ACTIONABLE, "The tab of " + join(numbers) + " did not open");
+        if (open != null) return;
+        List<String> shut = new ArrayList<String>();
+        for (String n : numbers) {
+            if (!presentNow(ui.tab(n))) shut.add(n);
+            else if (!wereOpen.contains(n)) quietly(() -> closeOrderTab(ui, n));
+        }
+        quietly(() -> reselect(ui, selected, numbers));
+        back(ui, before);
+        throw new DriverException(Reason.NOT_ACTIONABLE, "The tab of " + join(shut) + " did not open");
     }
 
     /** Types {@code text} into the Orders tab's Search: the list shows the orders whose number or customer holds it. */
@@ -138,7 +152,9 @@ public final class OrderDeskOrdersSteps {
         requireMain(ui);
         String col = sortColumn(column);
         int wanted = direction(direction);
+        String before = OrderDeskMainSteps.selectedTab(ui);
         ui.tab(ORDERS_TAB).click();
+        List<Map<String, String>> start = orderRows(ui);
         Integer seen = null;
         for (int click = 0; click < SORT_CLICKS; click++) {
             ordersTable(ui).cell(col).click();
@@ -146,9 +162,12 @@ public final class OrderDeskOrdersSteps {
             if (seen != null && (seen == 0 || seen == wanted)) break;
         }
         if (seen == null || seen != 0 && seen != wanted) {
+            String reads = join(column(orderRows(ui, col), col));
+            boolean restored = restoreOrder(ui, start);
+            back(ui, before);
             throw new DriverException(Reason.NOT_ACTIONABLE, "The orders do not read sorted by " + col + ", "
-                    + word(wanted) + " after " + SORT_CLICKS + " clicks on its header: " + col + " reads "
-                    + join(column(orderRows(ui, col), col)));
+                    + word(wanted) + " after " + SORT_CLICKS + " clicks on its header: " + col + " reads " + reads
+                    + (restored ? "" : ". The list could not be put back in the order it had before"));
         }
         Map<String, Object> left = new LinkedHashMap<String, Object>();
         left.put("column", col);
@@ -195,7 +214,9 @@ public final class OrderDeskOrdersSteps {
     public static void orderIs(final Client ui, String order, String column, final String value) {
         requireOrdersList(ui);
         final String number = resolveOrder(ui, order, orderRows(ui, CUSTOMER_COLUMN));
-        final String col = pick(column, CHECK_COLUMNS, "column", "columns", "The Orders list's columns");
+        // the Order column names the row: the Check menu offers its check too
+        final String col = ORDER_COLUMN.equalsIgnoreCase(column.trim()) ? ORDER_COLUMN
+                : pick(column, CHECK_COLUMNS, "column", "columns", "The Orders list's columns");
         final Target cell = row(ui, number).cell(col);
         if (!STATUS_COLUMN.equals(col)) {
             shows(cell, number + "'s " + col, value);
@@ -398,11 +419,57 @@ public final class OrderDeskOrdersSteps {
 
     /** {@link #resolveOrders} on the list as it shows; a miss selects the tab {@code before} again. */
     private static List<String> resolveOrders(Client ui, String orders, String before) {
+        return resolveOrders(ui, orders, before, orderRows(ui));
+    }
+
+    /** {@link #resolveOrders} on {@code rows}, the list as it shows; a miss selects the tab {@code before} again. */
+    private static List<String> resolveOrders(Client ui, String orders, String before, List<Map<String, String>> rows) {
         try {
-            return resolveOrders(ui, orders, orderRows(ui));
+            return resolveOrders(ui, orders, rows);
         } catch (RuntimeException e) {
             back(ui, before);
             throw e;
+        }
+    }
+
+    /** Closes the tab of order {@code number}: selects it, then File ▸ Close tab (an order's tab closes at once). */
+    private static void closeOrderTab(Client ui, String number) {
+        ui.tab(number).click();
+        ui.menu(FILE_MENU, CLOSE_TAB_ITEM);
+    }
+
+    /**
+     * After rows were clicked: the orders {@code selected} before are selected again; none before: the orders
+     * {@code clicked} are unselected again (a Cmd or Ctrl click each).
+     */
+    private static void reselect(Client ui, List<String> selected, List<String> clicked) {
+        if (!selected.isEmpty()) {
+            select(ui, selected);
+            return;
+        }
+        for (String n : clicked) row(ui, n).click(null, 0, ADD_TO_SELECTION);
+    }
+
+    /**
+     * After a sort that failed: puts the list back in the order it read in ({@code start}, its rows then) with clicks on
+     * the header of a column that read sorted then (the Order column at first), at most two each; true when the orders
+     * read as they did. Quiet: a click that fails ends it.
+     */
+    private static boolean restoreOrder(Client ui, List<Map<String, String>> start) {
+        try {
+            List<String> was = numbers(start);
+            if (numbers(orderRows(ui)).equals(was)) return true;
+            for (String c : COLUMNS) {
+                Integer d = directionOf(column(start, c), comparator(c));
+                if (d == null || d == 0) continue;
+                for (int click = 0; click < 2; click++) {
+                    ordersTable(ui).cell(c).click();
+                    if (numbers(orderRows(ui)).equals(was)) return true;
+                }
+            }
+            return false;
+        } catch (RuntimeException e) {
+            return false;
         }
     }
 
@@ -557,18 +624,23 @@ public final class OrderDeskOrdersSteps {
         return null;
     }
 
-    /** How the app sorts a column, by what it shows: numbers, dates, amounts, statuses in the filter's order, names. */
+    /**
+     * How the app's table sorter orders a column, by what it shows: Items and Total as numbers, Date as a date, Status in
+     * the filter's order (the app's own), and Order and Customer, which are text, with the collator of the JVM's locale
+     * ({@code Collator.getInstance()}, as the sorter takes it for a text column): "ORD-1000" before "ORD-999". A step
+     * runs in the app's JVM, so it is the app's locale.
+     */
     static Comparator<String> comparator(String column) {
-        if (ORDER_COLUMN.equals(column) || ITEMS_COLUMN.equals(column) || TOTAL_COLUMN.equals(column)) {
+        if (ITEMS_COLUMN.equals(column) || TOTAL_COLUMN.equals(column)) {
             return Comparator.comparing(OrderDeskOrdersSteps::amount);
         }
         if (DATE_COLUMN.equals(column)) return Comparator.comparing(OrderDeskOrdersSteps::date);
         if (STATUS_COLUMN.equals(column)) return Comparator.comparing(s -> STATUSES.indexOf(s));
-        final Collator names = Collator.getInstance(Locale.ENGLISH);
+        final Collator names = Collator.getInstance();
         return names::compare;
     }
 
-    /** The number in "ORD-1640", "55" or "€1,234.50" (a minus sign counts). */
+    /** The number in "55" or "€1,234.50" (a minus sign counts). */
     private static BigDecimal amount(String text) {
         String digits = text.replaceAll("[^0-9.]", "");
         if (digits.isEmpty()) return BigDecimal.ZERO;

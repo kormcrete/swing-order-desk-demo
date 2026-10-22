@@ -300,12 +300,18 @@ public final class OrderDeskNewOrderSteps {
         namesAre(listed, names(products), "The products listed are");
     }
 
-    /** Checks one value of a listed product: its SKU, Price or Stock ("Out of stock" at 0). */
+    /**
+     * Checks one value of a listed product: its SKU, Price or Stock ("Out of stock" at 0). The product is given by its
+     * name, the start of it, or its SKU ("DSK-STAPLER", any case), as the palette's Check menu names a product's row.
+     */
     public static void productIs(Client ui, String product, String column, String value) {
         requireNewOrder(ui);
         List<Map<String, String>> rows = productRows(ui);
-        String name = resolveProduct(ui, product, rows);
-        String col = pick(column, PRODUCT_CHECK_COLUMNS, "column", "columns", "The products' columns");
+        String name = bySku(product, rows);
+        if (name == null) name = resolveProduct(ui, product, rows);
+        // the Product column names the row: the Check menu offers its check too
+        String col = PRODUCT_COLUMN.equalsIgnoreCase(column.trim()) ? PRODUCT_COLUMN
+                : pick(column, PRODUCT_CHECK_COLUMNS, "column", "columns", "The products' columns");
         shows(productCell(ui, rows, name, col), name + "'s " + col, value);
     }
 
@@ -375,11 +381,13 @@ public final class OrderDeskNewOrderSteps {
         requireNewOrder(ui);
         List<Map<String, String>> rows = cartRows(ui);
         String name = pick(product, column(rows, PRODUCT_COLUMN), "cart line", "cart lines", "The cart holds");
+        // the Product column names the line: the Check menu offers its check too
         String col = column.trim().toLowerCase(Locale.ROOT).startsWith("quant") ? QTY_COLUMN
+                : PRODUCT_COLUMN.equalsIgnoreCase(column.trim()) ? PRODUCT_COLUMN
                 : pick(column, CART_CHECK_COLUMNS, "column", "columns", "The cart's columns");
         Map<String, Object> row = Rows.row(PRODUCT_COLUMN, name);
-        // Price is a products column too: the line's own Line total tells the cart's row apart
-        if (PRICE_COLUMN.equals(col)) row = Rows.row(PRODUCT_COLUMN, name, LINE_TOTAL_COLUMN, valueOf(rows, name, LINE_TOTAL_COLUMN));
+        // Price and Product are products columns too: the line's own Line total tells the cart's row apart
+        if (PRICE_COLUMN.equals(col) || PRODUCT_COLUMN.equals(col)) row = Rows.row(PRODUCT_COLUMN, name, LINE_TOTAL_COLUMN, valueOf(rows, name, LINE_TOTAL_COLUMN));
         shows(newOrder(ui).table().row(row).cell(col), name + "'s " + col + " in the cart", value);
     }
 
@@ -632,6 +640,14 @@ public final class OrderDeskNewOrderSteps {
             }
             throw new DriverException(Reason.NOT_FOUND, why);
         }
+    }
+
+    /** The name of the listed product whose SKU is {@code product} (any case); null when none is. */
+    private static String bySku(String product, List<Map<String, String>> rows) {
+        for (Map<String, String> r : rows) {
+            if (product.trim().equalsIgnoreCase(r.get(SKU_COLUMN))) return r.get(PRODUCT_COLUMN);
+        }
+        return null;
     }
 
     /** A product's row by its name: the click locator; the SKU column tells the products table from the cart. */

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kormcrete.swingui.agent.BodyTrace;
 import io.github.kormcrete.swingui.driver.DriverException;
+import io.github.kormcrete.swingui.driver.inspect.CheckMenuForms;
 import io.github.kormcrete.swingui.junit.Client;
 import io.github.kormcrete.swingui.spi.DomainStep;
 import io.github.kormcrete.swingui.spi.ParamType;
@@ -12,6 +13,9 @@ import io.github.kormcrete.swingui.vocab.Matcher;
 import io.github.kormcrete.swingui.vocab.Pattern;
 import io.github.kormcrete.swingui.vocab.PatternCompiler;
 import org.junit.jupiter.api.Test;
+
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableModel;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -365,7 +369,7 @@ class OrderDeskVocabularyTest {
         // a written pattern (match) and the body take their names from OrderDeskSteps' constants; this pins that a
         // rename there reaches both: each entry's fixed parts equal the body's step at the same place. A pattern that
         // only suggests its step (autoFold false) is looser than the body on purpose, and a check that only reads
-        // (newOrderIsFor) takes no steps to compare
+        // (newOrderIsFor) takes no steps to compare; a cell check is compared as the body writes it (asBodyStep)
         int checked = 0;
         for (DomainStep s : steps) {
             if (s.match().isEmpty() || s.match().get(0).contains("\"use\"") || !s.autoFold()) continue;
@@ -373,7 +377,7 @@ class OrderDeskVocabularyTest {
             if (body.size() == 0) continue;
             assertThat(body.size()).as(s.id() + " steps").isGreaterThanOrEqualTo(s.match().size());
             for (int i = 0; i < s.match().size(); i++) {
-                JsonNode entry = JSON.readTree(s.match().get(i));
+                JsonNode entry = asBodyStep(JSON.readTree(s.match().get(i)));
                 assertThat(fixedParts(entry, body.get(i))).as(s.id() + " match " + (i + 1) + " vs " + body.get(i)).isEmpty();
                 checked++;
             }
@@ -471,16 +475,48 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
-    void aPersonsCheckOnALineTotalFoldsIntoCartLineIsNotIntoAProductCheck() {
-        JsonNode lineTotal = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
-                + "'role':'table','row':{'Product':'A4 paper, 500 sheets','Qty':'3','Price':'€4.90','Line total':'€14.70'},"
-                + "'column':'Line total'},'text':'€14.70'}");
+    void thePersonsCheckOfACartLineOffersCartLineIsAndOfAProductProductIs() {
+        // as the palette's Check menu records a cell check: the bare table, then the cell by its row key and column
+        JTable cart = table(CART, line("A4 paper, 500 sheets", "3", "€4.90", "€14.70"), line("Stapler", "1", "€12.50", "€12.50"));
+        JTable products = table(PRODUCTS, line("PAP-A4-500", "A4 paper, 500 sheets", "€4.90", "120"),
+                line("DSK-STAPLER", "Stapler", "€12.50", "4"));
 
-        Pattern.Match m = pattern("cartLineIs").match(Collections.singletonList(lineTotal));
+        List<String> onLineTotal = offered(CheckMenuForms.cell(cart, 0, 3, "main", NEW_ORDER));
+        List<String> onPrice = offered(CheckMenuForms.cell(products, 1, 2, "main", NEW_ORDER));
 
-        assertThat(m.params()).containsEntry("product", "A4 paper, 500 sheets").containsEntry("column", "Line total")
-                .containsEntry("value", "€14.70");
-        assertThat(pattern("productIs").match(Collections.singletonList(lineTotal))).isNull();
+        assertThat(onLineTotal).contains("cartLineIs{column=Line total, product=A4 paper, 500 sheets, value=€14.70}")
+                .noneMatch(c -> c.startsWith("productIs"));
+        // the products table's rows are keyed by SKU, the first column: productIs takes the SKU for the product
+        assertThat(onPrice).contains("productIs{column=Price, product=DSK-STAPLER, value=€12.50}")
+                .noneMatch(c -> c.startsWith("cartLineIs"));
+    }
+
+    @Test
+    void thePersonsCheckOfAKeyCellOffersAStepThatPasses() {
+        // a check on the cell that names the row (the cart's Product, the products' SKU) is offered too
+        JTable cart = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+        JTable products = table(PRODUCTS, line("DSK-STAPLER", "Stapler", "€12.50", "4"));
+
+        assertThat(offered(CheckMenuForms.cell(cart, 0, 0, "main", NEW_ORDER)))
+                .contains("cartLineIs{column=Product, product=Stapler, value=Stapler}");
+        assertThat(offered(CheckMenuForms.cell(products, 0, 0, "main", NEW_ORDER)))
+                .contains("productIs{column=SKU, product=DSK-STAPLER, value=DSK-STAPLER}");
+        assertThat(offered(CheckMenuForms.cell(products, 0, 1, "main", NEW_ORDER)))
+                .contains("productIs{column=Product, product=DSK-STAPLER, value=Stapler}");
+    }
+
+    @Test
+    void thePersonsCheckOfAReviewLineOffersReviewLineIsWhichOnlySuggestsItself() {
+        JTable review = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+        JTable cart = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+
+        assertThat(offered(CheckMenuForms.cell(review, 0, 1, "dialog", null)))
+                .contains("reviewLineIs{column=Qty, product=Stapler, value=1}")
+                .noneMatch(c -> c.startsWith("cartLineIs"));
+        // a pattern never compares the window, and the review's table has no scope: a cart's line fits it too
+        assertThat(offered(CheckMenuForms.cell(cart, 0, 1, "main", NEW_ORDER)))
+                .contains("reviewLineIs{column=Qty, product=Stapler, value=1}", "cartLineIs{column=Qty, product=Stapler, value=1}");
+        assertThat(step("reviewLineIs").autoFold()).isFalse();
     }
 
     @Test
@@ -622,18 +658,23 @@ class OrderDeskVocabularyTest {
     }
 
     @Test
-    void aPersonsCheckOfAnOrdersCellFoldsIntoOrderIsAndACartOrItemsCellDoesNot() {
-        JsonNode status = json("{'action':'expect','target':{" + ORDERS_TABLE + "," + ORD_1639 + ",'column':'Status'},'text':'Placed'}");
-        JsonNode cart = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],'role':'table',"
-                + "'row':{'Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},'column':'Qty'},'text':'1'}");
-        JsonNode items = json("{'action':'expect','target':{'window':'main','scope':['tab:ORD-1639','tab:Items'],'role':'table',"
-                + "'row':{'SKU':'DSK-STAPLER','Product':'Stapler','Qty':'1','Price':'€12.50','Line total':'€12.50'},"
-                + "'column':'Qty'},'text':'1'}");
+    void thePersonsCheckOfAnOrdersCellOffersOrderIsAndACartOrItemsCellDoesNot() {
+        // as the palette's Check menu records a cell check: the bare table, then the cell by its row key and column
+        JTable orders = table(OrdersFake.COLUMNS, OrdersFake.ORDERS.toArray(new List[0]));
+        JTable cart = table(CART, line("Stapler", "1", "€12.50", "€12.50"));
+        JTable items = table(Arrays.asList("SKU", "Product", "Qty", "Price", "Line total"),
+                line("DSK-STAPLER", "Stapler", "1", "€12.50", "€12.50"));
 
-        assertThat(pattern("orderIs").match(Collections.singletonList(status)).params()).containsEntry("order", "ORD-1639")
-                .containsEntry("column", "Status").containsEntry("value", "Placed");
-        assertThat(pattern("orderIs").match(Collections.singletonList(cart))).isNull();
-        assertThat(pattern("orderIs").match(Collections.singletonList(items))).isNull();
+        assertThat(offered(CheckMenuForms.cell(orders, 0, 5, "main", Collections.singletonList("tab:Orders"))))
+                .contains("orderIs{column=Status, order=ORD-1639, value=Placed}");
+        assertThat(offered(CheckMenuForms.cell(orders, 2, 4, "main", Collections.singletonList("tab:Orders"))))
+                .contains("orderIs{column=Total, order=ORD-1636, value=€40.56}");
+        // the Order cell names the row; its check is offered too, and passes (OrderDeskOrdersStepsTest)
+        assertThat(offered(CheckMenuForms.cell(orders, 1, 0, "main", Collections.singletonList("tab:Orders"))))
+                .contains("orderIs{column=Order, order=ORD-1638, value=ORD-1638}");
+        assertThat(offered(CheckMenuForms.cell(cart, 0, 1, "main", NEW_ORDER))).noneMatch(c -> c.startsWith("orderIs"));
+        assertThat(offered(CheckMenuForms.cell(items, 0, 2, "main", Arrays.asList("tab:ORD-1639", "tab:Items"))))
+                .noneMatch(c -> c.startsWith("orderIs"));
     }
 
     @Test
@@ -703,6 +744,47 @@ class OrderDeskVocabularyTest {
         List<Matcher.Item> items = new ArrayList<Matcher.Item>();
         for (int i = 0; i < raw.length; i++) items.add(Matcher.Item.raw(i, "person", raw[i], false, true));
         return Matcher.matches(items, vocabulary, System.nanoTime() + 5_000_000_000L);
+    }
+
+    private static final List<String> CART = Arrays.asList("Product", "Qty", "Price", "Line total");
+    private static final List<String> PRODUCTS = Arrays.asList("SKU", "Product", "Price", "Stock");
+    private static final List<String> NEW_ORDER = Collections.singletonList("tab:New order · Ada Shop Ltd");
+
+    /**
+     * What the Check menu offers of the plugin's checks for {@code forms} (one element's checks, as
+     * {@link CheckMenuForms} makes them), as {@code UiMcpSession.domainChecks} matches them: the checks whose pattern is
+     * one step, each with its values ("orderIs{column=Status, order=ORD-1639, value=Placed}").
+     */
+    private List<String> offered(List<JsonNode> forms) {
+        List<Matcher.Candidate> vocabulary = new ArrayList<Matcher.Candidate>();
+        for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
+            if (c.step().kind() != DomainStep.Kind.CHECK) continue;
+            List<Pattern> one = new ArrayList<Pattern>();
+            for (Pattern p : c.patterns()) if (Matcher.oneStep(p)) one.add(p);
+            if (!one.isEmpty()) vocabulary.add(new Matcher.Candidate(c.step().id(), one, false));
+        }
+        List<String> out = new ArrayList<String>();
+        for (JsonNode form : forms) {
+            List<Matcher.Choice> choices = Matcher.matches(Collections.singletonList(Matcher.Item.raw(0, "person", form,
+                    false, false)), vocabulary, System.nanoTime() + 5_000_000_000L);
+            for (Matcher.Choice c : choices) {
+                String one = c.step + new java.util.TreeMap<String, String>(c.params);
+                if (!out.contains(one)) out.add(one);
+            }
+        }
+        return out;
+    }
+
+    /** A table as the app shows one: these columns, these rows of text. */
+    @SafeVarargs
+    private static JTable table(List<String> columns, List<String>... rows) {
+        DefaultTableModel model = new DefaultTableModel(columns.toArray(), 0);
+        for (List<String> r : rows) model.addRow(r.toArray());
+        return new JTable(model);
+    }
+
+    private static List<String> line(String... cells) {
+        return Arrays.asList(cells);
     }
 
     /** The step the run {@code raw} folds into first; null for none. */
@@ -850,6 +932,21 @@ class OrderDeskVocabularyTest {
                 "Cleaning"), 4);
         tree.value = "Desk";
         return tree;
+    }
+
+    /**
+     * A pattern entry as the body's step writes it: a cell check as the Check menu records it (the table, then
+     * {@code cell}: row, column, expected) is the body's expect of that cell's text (the target with the row and column).
+     */
+    private static JsonNode asBodyStep(JsonNode entry) {
+        if (!entry.has("cell")) return entry;
+        com.fasterxml.jackson.databind.node.ObjectNode step = entry.deepCopy();
+        com.fasterxml.jackson.databind.node.ObjectNode target = (com.fasterxml.jackson.databind.node.ObjectNode) step.get("target");
+        JsonNode cell = step.remove("cell");
+        target.set("row", cell.get("row"));
+        target.set("column", cell.get("column"));
+        step.set("text", cell.get("expected"));
+        return step;
     }
 
     /**

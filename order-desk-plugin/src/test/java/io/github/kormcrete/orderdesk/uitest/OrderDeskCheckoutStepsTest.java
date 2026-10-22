@@ -574,6 +574,15 @@ class OrderDeskCheckoutStepsTest {
     }
 
     @Test
+    void reviewLineIsReadsTheProductCellThatNamesTheLine() {
+        // the palette's Check menu offers a check of the Product cell too
+        CheckoutFake app = new CheckoutFake("Review");
+        app.answer("dialog table row=Stapler col=Product", FakeApp.cell("Product", "Stapler"));
+
+        OrderDeskCheckoutSteps.reviewLineIs(app.client(), "Stapler", "product", "Stapler");
+    }
+
+    @Test
     void reviewLineIsOnTwoMatchesFailsNamingBoth() {
         CheckoutFake app = new CheckoutFake("Review");
         app.answer("dialog table", FakeApp.table(java.util.Arrays.asList("Product", "Qty", "Price", "Line total"), 2,
