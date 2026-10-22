@@ -35,7 +35,7 @@ final class CartPanel extends JPanel {
     private final JLabel removeHint = Ui.hint("");
     private final TotalsPanel totals = new TotalsPanel();
     private final JButton checkout = new JButton("Checkout…");
-    private final JLabel checkoutHint = Ui.hint("");
+    private final JLabel checkoutHint = Ui.named(Ui.hint(""), "checkoutReason");
 
     CartPanel(Cart cart, Runnable onChange, Runnable onCheckout) {
         super(new MigLayout("insets 0, fill, hidemode 3", "[grow,fill]", "[]4[grow,fill]2[]8[]8[]"));

@@ -10,6 +10,7 @@ import io.github.kormcrete.orderdesk.model.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JLabel;
 import java.time.LocalDate;
 import java.util.Collections;
 
@@ -144,6 +145,15 @@ class NewOrderPanelTest {
             assertThat(NewOrderPanel.focusInCart(panel.productsPanel().table(), cartPanel)).isFalse();
             assertThat(NewOrderPanel.focusInCart(new javax.swing.JTree(), cartPanel)).isFalse();
             assertThat(NewOrderPanel.focusInCart(null, cartPanel)).isFalse();
+        });
+    }
+
+    @Test
+    void aPluginReadsTheTermsByTheirName() {
+        Edt.run(() -> {
+            assertThat(Named.countShown(panel, "customerTerms")).isZero();   // hidden until a customer is chosen
+            panel.chooseCustomer(customer("Lumen"));
+            assertThat(Named.shown(panel, "customerTerms", JLabel.class).getText()).isEqualTo("Card only");
         });
     }
 }

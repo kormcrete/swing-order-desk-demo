@@ -64,6 +64,7 @@ final class NewOrderPanel extends JPanel {
                 setBorder(new FlatLineBorder(new Insets(0, 10, 0, 10), UIManager.getColor(Theme.SOFT_BORDER), 1, 10));
             }
         };
+        card.setName("customerTerms");   // for a plugin: no caption names it
         card.setOpaque(true);
         card.putClientProperty(FlatClientProperties.STYLE,
                 "arc: 10; background: $OrderDesk.cardBackground; foreground: $OrderDesk.muted");

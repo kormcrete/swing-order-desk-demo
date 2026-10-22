@@ -54,7 +54,7 @@ final class CheckoutPanel extends JPanel {
     private final JButton back = new JButton("Back");
     private final JButton next = new JButton("Next");
     private final JButton cancel = new JButton("Cancel");
-    private final JLabel reason = Ui.hint("");
+    private final JLabel reason = Ui.named(Ui.hint(""), "nextReason");
     private final JLabel placingFor = Ui.hint("");
     private int step;
     private boolean placing;

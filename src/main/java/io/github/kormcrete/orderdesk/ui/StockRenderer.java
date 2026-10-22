@@ -6,7 +6,10 @@ import javax.swing.JTable;
 import javax.swing.table.DefaultTableCellRenderer;
 import java.awt.Component;
 
-/** The products table's Stock column: a warning icon when stock runs low, "Out of stock" at 0. */
+/**
+ * The products table's Stock column: a warning icon when stock runs low, with a tooltip that says so ("Low stock: 4
+ * left"), "Out of stock" at 0.
+ */
 final class StockRenderer extends DefaultTableCellRenderer {
 
     StockRenderer() {
@@ -20,7 +23,9 @@ final class StockRenderer extends DefaultTableCellRenderer {
         super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
         Product product = ((ProductsTableModel) table.getModel()).productAt(table.convertRowIndexToModel(row));
         setText(product.inStock() ? String.valueOf(product.stock()) : "Out of stock");
-        setIcon(product.lowStock() ? Icons.get(Icons.WARNING) : null);
+        boolean low = product.lowStock();
+        setIcon(low ? Icons.get(Icons.WARNING) : null);
+        setToolTipText(low ? "Low stock: " + product.stock() + " left" : null);   // the renderer is shared: reset it
         return this;
     }
 }

@@ -9,11 +9,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JFormattedTextField;
+import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
 import javax.swing.KeyStroke;
+import javax.swing.SwingUtilities;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.time.LocalDate;
@@ -245,6 +246,17 @@ class CartPanelTest {
             assertThat(editor.getCellEditorValue()).isEqualTo(7);
             editor.stopCellEditing();
             assertThat(cart.lines().get(0).quantity()).isEqualTo(7);
+        });
+    }
+
+    @Test
+    void aPluginReadsTheCheckoutReasonByItsName() {
+        Edt.run(() -> {
+            JLabel reason = Named.find(panel, "checkoutReason", JLabel.class);
+            panel.setCheckoutBlockedReason("Fix quantities above stock");
+            assertThat(reason.getText()).isEqualTo("Fix quantities above stock");
+            panel.setCheckoutBlockedReason(null);
+            assertThat(reason.getText()).isEmpty();
         });
     }
 }

@@ -15,6 +15,7 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -46,7 +47,7 @@ final class AddressStep extends JPanel {
         phone.setText(initial.phone());
 
         // as in the mock: captions above the fields; Name and Street full width, then two fields per row
-        add(Ui.heading("Delivery address"), "span, wrap 10");
+        add(Ui.stepHeading("Delivery address"), "span, wrap 10");
         wide("Name", name, AddressField.NAME);
         wide("Street", street, AddressField.STREET);
         JLabel noError = Ui.fieldError();
@@ -74,10 +75,18 @@ final class AddressStep extends JPanel {
     }
 
     private JLabel error(AddressField key, JTextField field) {
-        JLabel error = Ui.fieldError();
+        JLabel error = Ui.named(Ui.fieldError(), errorName(key));
         fields.put(key, field);
         errors.put(key, error);
         return error;
+    }
+
+    /** The error's name for a plugin: "postalCodeError" for the Postal code field. */
+    private static String errorName(AddressField key) {
+        String[] words = key.name().toLowerCase(Locale.ROOT).split("_");
+        StringBuilder name = new StringBuilder(words[0]);
+        for (int i = 1; i < words.length; i++) name.append(Character.toUpperCase(words[i].charAt(0))).append(words[i].substring(1));
+        return name.append("Error").toString();
     }
 
     /** Caption, field and error across both columns. */

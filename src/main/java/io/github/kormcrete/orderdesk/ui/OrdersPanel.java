@@ -61,6 +61,7 @@ final class OrdersPanel extends JPanel {
         sorter.setSortKeys(Collections.singletonList(new RowSorter.SortKey(0, SortOrder.DESCENDING)));
         table.setRowSorter(sorter);
         Ui.widths(table, 110, 110, 0, 80, 110, 110);
+        empty.setName("ordersEmpty");   // for a plugin: its wordings share no fixed text
         empty.setHorizontalAlignment(SwingConstants.CENTER);
         scroll = Ui.scroll(table);
 

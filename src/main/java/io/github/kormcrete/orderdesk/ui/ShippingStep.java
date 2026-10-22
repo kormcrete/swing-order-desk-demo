@@ -19,8 +19,8 @@ final class ShippingStep extends JPanel {
 
     private final JRadioButton standard = new JRadioButton(Shipping.STANDARD.describe());
     private final JRadioButton express = new JRadioButton(Shipping.EXPRESS.describe());
-    private final JLabel standardPrice = new JLabel();
-    private final JLabel expressPrice = new JLabel();
+    private final JLabel standardPrice = Ui.named(new JLabel(), "standardPrice");
+    private final JLabel expressPrice = Ui.named(new JLabel(), "expressPrice");
     private final JLabel expressReason = Ui.hint("");
     private final JTextArea note = new JTextArea(3, 30);
 
@@ -36,7 +36,7 @@ final class ShippingStep extends JPanel {
         note.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, null);
         note.setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, null);
 
-        add(Ui.heading("Shipping method"), "span, wrap 10");
+        add(Ui.stepHeading("Shipping method"), "span, wrap 10");
         add(standard);
         add(standardPrice, "wrap 6");
         add(express);

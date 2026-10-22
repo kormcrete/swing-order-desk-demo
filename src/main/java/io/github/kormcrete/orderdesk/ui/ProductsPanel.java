@@ -43,8 +43,8 @@ final class ProductsPanel extends JPanel {
     private final TableRowSorter<ProductsTableModel> sorter;
     private final JTextField search = Ui.searchField("Search products");
     private final JButton add = new JButton("Add to cart", Icons.get(Icons.CART));
-    private final JLabel addHint = Ui.hint("");
-    private final JLabel count = Ui.hint("");
+    private final JLabel addHint = Ui.named(Ui.hint(""), "addToCartReason");
+    private final JLabel count = Ui.named(Ui.hint(""), "productCount");
     private final JLabel empty = Ui.hint("");
     private final JScrollPane tableScroll;
     private Category category;

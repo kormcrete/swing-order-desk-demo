@@ -8,9 +8,15 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
+import java.awt.Component;
+import java.awt.Container;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -94,5 +100,49 @@ class OrderPanelTest {
             assertThat(panel.statusText()).isEqualTo("Cancelled");
             panel.removeNotify();
         });
+    }
+
+    @Test
+    void aPluginReadsTheHeaderAndItemsSummaryByTheirNames() {
+        OrderPanel panel = panel("ORD-1636");
+        Edt.run(() -> {
+            assertThat(Named.find(panel, "orderStatus", JLabel.class).getText()).isEqualTo("Shipped");
+            assertThat(Named.find(panel, "orderFacts", JLabel.class).getText()).isEqualTo("Fjord Supplies · 2 Oct 2026 · €164.84");
+            assertThat(Named.find(panel, "itemsSummary", JLabel.class).getText()).matches("\\d+ units? in 2 lines");
+        });
+    }
+
+    /** Each Delivery and Invoice caption is tied to its value, as a person reads them side by side. */
+    @Test
+    void theDeliveryAndInvoiceCaptionsNameTheirValues() {
+        OrderPanel panel = panel("ORD-1636");
+        Order order = store.orders().find("ORD-1636").get();
+        Edt.run(() -> {
+            Component address = valueFor(panel, "Delivery address");
+            assertThat(address).isSameAs(Named.find(panel, "deliveryAddress", JPanel.class));
+            List<String> lines = new ArrayList<>();
+            for (Component line : ((JPanel) address).getComponents()) lines.add(((JLabel) line).getText());
+            assertThat(lines).isEqualTo(order.address().lines());
+            assertThat(((JLabel) valueFor(panel, "Shipping method")).getText()).startsWith("Standard · 3–5 business days");
+            assertThat(((JLabel) valueFor(panel, "Delivery note")).getText()).isEqualTo(order.note().isEmpty() ? "—" : order.note());
+            assertThat(((JLabel) valueFor(panel, "Payment")).getText()).isEqualTo(order.payment().describe());
+            assertThat(((JLabel) valueFor(panel, "Order date")).getText()).isEqualTo("2 Oct 2026");
+        });
+    }
+
+    private static Component valueFor(Container root, String caption) {
+        List<Component> found = new ArrayList<>();
+        collectCaptions(root, caption, found);
+        assertThat(found).as(caption).hasSize(1);
+        return found.get(0);
+    }
+
+    private static void collectCaptions(Container parent, String caption, List<Component> out) {
+        for (Component c : parent.getComponents()) {
+            if (c instanceof JLabel && caption.equals(((JLabel) c).getText()) && ((JLabel) c).getLabelFor() != null) {
+                out.add(((JLabel) c).getLabelFor());
+            }
+            if (c instanceof Container) collectCaptions((Container) c, caption, out);
+        }
     }
 }

@@ -26,6 +26,7 @@ final class StatusBar extends JPanel {
 
     StatusBar() {
         super(new MigLayout("insets 3 10 3 0", "[grow]16[]"));
+        message.setName("statusMessage");   // for a plugin: its text changes with every message
         message.putClientProperty(FlatClientProperties.STYLE, STYLE);
         openOrders.putClientProperty(FlatClientProperties.STYLE, STYLE);
         add(message, "growx, wmin 0");

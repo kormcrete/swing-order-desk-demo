@@ -156,4 +156,37 @@ class ProductsPanelTest {
             assertThat(normal).isEqualTo(table.getForeground());
         });
     }
+
+    @Test
+    void aPluginReadsTheCountAndTheAddReasonByTheirNames() {
+        Edt.run(() -> {
+            JLabel count = Named.find(panel, "productCount", JLabel.class);
+            JLabel reason = Named.find(panel, "addToCartReason", JLabel.class);
+            assertThat(count.getText()).isEqualTo("22 products");
+            assertThat(reason.getText()).isEqualTo("Select a product first");
+            select("DSK-LAMP");
+            assertThat(count.getText()).isEqualTo("22 products · 1 selected");
+            assertThat(reason.getText()).isEqualTo("The selected products are out of stock");
+        });
+    }
+
+    @Test
+    void aLowStockCellSaysSoOnHover() {
+        Edt.run(() -> {
+            JTable table = panel.table();
+            table.setSize(800, 2000);
+            table.doLayout();
+            assertThat(tooltipAt(table, rowOf("DSK-STAPLER"))).isEqualTo("Low stock: 4 left");
+            assertThat(tooltipAt(table, rowOf("DSK-LAMP"))).isNull();      // out of stock says so in the cell
+            assertThat(tooltipAt(table, rowOf("PAP-A4-500"))).isNull();    // plenty left
+            assertThat(tooltipAt(table, rowOf("DSK-STAPLER"))).isEqualTo("Low stock: 4 left");   // the renderer is shared
+        });
+    }
+
+    private static String tooltipAt(JTable table, int row) {
+        java.awt.Rectangle cell = table.getCellRect(row, 3, false);
+        java.awt.event.MouseEvent hover = new java.awt.event.MouseEvent(table, java.awt.event.MouseEvent.MOUSE_MOVED, 0, 0,
+                cell.x + cell.width / 2, cell.y + cell.height / 2, 0, false);
+        return table.getToolTipText(hover);
+    }
 }

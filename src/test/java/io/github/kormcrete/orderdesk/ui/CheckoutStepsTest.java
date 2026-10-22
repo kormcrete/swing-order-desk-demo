@@ -13,6 +13,7 @@ import io.github.kormcrete.orderdesk.model.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JLabel;
 import java.awt.AWTKeyStroke;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.InputEvent;
@@ -201,6 +202,60 @@ class CheckoutStepsTest {
             assertThat(step.sectionLines("Shipping")).containsExactly("Standard · 3–5 business days · €4.90", "Note: Ring twice.");
             assertThat(step.sectionLines("Payment")).containsExactly("Invoice (30 days) · PO PO-1");
             assertThat(step.totals().valueOf("Total")).isEqualTo("€37.20");
+        });
+    }
+
+    @Test
+    void aPluginReadsEachAddressErrorByItsName() {
+        Edt.run(() -> {
+            AddressStep step = new AddressStep(customer("Elm").address(), changes::incrementAndGet);
+            for (String name : new String[] {"nameError", "streetError", "postalCodeError", "cityError", "phoneError"}) {
+                assertThat(Named.find(step, name, JLabel.class)).as(name).isNotNull();
+            }
+            assertThat(Named.find(step, "postalCodeError", JLabel.class).getText()).isEqualTo("Postal code is required");
+            step.field(AddressField.STREET).setText("");
+            step.leave(AddressField.STREET);
+            assertThat(Named.find(step, "streetError", JLabel.class).getText()).isEqualTo("Street is required");
+            step.field(AddressField.PHONE).setText("abc");
+            step.leave(AddressField.PHONE);
+            assertThat(Named.find(step, "phoneError", JLabel.class).getText())
+                    .isEqualTo(step.errorText(AddressField.PHONE)).isNotBlank();
+        });
+    }
+
+    @Test
+    void aPluginReadsEachPaymentErrorAndTheInvoiceNoteByTheirNames() {
+        Edt.run(() -> {
+            PaymentStep ada = new PaymentStep(customer("Ada"), () -> LocalDate.of(2026, 10, 12), changes::incrementAndGet);
+            assertThat(Named.find(ada, "invoiceNote", JLabel.class).getText()).isEqualTo("Credit limit €2,000.00 · owes €450.00");
+            ada.leave(ada.poField());
+            assertThat(Named.find(ada, "poNumberError", JLabel.class).getText()).isEqualTo("PO number is required");
+
+            PaymentStep fjord = new PaymentStep(customer("Fjord"), () -> LocalDate.of(2026, 10, 12), changes::incrementAndGet);
+            fjord.cardButton().doClick();
+            fjord.cardNumberField().setText("4242");
+            fjord.expiryField().setText("13/30");
+            fjord.leave(fjord.cardNumberField());
+            fjord.leave(fjord.expiryField());
+            fjord.leave(fjord.nameOnCardField());
+            assertThat(Named.find(fjord, "cardNumberError", JLabel.class).getText()).isEqualTo("Enter the 16 digits of the card");
+            assertThat(Named.find(fjord, "expiryError", JLabel.class).getText()).isEqualTo(fjord.errorText(fjord.expiryField())).isNotBlank();
+            assertThat(Named.find(fjord, "nameOnCardError", JLabel.class).getText()).isEqualTo("Name on card is required");
+
+            PaymentStep lumen = new PaymentStep(customer("Lumen"), () -> LocalDate.of(2026, 10, 12), changes::incrementAndGet);
+            assertThat(Named.find(lumen, "invoiceNote", JLabel.class).getText()).isEqualTo("Café Lumen pays by card");
+        });
+    }
+
+    @Test
+    void aPluginReadsTheShippingPricesByTheirNames() {
+        Edt.run(() -> {
+            ShippingStep step = new ShippingStep(changes::incrementAndGet);
+            step.enter(Country.GERMANY, Money.of("26.10"));
+            assertThat(Named.find(step, "standardPrice", JLabel.class).getText()).isEqualTo("€4.90");
+            assertThat(Named.find(step, "expressPrice", JLabel.class).getText()).isEqualTo("€14.90");
+            step.enter(Country.GERMANY, Money.of("120.00"));
+            assertThat(Named.find(step, "standardPrice", JLabel.class).getText()).isEqualTo("Free");
         });
     }
 }

@@ -207,4 +207,16 @@ class OrdersPanelTest {
             assertThat(panel.cancelHint().isVisible()).isTrue();
         });
     }
+
+    @Test
+    void aPluginReadsTheEmptyStateByItsName() {
+        Edt.run(() -> {
+            assertThat(Named.countShown(panel, "ordersEmpty")).isZero();
+            panel.searchField().setText("zzz");
+            assertThat(Named.shown(panel, "ordersEmpty", JLabel.class).getText()).isEqualTo("No orders match ‘zzz’");
+            panel.searchField().setText("");
+            panel.statusFilter().setSelectedItem("Cancelled");
+            assertThat(Named.countShown(panel, "ordersEmpty")).isZero();   // the seed has cancelled orders
+        });
+    }
 }

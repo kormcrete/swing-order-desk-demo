@@ -3,6 +3,8 @@ package io.github.kormcrete.orderdesk.ui;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JLabel;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 class StatusBarTest {
@@ -23,6 +25,17 @@ class StatusBarTest {
             assertThat(bar.openOrders()).isEqualTo("1 open order");
             bar.setOpenOrders(4);
             assertThat(bar.openOrders()).isEqualTo("4 open orders");
+        });
+    }
+
+    @Test
+    void aPluginReadsTheMessageByItsName() {
+        Edt.run(() -> {
+            StatusBar bar = new StatusBar();
+            JLabel message = Named.find(bar, "statusMessage", JLabel.class);
+            assertThat(message.getText()).isEqualTo("Ready");
+            bar.setMessage("Copied ORD-1633");
+            assertThat(message.getText()).isEqualTo("Copied ORD-1633");
         });
     }
 }

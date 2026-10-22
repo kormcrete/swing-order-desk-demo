@@ -24,7 +24,7 @@ final class OrderPanel extends JPanel {
     private final Store store;
     private final Workspace workspace;
     private final Order order;
-    private final StatusPill status = new StatusPill();
+    private final StatusPill status = Ui.named(new StatusPill(), "orderStatus");
     private final JLabel facts;
     private final JButton saveReceipt = new JButton("Save receipt…", Icons.get(Icons.SAVE));
     private final JButton cancel = new JButton("Cancel order", Icons.get(Icons.BAN));
@@ -49,8 +49,8 @@ final class OrderPanel extends JPanel {
 
         JLabel number = new JLabel(order.number());
         number.putClientProperty(FlatClientProperties.STYLE, "font: +5 bold");
-        facts = new JLabel(order.customer().name() + " · " + Dates.format(order.date()) + " · "
-                + order.totals().total().format());
+        facts = Ui.named(new JLabel(order.customer().name() + " · " + Dates.format(order.date()) + " · "
+                + order.totals().total().format()), "orderFacts");
         itemsTable = Ui.table(LinesTableModel.withSku(order.lines()));
         Ui.widths(itemsTable, 130, 0, 80, 110, 120);
         details.addTab("Items", itemsTab());
@@ -87,19 +87,16 @@ final class OrderPanel extends JPanel {
             }
         };
         panel.add(scroll, "wrap");
-        panel.add(Ui.hint(units + (units == 1 ? " unit" : " units") + " in " + count + (count == 1 ? " line" : " lines")),
-                "gapleft 16");
+        panel.add(Ui.named(Ui.hint(units + (units == 1 ? " unit" : " units") + " in " + count
+                + (count == 1 ? " line" : " lines")), "itemsSummary"), "gapleft 16");
         return panel;
     }
 
     private JComponent deliveryTab() {
         JPanel panel = sheet(new MigLayout("insets 14 16 14 16, wrap 2", "[150!]16[left]", "[top]6[top]6[top]"));
-        panel.add(Ui.hint("Delivery address"));
-        panel.add(Ui.textColumn(order.address().lines()));
-        panel.add(Ui.hint("Shipping method"));
-        panel.add(new JLabel(Ui.shippingText(order.shipping(), order.totals())));
-        panel.add(Ui.hint("Delivery note"));
-        panel.add(new JLabel(order.note().isEmpty() ? "—" : order.note()));
+        captioned(panel, "Delivery address", Ui.named(Ui.textColumn(order.address().lines()), "deliveryAddress"));
+        captioned(panel, "Shipping method", new JLabel(Ui.shippingText(order.shipping(), order.totals())));
+        captioned(panel, "Delivery note", new JLabel(order.note().isEmpty() ? "—" : order.note()));
         return panel;
     }
 
@@ -108,12 +105,18 @@ final class OrderPanel extends JPanel {
         totals.show(order.totals(), null);
         totals.setOpaque(false);
         JPanel panel = sheet(new MigLayout("insets 14 16 14 16, wrap 2", "[150!]16[left]", "[top]6[top]18[top]"));
-        panel.add(Ui.hint("Payment"));
-        panel.add(new JLabel(order.payment().describe()));
-        panel.add(Ui.hint("Order date"));
-        panel.add(new JLabel(Dates.format(order.date())));
+        captioned(panel, "Payment", new JLabel(order.payment().describe()));
+        captioned(panel, "Order date", new JLabel(Dates.format(order.date())));
         panel.add(totals, "span");
         return panel;
+    }
+
+    /** A grey caption and its value side by side; the caption is tied to the value, as a person reads them. */
+    private static void captioned(JPanel panel, String caption, JComponent value) {
+        JLabel label = Ui.hint(caption);
+        label.setLabelFor(value);
+        panel.add(label);
+        panel.add(value);
     }
 
     /** The sub-tabs in one box, as in the mock: a line around the strip and the pages (Lagoon: see details). */

@@ -34,7 +34,7 @@ final class PaymentStep extends JPanel {
     private final Runnable onChange;
     private final JRadioButton invoice = new JRadioButton("Invoice (30 days)");
     private final JRadioButton card = new JRadioButton("Card");
-    private final JLabel invoiceNote = Ui.hint("");
+    private final JLabel invoiceNote = Ui.named(Ui.hint(""), "invoiceNote");
     private final JTextField po = new JTextField();
     private final JTextField number = new JTextField();
     private final JTextField expiry = new JTextField();
@@ -60,9 +60,12 @@ final class PaymentStep extends JPanel {
                 : customer.name() + " pays by card");
         number.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "1234 5678 9012 3456");
         expiry.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, "MM/YY");
-        for (JTextField field : new JTextField[] {po, number, expiry, nameOnCard}) errors.put(field, Ui.fieldError());
+        errors.put(po, Ui.named(Ui.fieldError(), "poNumberError"));
+        errors.put(number, Ui.named(Ui.fieldError(), "cardNumberError"));
+        errors.put(expiry, Ui.named(Ui.fieldError(), "expiryError"));
+        errors.put(nameOnCard, Ui.named(Ui.fieldError(), "nameOnCardError"));
 
-        add(Ui.heading("Payment"), "span, wrap 10");
+        add(Ui.stepHeading("Payment"), "span, wrap 10");
         add(invoice, "span, wrap 0");
         add(invoiceNote, "skip 1, span, wrap " + (invoiceAllowed ? 6 : 16));
         JLabel poLabel = Ui.labelFor(customer.terms().poRequired() ? "PO number" : "PO number (optional)", po);

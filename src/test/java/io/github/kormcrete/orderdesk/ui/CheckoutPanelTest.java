@@ -9,6 +9,7 @@ import io.github.kormcrete.orderdesk.model.Store;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import javax.swing.JLabel;
 import java.time.LocalDate;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -247,5 +248,52 @@ class CheckoutPanelTest {
 
     private void restoreTheEdtHandler() {
         if (previousHandler != null) Edt.run(() -> Thread.currentThread().setUncaughtExceptionHandler(previousHandler));
+    }
+
+    @Test
+    void aPluginReadsTheCurrentStepAndNextsReasonByTheirNames() {
+        CheckoutPanel panel = checkout("Ada", "PAP-A4-500", 3, "PEN-GEL-BLK", 10);
+        Edt.run(() -> {
+            JLabel reason = Named.find(panel, "nextReason", JLabel.class);
+            assertThat(Named.shown(panel, "checkoutStep", JLabel.class).getText()).isEqualTo("Delivery address");
+            assertThat(reason.getText()).isEmpty();
+            panel.next();
+            assertThat(Named.shown(panel, "checkoutStep", JLabel.class).getText()).isEqualTo("Shipping method");
+            panel.next();
+            assertThat(Named.shown(panel, "checkoutStep", JLabel.class).getText()).isEqualTo("Payment");
+            assertThat(reason.getText()).isEqualTo("Enter the PO number");
+            panel.paymentStep().poField().setText("PO-2026-140");
+            panel.next();
+            assertThat(Named.countShown(panel, "checkoutStep")).isZero();   // Review: known by its Place order button
+            assertThat(panel.nextButton().getText()).isEqualTo("Place order");
+        });
+    }
+
+    /**
+     * The review's totals panel is named, so its Shipping is told apart from the step indicator's; its values keep no
+     * name of their own, so each is still found by the caption a person reads ("Total", not a code name).
+     */
+    @Test
+    void aPluginReadsTheReviewTotalsInsideTheirNamedPanel() {
+        CheckoutPanel panel = checkout("Ada", "PAP-A4-500", 3, "PEN-GEL-BLK", 10);
+        Edt.run(() -> {
+            panel.next();
+            panel.next();
+            panel.paymentStep().poField().setText("PO-2026-140");
+            panel.next();
+            TotalsPanel totals = Named.shown(panel, "totals", TotalsPanel.class);
+            JLabel shipping = valueFor(totals, "Shipping");
+            assertThat(shipping.getText()).isEqualTo("€4.90");
+            assertThat(shipping.getName()).isNull();
+            assertThat(valueFor(totals, "Total").getText()).isEqualTo("€37.20");
+            assertThat(valueFor(totals, "Total").getName()).isNull();
+        });
+    }
+
+    private static JLabel valueFor(TotalsPanel totals, String caption) {
+        for (java.awt.Component c : totals.getComponents()) {
+            if (c instanceof JLabel && caption.equals(((JLabel) c).getText())) return (JLabel) ((JLabel) c).getLabelFor();
+        }
+        throw new AssertionError(caption);
     }
 }

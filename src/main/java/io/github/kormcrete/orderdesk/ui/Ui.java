@@ -51,6 +51,17 @@ final class Ui {
         return label;
     }
 
+    /** A checkout step's heading, named "checkoutStep" so a plugin reads which step shows. */
+    static JLabel stepHeading(String text) {
+        return named(heading(text), "checkoutStep");
+    }
+
+    /** {@code component} with its code name, which a plugin finds it by; nothing on screen shows it. */
+    static <T extends JComponent> T named(T component, String name) {
+        component.setName(name);
+        return component;
+    }
+
     /** Grey text: why something is disabled, an empty state, a hint. */
     static JLabel hint(String text) {
         JLabel label = new JLabel(text);

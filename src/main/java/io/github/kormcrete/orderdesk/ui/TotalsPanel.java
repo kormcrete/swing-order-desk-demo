@@ -11,7 +11,11 @@ import javax.swing.JSeparator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Subtotal, Volume discount (only when there is one), Shipping, VAT (20%), Total. */
+/**
+ * Subtotal, Volume discount (only when there is one), Shipping, VAT (20%), Total. The panel is named "totals" for a
+ * plugin, so its Shipping is told apart from a step indicator's; the values carry no name of their own, so each stays
+ * named by the caption a person reads beside it ("Total"), which a code name would replace.
+ */
 final class TotalsPanel extends JPanel {
 
     private static final String VAT = "VAT (" + Pricing.VAT_PERCENT + "%)";
@@ -21,6 +25,7 @@ final class TotalsPanel extends JPanel {
 
     TotalsPanel() {
         super(new MigLayout("insets 0, wrap 2, hidemode 3, alignx right", "[right]24[right,90::]", "[]3[]3[]3[]5[]5[]"));
+        setName("totals");
         row("Subtotal");
         discountCaption = row("Volume discount");
         row("Shipping");
