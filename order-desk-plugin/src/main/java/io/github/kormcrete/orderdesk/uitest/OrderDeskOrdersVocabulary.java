@@ -179,7 +179,8 @@ final class OrderDeskOrdersVocabulary {
                                 + " ORD-1638\"); none: no order listed (see The orders list reads …)")
                         .param("orders", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskOrdersSteps.ordersListedAre(ui, p.text("orders")))
-                        .match(json("{'action':'expect','target':{%s},'shown':true}", orderRow("orders")))
+                        // no pattern: a recording holds one row of the orders listed, and that row's pattern would
+                        // suggest "The orders listed are <one order>" for a list of several orders
                         .autoFold(false)
                         .java(STEPS, "ordersListedAre(ui, {orders})")
                         .build(),

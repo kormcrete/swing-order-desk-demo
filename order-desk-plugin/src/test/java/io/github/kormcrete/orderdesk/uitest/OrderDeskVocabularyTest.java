@@ -294,8 +294,9 @@ class OrderDeskVocabularyTest {
 
     @Test
     void everyStepHasAPatternAndNoProblems() {
-        // orderItemsAre has none on purpose: a recording holds one row of the lines it reads, and a pattern of that row
-        // would put a false sentence in the Check menu ("The lines … are Gel pen, black" for a 4-line order)
+        // the list checks (orderItemsAre, cartLinesAre, reviewLinesAre, ordersListedAre, productsListedAre) have none on
+        // purpose: a recording holds one row of the list they read, and a pattern of that row would offer a false
+        // sentence ("The cart holds Stapler" for a cart of three lines)
         for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
             assertThat(c.problems()).as(c.step().id()).isEmpty();
             // what session lists under vocabularyProblems besides dropped steps: a written pattern that names what a
@@ -312,8 +313,8 @@ class OrderDeskVocabularyTest {
     }
 
     /** The steps a recording never folds into or offers: no pattern at all. */
-    private static final List<String> NO_PATTERN = Arrays.asList("orderItemsAre", "showOrders", "cancelQuestionIs",
-            "suggestedReceiptFileIs");
+    private static final List<String> NO_PATTERN = Arrays.asList("orderItemsAre", "cartLinesAre", "reviewLinesAre",
+            "ordersListedAre", "productsListedAre", "showOrders", "cancelQuestionIs", "suggestedReceiptFileIs");
 
     @Test
     void everyStepNamesItsJavaMethod() throws Exception {
@@ -867,6 +868,48 @@ class OrderDeskVocabularyTest {
         assertThat(first(close, discard)).isEqualTo("closeTab");
         assertThat(first(close)).isEqualTo("closeTab");
         assertThat(first(close, cancel)).isEqualTo("keepTab");
+    }
+
+    @Test
+    void aCheckOfOneRowIsNeverOfferedAsACheckOfTheWholeList() {
+        // a person checks one row of a list; "The cart holds Stapler" for a cart of three lines fails on the next replay
+        JTable cart = table(CART, line("A4 paper, 500 sheets", "3", "€4.90", "€14.70"), line("Stapler", "1", "€12.50", "€12.50"),
+                line("Gel pen, black", "2", "€1.20", "€2.40"));
+        JTable review = table(CART, line("A4 paper, 500 sheets", "3", "€4.90", "€14.70"), line("Stapler", "1", "€12.50", "€12.50"),
+                line("Gel pen, black", "2", "€1.20", "€2.40"));
+        review.setName("reviewLines");
+        JTable orders = table(OrdersFake.COLUMNS, OrdersFake.ORDERS.toArray(new List[0]));
+        JTable products = table(PRODUCTS, line("PAP-A4-500", "A4 paper, 500 sheets", "€4.90", "120"),
+                line("DSK-STAPLER", "Stapler", "€12.50", "4"), line("PEN-GEL-BLK", "Gel pen, black", "€1.20", "300"));
+        List<String> lists = Arrays.asList("cartLinesAre", "reviewLinesAre", "ordersListedAre", "productsListedAre");
+
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < CART.size(); col++) {
+                assertThat(offered(CheckMenuForms.cell(cart, row, col, "main", NEW_ORDER)))
+                        .as("cart " + row + "," + col).noneMatch(c -> lists.contains(c.substring(0, c.indexOf('{'))));
+                assertThat(offered(CheckMenuForms.cell(review, row, col, "dialog", null)))
+                        .as("review " + row + "," + col).noneMatch(c -> lists.contains(c.substring(0, c.indexOf('{'))));
+                assertThat(offered(CheckMenuForms.cell(products, row, col, "main", NEW_ORDER)))
+                        .as("products " + row + "," + col).noneMatch(c -> lists.contains(c.substring(0, c.indexOf('{'))));
+            }
+            for (int col = 0; col < OrdersFake.COLUMNS.size(); col++) {
+                assertThat(offered(CheckMenuForms.cell(orders, row, col, "main", Collections.singletonList("tab:Orders"))))
+                        .as("orders " + row + "," + col).noneMatch(c -> lists.contains(c.substring(0, c.indexOf('{'))));
+            }
+        }
+        // nor is a recorded check of one row (as an agent writes it) suggested as one
+        JsonNode cartRow = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'Product':'Stapler','Line total':'€12.50'}},'shown':true}");
+        JsonNode reviewRow = json("{'action':'expect','target':{'window':'dialog','role':'table','row':{'Product':'Stapler'}},"
+                + "'shown':true}");
+        JsonNode orderRow = json("{'action':'expect','target':{'window':'main','scope':['tab:Orders'],'role':'table',"
+                + "'row':{'Order':'ORD-1638'}},'shown':true}");
+        JsonNode productRow = json("{'action':'expect','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'SKU':'DSK-STAPLER','Product':'Stapler'}},'shown':true}");
+        for (JsonNode one : Arrays.asList(cartRow, reviewRow, orderRow, productRow)) {
+            assertThat(choices(one)).as(one.toString()).noneMatch(c -> lists.contains(c.step));
+        }
+        for (String id : lists) assertThat(step(id).match()).as(id).isEmpty();
     }
 
     @Test

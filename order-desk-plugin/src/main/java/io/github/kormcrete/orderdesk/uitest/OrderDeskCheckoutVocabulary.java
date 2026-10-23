@@ -269,7 +269,8 @@ final class OrderDeskCheckoutVocabulary {
                                 + " \"A4 paper, 500 sheets; Gel pen, black\"")
                         .param("lines", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewLinesAre(ui, p.text("lines")))
-                        .match(json("{'action':'expect','target':{'role':'table','row':{%s:'{lines}'}},'shown':true}", key(PRODUCT_COLUMN)))
+                        // no pattern: a recording holds one row of the review's lines, and that row's pattern would
+                        // suggest "The review lists <one product>" for an order of several lines
                         .autoFold(false)
                         .java(STEPS, "reviewLinesAre(ui, {lines})")
                         .build(),

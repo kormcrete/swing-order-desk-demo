@@ -219,7 +219,8 @@ final class OrderDeskNewOrderVocabulary {
                                 + " the search (\"No products match ‘zzz’\")")
                         .param("products", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.productsListedAre(ui, p.text("products")))
-                        .match(json("{'action':'expect','target':{%s},'shown':true}", productRow("products")))
+                        // no pattern: a recording holds one row of the products listed, and that row's pattern would
+                        // suggest "The products listed are <one product>" for a list of several products
                         .autoFold(false)
                         .java(STEPS, "productsListedAre(ui, {products})")
                         .build(),
@@ -291,7 +292,8 @@ final class OrderDeskNewOrderVocabulary {
                                 + "; none: an empty cart (\"Select products and press Add to cart.\")")
                         .param("lines", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.cartLinesAre(ui, p.text("lines")))
-                        .match(json("{'action':'expect','target':{%s},'shown':true}", cartRow("lines")))
+                        // no pattern: a recording holds one row of the cart's lines, and that row's pattern would
+                        // suggest "The cart holds <one product>" for a cart of several lines
                         .autoFold(false)
                         .java(STEPS, "cartLinesAre(ui, {lines})")
                         .build(),

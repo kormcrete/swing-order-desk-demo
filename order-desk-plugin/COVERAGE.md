@@ -44,7 +44,7 @@ The pinned Orders tab (`OrdersPanel`). Its table is the only table on the tab: `
 | Filter by status (Status: All, Placed, Shipped, Cancelled) | act | `filterOrders` ("placed", "cancel") |
 | Sort by a column (click its header; again reverses; Order, newest first, at start) | act | `sortOrders` (clicks the header until the column's values read in the asked direction; outcome: the column and direction left, `either` when every value is the same) |
 | An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed"; the Order cell too, as the Check menu offers it) |
-| Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one) |
+| Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one; no pattern: a check of one row is no check of the list) |
 | What the list shows, to tell or to compare (every order's Order, Date, Customer, Items, Total, Status, top to bottom; the empty text instead) | check | the outcome of `searchOrders`, `clearOrderSearch`, `filterOrders`, `sortOrders` (with `"outcome": true`), and `showOrders` (goes to the Orders tab, changes nothing) for a read before and after something else (round 1: S01, S04, S24 read the table raw). `orders` is keyed by number, in the list's order: a recording links a later step to a value at its path, and a place in a list would name another order once the list changes |
 | How many orders are listed (after a search or a filter: how many are left) | check | `ordersCountIs` (0 while the empty text shows; an agent's row count of the Orders table folds into it) |
 | Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | `ordersEmptyMessageIs` (by id `ordersEmpty`), `ordersListedAre` with `none` |
@@ -72,7 +72,7 @@ both have a `Product` column, so a row locator on either must also name a column
 | The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` (the whole text or one part between the dots: "Account") |
 | Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` |
 | Search products by SKU or name (Search; its X clears it) | act | `searchProducts`, `clearProductSearch` |
-| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` (the product by name or SKU) |
+| The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre` (no pattern: a check of one row is no check of the list), `productIs` (the product by name or SKU) |
 | Low stock: a warning icon in Stock at 5 or fewer, its tooltip "Low stock: 4 left" | check | `lowStockWarningIs` |
 | How many products show and how many are selected ("22 products · 2 selected") | check | `productCountIs` |
 | Nothing matches: "No products match ‘zzz’" | check | `productsListedAre` with `none` |
@@ -88,7 +88,7 @@ both have a `Product` column, so a row locator on either must also name a column
 | Removing several lines asks "Remove 2 lines from the cart?" (Remove lines, Keep) | act | `removeFromCart` (Remove lines), `keepCartLines` (Keep) |
 | Remove is disabled with "Select a cart line first" while lines are in the cart and none is selected | check | `buttonIsDisabled` |
 | A cart line's quantity, price and line total (one check for any line and column) | check | `cartLineIs` |
-| The cart's lines, in the order they were added | check | `cartLinesAre` |
+| The cart's lines, in the order they were added | check | `cartLinesAre` (no pattern: a check of one row is no check of the list) |
 | An empty cart says "Select products and press Add to cart." | check | `cartLinesAre` with `none` |
 | A line over stock: "Only 4 Staplers in stock" under the cart (one per line, joined by "; "), its Qty outlined red | check | `cartStockWarningIs` |
 | The cart's Subtotal, Volume discount (5% off a line of 10 or more; shown only then), Shipping ("chosen at checkout") and VAT (20%) | check | `cartAmountIs` |
@@ -152,7 +152,7 @@ that gets there; while the credit-limit warning or Place order's question is ope
 |---|---|---|
 | The Delivery address, Shipping ("Standard · 3–5 business days · €4.90", "Note: …") and Payment ("Invoice (30 days) · PO PO-2026-131", "Card ending 4242") sections | check | `reviewSectionIs` (the section's lines parted by `;`) |
 | Edit a section (its Edit goes back to that step) | act | `editReviewSection` |
-| The order's lines: Product, Qty, Price, Line total | check | `reviewLinesAre`, `reviewLineIs` |
+| The order's lines: Product, Qty, Price, Line total | check | `reviewLinesAre` (no pattern: a check of one row is no check of the list), `reviewLineIs` |
 | The order's Subtotal, Volume discount, Shipping, VAT (20%) and Total | check | `reviewAmountIs` (ruling R20: by caption inside `id:totals`; `none` for a Volume discount not shown) |
 | Place the order and confirm it ("Place order for €122.34?" / "Order for Ada Shop Ltd, 11 items.") | act | `placeOrder` |
 | Back out at the confirmation (Cancel): still on Review | act | `cancelPlaceOrder` |
@@ -261,6 +261,10 @@ add `tab:Items` and so on.
   (a check of an address line would capture the line as the detail). `orderInvoiceIs` folds: every label on the Invoice
   tab is a captioned value. `orderItemsAre` has no pattern: a recording holds one row of the lines it reads, and that
   row's pattern would offer "The lines on order ORD-1639's Items tab are Gel pen, black" for an order of several lines.
+  The other list checks, `cartLinesAre`, `reviewLinesAre`, `ordersListedAre` and `productsListedAre`, have none for the
+  same reason (final review): a check of one row would be offered as "The cart holds Stapler" for a cart of three
+  lines, and fail on the next replay. Their one-cell checks (`cartLineIs`, `reviewLineIs`, `orderIs`, `productIs`) keep
+  their patterns.
   `receiptSaveErrorIs` is a check of several steps: a check never folds, and the Check menu offers only checks of one
   step, so its pattern is never used (an agent runs it as a do step).
 - Cancel order's state: the Check menu offers `buttonIsEnabled` for an order tab's enabled Cancel order or Save receipt…
