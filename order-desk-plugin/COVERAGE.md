@@ -308,3 +308,20 @@ add `tab:Items` and so on.
 | R11 `OrderPanel`: `setName("orderStatus")` on the status pill, `setName("orderFacts")`, `setName("itemsSummary")`; each Delivery and Invoice caption `setLabelFor` its value (Delivery address, Shipping method, Delivery note, Payment, Order date), the address column `setName("deliveryAddress")` | The order's status and facts; units; Delivery; Invoice | invisible | - |
 | R12 `ReviewStep`: the lines table `setName("reviewLines")` | The order's lines (Review): `reviewLineIs` offered on the review's table only | invisible | - |
 | Bug fix `ProductsPanel.refresh`: the stock refresh repaints the products table instead of firing a rows-updated event (after it, choosing a category with a product selected below the category's rows failed) | Browse a category; Show a product in its category | no (a bug fix) | user OK 2026-10-22 |
+
+## Windows the written patterns were meant for
+
+A written pattern does not compare `window` yet (the library lists a pattern that names one under `session`'s
+`vocabularyProblems`), so none of them names one. Each affected step keeps its pattern without it and matches in any
+window; the window it is meant for, to restore when a pattern can compare windows:
+
+| Step(s) | Window the pattern is meant for |
+|---|---|
+| `setCheckoutField`, `chooseShipping`, `payByInvoice`, `payByCard`, `checkoutNext`, `checkoutBack`, `editReviewSection`, `cancelCheckout`, `cancelPlaceOrder`, `checkoutWithPo` | the checkout dialog (`dialog`) |
+| `checkoutCustomerIs`, `checkoutStepIs`, `checkoutFieldIs`, `checkoutFieldErrorIs`, `shippingPriceIs`, `paymentNoteIs`, `checkoutChoiceIs` | the checkout dialog (`dialog`); `checkoutFieldIs` is the one that would otherwise fit the Customer and Search fields too |
+| `reviewSectionIs`, `reviewLinesAre`, `reviewLineIs`, `reviewAmountIs` | the checkout dialog (`dialog`), its Review step |
+| `answerCreditLimit`, `creditLimitWarningIs` | the credit-limit warning (`dialog:` + its title) |
+| `placeOrderConfirmationIs` | Place order's question (`dialog:` + its title); its first entry, the Place order click, the checkout dialog |
+| `receiptSaveErrorIs` | the message dialog showing the error (`dialog`) |
+| `customerSuggestionsAre` | the Customer field's suggestion list (`popup`) |
+| `recentCustomersAre` | the toolbar ▾ menu (`popup`) |

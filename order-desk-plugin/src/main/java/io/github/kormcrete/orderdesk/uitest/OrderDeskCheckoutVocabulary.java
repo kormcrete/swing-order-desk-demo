@@ -44,8 +44,6 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskVocabulary.text;
 final class OrderDeskCheckoutVocabulary {
 
     private static final String STEPS = OrderDeskCheckoutSteps.class.getName();
-    /** The checkout dialog as a recording names it while it is the dialog showing. */
-    private static final String DIALOG = "\"window\":\"dialog\"";
     private static final String FIELDS = "Name, Street, Postal code, City, Country, Phone (Address step); Delivery note"
             + " (Shipping step); PO number, Card number, Expiry, Name on card (Payment step)";
 
@@ -76,8 +74,8 @@ final class OrderDeskCheckoutVocabulary {
                         .param("field", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.FIELD_NAMES)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.setCheckoutField(ui, p.text("field"), p.text("value")))
-                        .match(json("{'action':'type','target':{%s,'role':'text','name':'{field}'},'text':'{value}'}", DIALOG))
-                        .matchAlso(json("{'action':'select','target':{%s,'role':'combo','name':'{field}'},'items':['{value}']}", DIALOG))
+                        .match(json("{'action':'type','target':{'role':'text','name':'{field}'},'text':'{value}'}"))
+                        .matchAlso(json("{'action':'select','target':{'role':'combo','name':'{field}'},'items':['{value}']}"))
                         .autoFold(false)
                         .java(STEPS, "setCheckoutField(ui, {field}, {value})")
                         .build(),
@@ -87,7 +85,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " fails with the app's reason (\"Express delivers to Germany and Austria only\")")
                         .param("method", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.SHIPPING_METHODS)
                         .code((ui, p) -> OrderDeskCheckoutSteps.chooseShipping(ui, p.text("method")))
-                        .match(json("{'action':'click','target':{%s,'role':'radio','name':'{method} · *'}}", DIALOG))
+                        .match(json("{'action':'click','target':{'role':'radio','name':'{method} · *'}}"))
                         .java(STEPS, "chooseShipping(ui, {method})")
                         .build(),
                 DomainStep.act("payByInvoice", "Pay by invoice with PO number {po}")
@@ -96,8 +94,8 @@ final class OrderDeskCheckoutVocabulary {
                                 + " customer fails with the app's note (\"Café Lumen pays by card\")")
                         .param("po", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.payByInvoice(ui, p.text("po")))
-                        .match(json("{'action':'click','target':{%s,'role':'radio','name':%s}}", DIALOG, text(INVOICE_RADIO)),
-                                json("{'action':'type','target':{%s,'role':'text','name':%s},'text':'{po}'}", DIALOG,
+                        .match(json("{'action':'click','target':{'role':'radio','name':%s}}", text(INVOICE_RADIO)),
+                                json("{'action':'type','target':{'role':'text','name':%s},'text':'{po}'}",
                                         quote(plain(PO_NUMBER_FIELD) + "*")),
                                 json("{'optional':true,'action':'press','keys':'Tab'}"))
                         .java(STEPS, "payByInvoice(ui, {po})")
@@ -111,12 +109,12 @@ final class OrderDeskCheckoutVocabulary {
                         .param("expiry", ParamType.TEXT)
                         .param("name", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.payByCard(ui, p.text("number"), p.text("expiry"), p.text("name")))
-                        .match(json("{'action':'click','target':{%s,'role':'radio','name':%s}}", DIALOG, text(CARD_RADIO)),
-                                json("{'action':'type','target':{%s,'role':'text','name':%s},'text':'{number}'}", DIALOG,
+                        .match(json("{'action':'click','target':{'role':'radio','name':%s}}", text(CARD_RADIO)),
+                                json("{'action':'type','target':{'role':'text','name':%s},'text':'{number}'}",
                                         text(CARD_NUMBER_FIELD)),
-                                json("{'action':'type','target':{%s,'role':'text','name':%s},'text':'{expiry}'}", DIALOG,
+                                json("{'action':'type','target':{'role':'text','name':%s},'text':'{expiry}'}",
                                         text(EXPIRY_FIELD)),
-                                json("{'action':'type','target':{%s,'role':'text','name':%s},'text':'{name}'}", DIALOG,
+                                json("{'action':'type','target':{'role':'text','name':%s},'text':'{name}'}",
                                         text(NAME_ON_CARD_FIELD)),
                                 json("{'optional':true,'action':'press','keys':'Tab'}"))
                         .java(STEPS, "payByCard(ui, {number}, {expiry}, {name})")
@@ -127,13 +125,13 @@ final class OrderDeskCheckoutVocabulary {
                                 + " the credit-limit warning with …). A disabled Next fails with its reason and the"
                                 + " fields' errors")
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutNext(ui))
-                        .match(json("{'action':'click','target':{%s,'role':'button','name':%s}}", DIALOG, text(NEXT_BUTTON)))
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(NEXT_BUTTON)))
                         .java(STEPS, "checkoutNext(ui)")
                         .build(),
                 DomainStep.act("checkoutBack", "Go back a checkout step")
                         .about("Needs: the checkout on Shipping, Payment or Review. Ends: on its step before, as it was left")
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutBack(ui))
-                        .match(json("{'action':'click','target':{%s,'role':'button','name':%s}}", DIALOG, text(BACK_BUTTON)))
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(BACK_BUTTON)))
                         .java(STEPS, "checkoutBack(ui)")
                         .build(),
                 DomainStep.act("editReviewSection", "Edit the {section} on the review")
@@ -141,8 +139,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " there). {section}: Delivery address, Shipping or Payment")
                         .param("section", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.SECTIONS)
                         .code((ui, p) -> OrderDeskCheckoutSteps.editReviewSection(ui, p.text("section")))
-                        .match(json("{'action':'click','target':{%s,'scope':['section:{section}'],'role':'button','name':%s}}",
-                                DIALOG, text(EDIT_BUTTON)))
+                        .match(json("{'action':'click','target':{'scope':['section:{section}'],'role':'button','name':%s}}", text(EDIT_BUTTON)))
                         .java(STEPS, "editReviewSection(ui, {section})")
                         .build(),
                 DomainStep.act("answerCreditLimit", "Answer the credit-limit warning with {answer}")
@@ -159,14 +156,14 @@ final class OrderDeskCheckoutVocabulary {
                         .about("Needs: the checkout on any step, no message over it. Ends: on the new order, as it was"
                                 + " (Cancel asks nothing)")
                         .code((ui, p) -> OrderDeskCheckoutSteps.cancelCheckout(ui))
-                        .match(json("{'action':'click','target':{%s,'role':'button','name':%s}}", DIALOG, text(CANCEL_BUTTON)))
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(CANCEL_BUTTON)))
                         .java(STEPS, "cancelCheckout(ui)")
                         .build(),
                 DomainStep.act("cancelPlaceOrder", "Ask to place the order, then cancel")
                         .about("Needs: the checkout's Review step. Ends: still on it, after answering Cancel to \"Place"
                                 + " order for €122.34?\"")
                         .code((ui, p) -> OrderDeskCheckoutSteps.cancelPlaceOrder(ui))
-                        .match(json("{'action':'click','target':{%s,'role':'button','name':%s}}", DIALOG, text(PLACE_ORDER_BUTTON)),
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(PLACE_ORDER_BUTTON)),
                                 json("{'action':'answer','button':%s}", text(CANCEL_ANSWER)))
                         .java(STEPS, "cancelPlaceOrder(ui)")
                         .build(),
@@ -177,7 +174,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " name, any case")
                         .param("customer", ParamType.TEXT).choices(customers)
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutCustomerIs(ui, p.text("customer")))
-                        .match(json("{'action':'expect','target':{%s,'name':%s},'shown':true}", DIALOG,
+                        .match(json("{'action':'expect','target':{'name':%s},'shown':true}",
                                 quote(plain(CHECKOUT_TITLE) + "{customer}")))
                         .autoFold(false)
                         .java(STEPS, "checkoutCustomerIs(ui, {customer})")
@@ -187,7 +184,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " (\"Shipping method\"), Payment or Review (no heading, Place order instead)")
                         .param("step", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.STEP_NAMES)
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutStepIs(ui, p.text("step")))
-                        .match(json("{'action':'expect','target':{%s,'id':%s},'text':'{step}'}", DIALOG, text(CHECKOUT_STEP_ID)))
+                        .match(json("{'action':'expect','target':{'id':%s},'text':'{step}'}", text(CHECKOUT_STEP_ID)))
                         .java(STEPS, "checkoutStepIs(ui, {step})")
                         .build(),
                 DomainStep.check("checkoutFieldIs", "The checkout's {field} reads {value}")
@@ -199,8 +196,8 @@ final class OrderDeskCheckoutVocabulary {
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutFieldIs(ui, p.text("field"), p.text("value")))
                         // a person's Check menu records a field's or a combo's value as "value"; a pattern never
                         // compares the window, so it fits any text field (Customer, Search): it only suggests the step
-                        .match(json("{'action':'expect','target':{%s,'role':'text','name':'{field}'},'value':'{value}'}", DIALOG))
-                        .matchAlso(json("{'action':'expect','target':{%s,'role':'combo','name':'{field}'},'value':'{value}'}", DIALOG))
+                        .match(json("{'action':'expect','target':{'role':'text','name':'{field}'},'value':'{value}'}"))
+                        .matchAlso(json("{'action':'expect','target':{'role':'combo','name':'{field}'},'value':'{value}'}"))
                         .autoFold(false)
                         .java(STEPS, "checkoutFieldIs(ui, {field}, {value})")
                         .build(),
@@ -211,7 +208,7 @@ final class OrderDeskCheckoutVocabulary {
                         .param("field", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.FIELD_NAMES)
                         .param("error", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutFieldErrorIs(ui, p.text("field"), p.text("error")))
-                        .match(json("{'action':'expect','target':{%s,'id':'{field}Error'},'text':'{error}'}", DIALOG))
+                        .match(json("{'action':'expect','target':{'id':'{field}Error'},'text':'{error}'}"))
                         .java(STEPS, "checkoutFieldErrorIs(ui, {field}, {error})")
                         .build(),
                 DomainStep.check("shippingPriceIs", "The {method} shipping price is {price}")
@@ -220,7 +217,7 @@ final class OrderDeskCheckoutVocabulary {
                         .param("method", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.SHIPPING_METHODS)
                         .param("price", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.shippingPriceIs(ui, p.text("method"), p.text("price")))
-                        .match(json("{'action':'expect','target':{%s,'id':'{method}Price'},'text':'{price}'}", DIALOG))
+                        .match(json("{'action':'expect','target':{'id':'{method}Price'},'text':'{price}'}"))
                         .java(STEPS, "shippingPriceIs(ui, {method}, {price})")
                         .build(),
                 DomainStep.check("paymentNoteIs", "The note under {method} reads {note}")
@@ -230,7 +227,7 @@ final class OrderDeskCheckoutVocabulary {
                         .param("method", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.PAYMENT_METHODS)
                         .param("note", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.paymentNoteIs(ui, p.text("method"), p.text("note")))
-                        .match(json("{'action':'expect','target':{%s,'id':'{method}Note'},'text':'{note}'}", DIALOG))
+                        .match(json("{'action':'expect','target':{'id':'{method}Note'},'text':'{note}'}"))
                         .java(STEPS, "paymentNoteIs(ui, {method}, {note})")
                         .build(),
                 DomainStep.check("creditLimitWarningIs", "The credit-limit warning reads {message}")
@@ -239,8 +236,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " €940.00 now, this order adds €96.60.\") or both")
                         .param("message", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.creditLimitWarningIs(ui, p.text("message")))
-                        .match(json("{'action':'expect','target':{'window':%s,'role':'label','name':'{message}'},'shown':true}",
-                                text("dialog:" + CREDIT_LIMIT_TITLE)))
+                        .match(json("{'action':'expect','target':{'role':'label','name':'{message}'},'shown':true}"))
                         .autoFold(false)
                         .java(STEPS, "creditLimitWarningIs(ui, {message})")
                         .build(),
@@ -249,9 +245,8 @@ final class OrderDeskCheckoutVocabulary {
                                 + " Ada Shop Ltd, 11 items.\", or both), then answers Cancel: still on Review")
                         .param("message", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.placeOrderConfirmationIs(ui, p.text("message")))
-                        .match(json("{'action':'click','target':{%s,'role':'button','name':%s}}", DIALOG, text(PLACE_ORDER_BUTTON)),
-                                json("{'action':'expect','target':{'window':%s,'role':'label','name':'{message}'},'shown':true}",
-                                        text("dialog:" + PLACE_ORDER_TITLE)),
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(PLACE_ORDER_BUTTON)),
+                                json("{'action':'expect','target':{'role':'label','name':'{message}'},'shown':true}"),
                                 json("{'action':'answer','button':%s}", text(CANCEL_ANSWER)))
                         .autoFold(false)
                         .java(STEPS, "placeOrderConfirmationIs(ui, {message})")
@@ -264,8 +259,8 @@ final class OrderDeskCheckoutVocabulary {
                         .param("section", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.SECTIONS)
                         .param("text", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewSectionIs(ui, p.text("section"), p.text("text")))
-                        .match(json("{'action':'expect','target':{%s,'scope':['section:{section}'],'role':'label','name':'{text}'},"
-                                + "'shown':true}", DIALOG))
+                        .match(json("{'action':'expect','target':{'scope':['section:{section}'],'role':'label','name':'{text}'},"
+                                + "'shown':true}"))
                         .autoFold(false)
                         .java(STEPS, "reviewSectionIs(ui, {section}, {text})")
                         .build(),
@@ -274,8 +269,7 @@ final class OrderDeskCheckoutVocabulary {
                                 + " \"A4 paper, 500 sheets; Gel pen, black\"")
                         .param("lines", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewLinesAre(ui, p.text("lines")))
-                        .match(json("{'action':'expect','target':{%s,'role':'table','row':{%s:'{lines}'}},'shown':true}",
-                                DIALOG, key(PRODUCT_COLUMN)))
+                        .match(json("{'action':'expect','target':{'role':'table','row':{%s:'{lines}'}},'shown':true}", key(PRODUCT_COLUMN)))
                         .autoFold(false)
                         .java(STEPS, "reviewLinesAre(ui, {lines})")
                         .build(),
@@ -288,12 +282,11 @@ final class OrderDeskCheckoutVocabulary {
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewLineIs(ui, p.text("product"), p.text("column"), p.text("value")))
                         // as the Check menu records a cell check: the table (by its name: the cart's table has the
                         // same columns, and a pattern never compares the window), then the cell by its row's key
-                        .match(json("{'action':'expect','target':{%s,'role':'table','name':%s},"
-                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
-                                DIALOG, text(REVIEW_LINES_ID), key(PRODUCT_COLUMN)))
+                        .match(json("{'action':'expect','target':{'role':'table','name':%s},"
+                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}", text(REVIEW_LINES_ID), key(PRODUCT_COLUMN)))
                         // as the agent and a step's body record it: the cell as the target, then its text
-                        .matchAlso(json("{'action':'expect','target':{%s,'role':'table','name':%s,'row':{%s:'{product}'},"
-                                + "'column':'{column}'},'text':'{value}'}", DIALOG, text(REVIEW_LINES_ID), key(PRODUCT_COLUMN)))
+                        .matchAlso(json("{'action':'expect','target':{'role':'table','name':%s,'row':{%s:'{product}'},"
+                                + "'column':'{column}'},'text':'{value}'}", text(REVIEW_LINES_ID), key(PRODUCT_COLUMN)))
                         // the body reads the dialog's only table by its role, so its steps carry no name to compare:
                         // the step only suggests itself
                         .autoFold(false)
@@ -306,8 +299,7 @@ final class OrderDeskCheckoutVocabulary {
                         .param("amount", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.REVIEW_AMOUNTS)
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.reviewAmountIs(ui, p.text("amount"), p.text("value")))
-                        .match(json("{'action':'expect','target':{%s,'scope':[%s],'role':'label','name':'{amount}'},'text':'{value}'}",
-                                DIALOG, text("id:" + TOTALS_ID)))
+                        .match(json("{'action':'expect','target':{'scope':[%s],'role':'label','name':'{amount}'},'text':'{value}'}", text("id:" + TOTALS_ID)))
                         .java(STEPS, "reviewAmountIs(ui, {amount}, {value})")
                         .build(),
                 DomainStep.check("checkoutChoiceIs", "{option} is chosen in the checkout")
@@ -318,7 +310,7 @@ final class OrderDeskCheckoutVocabulary {
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutChoiceIs(ui, p.text("option")))
                         // as the Check menu records a chosen radio: its label (Standard's and Express's hold their
                         // delivery time; the body takes those too)
-                        .match(json("{'action':'expect','target':{%s,'role':'radio','name':'{option}'},'state':['checked']}", DIALOG))
+                        .match(json("{'action':'expect','target':{'role':'radio','name':'{option}'},'state':['checked']}"))
                         .java(STEPS, "checkoutChoiceIs(ui, {option})")
                         .build());
     }

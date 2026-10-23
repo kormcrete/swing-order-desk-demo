@@ -90,7 +90,7 @@ final class OrderDeskNewOrderVocabulary {
                                 + " list then shows, \"" + NO_CUSTOMER_MATCHES + "\"): nothing fits")
                         .param("customers", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.customerSuggestionsAre(ui, p.text("customers")))
-                        .match(json("{'action':'expect','target':{'window':'popup','role':'list','item':['{customers}']},'shown':true}"))
+                        .match(json("{'action':'expect','target':{'role':'list','item':['{customers}']},'shown':true}"))
                         .autoFold(false)
                         .java(STEPS, "customerSuggestionsAre(ui, {customers})")
                         .build(),
@@ -120,7 +120,7 @@ final class OrderDeskNewOrderVocabulary {
                         .param("customers", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.recentCustomersAre(ui, p.text("customers")))
                         .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(RECENT_CUSTOMER_BUTTON)),
-                                json("{'action':'expect','target':{'window':'popup','role':'menuitem','name':'{customers}'},'shown':true}"))
+                                json("{'action':'expect','target':{'role':'menuitem','name':'{customers}'},'shown':true}"))
                         .autoFold(false)
                         .java(STEPS, "recentCustomersAre(ui, {customers})")
                         .build(),
@@ -289,10 +289,11 @@ final class OrderDeskNewOrderVocabulary {
                         .param("value", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.cartLineIs(ui, p.text("product"), p.text("column"), p.text("value")))
                         // as the Check menu records a cell check: the cart's lines by their key, the first column
-                        // (Product); the products table's are keyed by SKU
+                        // (Product); the row is the one the table was seen at, so it names Line total too, which the
+                        // products table (keyed by SKU, with a Product column of its own) has not
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},"
-                                + "'cell':{'row':{%s:'{product}'},'column':'{column}','expected':'{value}'}}",
-                                NEW_ORDER_SCOPE, key(PRODUCT_COLUMN)))
+                                + "'cell':{'row':{%s:'{product}',%s:'*'},'column':'{column}','expected':'{value}'}}",
+                                NEW_ORDER_SCOPE, key(PRODUCT_COLUMN), key(LINE_TOTAL_COLUMN)))
                         // as the agent and a step's body record it: the cell as the target, then its text
                         .matchAlso(json("{'action':'expect','target':{%s,'column':'{column}'},'text':'{value}'}", cartRow("product")))
                         .java(STEPS, "cartLineIs(ui, {product}, {column}, {value})")

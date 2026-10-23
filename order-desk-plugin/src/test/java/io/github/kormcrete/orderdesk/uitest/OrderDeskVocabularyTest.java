@@ -297,6 +297,9 @@ class OrderDeskVocabularyTest {
         // would put a false sentence in the Check menu ("The lines … are Gel pen, black" for a 4-line order)
         for (PatternCompiler.Compiled c : PatternCompiler.compile(steps, OrderDeskVocabularyTest::trace)) {
             assertThat(c.problems()).as(c.step().id()).isEmpty();
+            // what session lists under vocabularyProblems besides dropped steps: a written pattern that names what a
+            // pattern does not compare (a window) is a note here, and none is allowed
+            assertThat(c.notes()).as(c.step().id()).isEmpty();
             if (NO_PATTERN.contains(c.step().id())) {
                 assertThat(c.patterns()).as(c.step().id()).isEmpty();
                 assertThat(c.step().match()).as(c.step().id()).isEmpty();

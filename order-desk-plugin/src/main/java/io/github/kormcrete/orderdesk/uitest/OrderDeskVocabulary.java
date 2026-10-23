@@ -202,11 +202,11 @@ public final class OrderDeskVocabulary implements Vocabulary {
 
     /** checkoutWithPo's steps when the PO number's caption is {@code poCaption}. */
     private static String[] checkoutWithPo(String poCaption) {
-        String next = json("{'action':'click','target':{'window':'dialog','role':'button','name':%s}}", text(NEXT_BUTTON));
+        String next = json("{'action':'click','target':{'role':'button','name':%s}}", text(NEXT_BUTTON));
         return new String[]{
                 json("{'action':'click','target':{'scope':%s,'role':'button','name':%s}}", NEW_ORDER_SCOPE, text(CHECKOUT_BUTTON)),
                 next, next,
-                json("{'action':'type','target':{'window':'dialog','role':'text','name':%s},'text':'{po}'}", text(poCaption)),
+                json("{'action':'type','target':{'role':'text','name':%s},'text':'{po}'}", text(poCaption)),
                 next};
     }
 

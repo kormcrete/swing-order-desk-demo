@@ -137,7 +137,7 @@ final class OrderDeskOrderTabVocabulary {
                         .code((ui, p) -> OrderDeskOrderTabSteps.receiptSaveErrorIs(ui, p.text("order"), p.text("file"),
                                 p.text("message")))
                         .match(TO_ORDER, save, choose,
-                                json("{'action':'expect','target':{'window':'dialog','role':'label'},'text':'{message}'}"),
+                                json("{'action':'expect','target':{'role':'label'},'text':'{message}'}"),
                                 json("{'action':'answer','button':%s}", text(OK_ANSWER)))
                         .autoFold(false)
                         .java(STEPS, "receiptSaveErrorIs(ui, {order}, {file}, {message})")
