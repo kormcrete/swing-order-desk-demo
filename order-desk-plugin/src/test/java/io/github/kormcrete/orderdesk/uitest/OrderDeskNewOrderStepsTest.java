@@ -432,6 +432,36 @@ class OrderDeskNewOrderStepsTest {
     }
 
     @Test
+    void selectProductsSelectsThemWithoutAddingAnything() {
+        // S13: the Desk lamp selected, so Add to cart's state and reason can be read; nothing is pressed
+        newOrderShowing();
+        products();
+
+        OrderDeskNewOrderSteps.selectProducts(ui, "desk lamp");
+        OrderDeskNewOrderSteps.selectProducts(ui, "stapler; A4");
+
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Desk lamp'},'column':'SKU'}},"
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'Stapler'},'column':'SKU'}},"
+                + "{'action':'click','target':{" + NO + ",'role':'table','row':{'Product':'A4 paper, 500 sheets'},'column':'SKU'},'modifiers':['Mod']}]"));
+    }
+
+    @Test
+    void selectProductsOnTwoMatchesFailsNamingThemAndClicksNothing() {
+        newOrderShowing();
+        products();
+
+        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.selectProducts(ui, "gel pen"));
+        Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.selectProducts(ui, "lamp shade"));
+        Throwable empty = catchThrowable(() -> OrderDeskNewOrderSteps.selectProducts(ui, " ; "));
+
+        assertThat(two).isInstanceOf(DriverException.class).hasMessageContaining("fits 2 products: Gel pen, black; Gel pen, blue");
+        assertThat(none).isInstanceOf(DriverException.class).hasMessageStartingWith("NOT_FOUND: No product fits “lamp shade”");
+        assertThat(empty).isInstanceOf(DriverException.class).hasMessage("BAD_INPUT: Name one or more products, parted by ;");
+        assertThat(app.steps()).isEmpty();
+    }
+
+    @Test
     void browseCategoryClicksTheCategoryByItsName() {
         newOrderShowing();
         categories();

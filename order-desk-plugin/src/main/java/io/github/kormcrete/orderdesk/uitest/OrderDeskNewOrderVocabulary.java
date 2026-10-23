@@ -191,6 +191,20 @@ final class OrderDeskNewOrderVocabulary {
                         .autoFold(false)
                         .java(STEPS, "addProductsToCart(ui, {products})")
                         .build(),
+                DomainStep.act("selectProducts", "Select {products} in the products list")
+                        .about("Needs: a new order showing, the products listed. Ends: on it, those products selected and"
+                                + " nothing added: Add to cart then shows whether it can add them (check it with \"<button> is disabled:"
+                                + " <reason>\", e.g. \"The selected products are out of stock\"), the count reads \"… · 2"
+                                + " selected\". {products}: names or their starts " + SEVERAL + " (the first clicked, the"
+                                + " others with Cmd or Ctrl held)")
+                        .param("products", ParamType.TEXT).choices(products)
+                        .code((ui, p) -> OrderDeskNewOrderSteps.selectProducts(ui, p.text("products")))
+                        .match(json("{'action':'click','target':{%s}}", productRow("products")))
+                        // a click on a product row is also the first half of adding it: folded at once, it would take
+                        // the click a following Add to cart needs (a recording folds a run as soon as it fits)
+                        .autoFold(false)
+                        .java(STEPS, "selectProducts(ui, {products})")
+                        .build(),
                 DomainStep.act("showInCategory", "Show {product} in its category")
                         .about("Needs: a new order showing, the product listed. Ends: on it, Categories on the product's"
                                 + " category, the product selected")

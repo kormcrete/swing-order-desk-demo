@@ -257,18 +257,7 @@ public final class OrderDeskNewOrderSteps {
      * {@code {"added": [...], "leftOut": [...]}}. All out of stock fails with the app's reason.
      */
     public static Map<String, Object> addProductsToCart(Client ui, String products) {
-        requireNewOrder(ui);
-        List<Map<String, String>> rows = productRows(ui);
-        List<String> wanted = names(products);
-        if (wanted.isEmpty()) throw new DriverException(Reason.BAD_INPUT, "Name one or more products, parted by ;");
-        Set<String> picked = new LinkedHashSet<String>();
-        for (String w : wanted) picked.add(resolveProduct(ui, w, rows));
-        List<String> chosen = new ArrayList<String>(picked);
-        for (int i = 0; i < chosen.size(); i++) {
-            Target sku = productRow(ui, chosen.get(i)).cell(SKU_COLUMN);
-            if (i == 0) sku.click();
-            else sku.click(null, 0, ADD_TO_SELECTION);
-        }
+        List<String> chosen = selectProductRows(ui, products);
         Map<String, String> before = quantities(cartRows(ui));
         pressAddToCart(ui, join(chosen));
         Map<String, String> after = quantities(cartRows(ui));
@@ -284,6 +273,32 @@ public final class OrderDeskNewOrderSteps {
         made.put("added", added);
         made.put("leftOut", leftOut);
         return made;
+    }
+
+    /**
+     * Selects products in the products list without adding them: the first by a click on its row, the others with Cmd
+     * or Ctrl held (one named twice counts once). Add to cart then shows whether it can add them, and why not ("The
+     * selected products are out of stock"); the count reads "22 products · 2 selected".
+     */
+    public static void selectProducts(Client ui, String products) {
+        selectProductRows(ui, products);
+    }
+
+    /** Selects the products {@code products} names (all resolved before the first click); returns their names. */
+    private static List<String> selectProductRows(Client ui, String products) {
+        requireNewOrder(ui);
+        List<Map<String, String>> rows = productRows(ui);
+        List<String> wanted = names(products);
+        if (wanted.isEmpty()) throw new DriverException(Reason.BAD_INPUT, "Name one or more products, parted by ;");
+        Set<String> picked = new LinkedHashSet<String>();
+        for (String w : wanted) picked.add(resolveProduct(ui, w, rows));
+        List<String> chosen = new ArrayList<String>(picked);
+        for (int i = 0; i < chosen.size(); i++) {
+            Target sku = productRow(ui, chosen.get(i)).cell(SKU_COLUMN);
+            if (i == 0) sku.click();
+            else sku.click(null, 0, ADD_TO_SELECTION);
+        }
+        return chosen;
     }
 
     /**

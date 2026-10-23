@@ -161,7 +161,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theNewOrderStepsAndChecks() {
-        assertThat(sentences().subList(8, 33)).containsExactly(
+        assertThat(sentences().subList(8, 34)).containsExactly(
                 "chooseCustomer: Choose {customer} as the customer",
                 "typeCustomer: Type {text} into Customer without picking a customer",
                 "customerSuggestionsAre: The customer suggestions are {customers}",
@@ -174,6 +174,7 @@ class OrderDeskVocabularyTest {
                 "searchProducts: Search the products for {text}",
                 "clearProductSearch: Clear the product search",
                 "addProductsToCart: Add {products} to the cart together",
+                "selectProducts: Select {products} in the products list",
                 "showInCategory: Show {product} in its category",
                 "productsListedAre: The products listed are {products}",
                 "productIs: The {column} of {product} is {value}",
@@ -191,7 +192,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theCheckoutStepsAndChecks() {
-        assertThat(sentences().subList(33, 57)).containsExactly(
+        assertThat(sentences().subList(34, 58)).containsExactly(
                 "startCheckout: Start the checkout",
                 "setCheckoutField: Set the checkout's {field} to {value}",
                 "chooseShipping: Choose {method} shipping",
@@ -221,7 +222,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theOrdersListAndMainWindowStepsAndChecks() {
-        assertThat(sentences().subList(57, 84)).containsExactly(
+        assertThat(sentences().subList(58, 85)).containsExactly(
                 "searchOrders: Search the orders for {text}",
                 "clearOrderSearch: Clear the order search",
                 "filterOrders: Filter the orders by status {status}",
@@ -259,7 +260,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theOrderTabStepsAndChecks() {
-        assertThat(sentences().subList(84, sentences().size())).containsExactly(
+        assertThat(sentences().subList(85, sentences().size())).containsExactly(
                 "saveReceipt: Save the receipt of order {order} as {file}",
                 "keepExistingReceipt: Ask to save the receipt of order {order} over {file}, then keep the file",
                 "cancelOrder: Cancel order {order} from its tab",
@@ -274,7 +275,7 @@ class OrderDeskVocabularyTest {
                 "orderInvoiceIs: The {detail} on order {order}'s Invoice tab is {value}",
                 "suggestedReceiptFileIs: Save receipt… on order {order} suggests {file}");
         assertThat(step("saveReceipt").outcomeBody()).isNotNull();
-        assertThat(ORDER_TAB).hasSize(sentences().size() - 84);
+        assertThat(ORDER_TAB).hasSize(sentences().size() - 85);
     }
 
     @Test
@@ -539,6 +540,20 @@ class OrderDeskVocabularyTest {
         JsonNode card = json("{'action':'expect','target':{'window':'dialog','role':'radio','name':'Card'},'state':['checked']}");
 
         assertThat(pattern("checkoutChoiceIs").match(Collections.singletonList(card)).params()).containsEntry("option", "Card");
+    }
+
+    @Test
+    void aClickOnAProductOnlySuggestsSelectProductsAndAClickThenAddToCartStillFoldsIntoAddToCart() {
+        // a recording folds a run as soon as it fits: an auto-folding select would take the click before Add to cart
+        JsonNode lamp = json("{'action':'click','target':{'window':'main','scope':['tab:New order · Ada Shop Ltd'],"
+                + "'role':'table','row':{'SKU':'DSK-LAMP','Product':'Desk lamp','Price':'€39.00','Stock':'Out of stock'},"
+                + "'column':'Product'}}");
+
+        assertThat(step("selectProducts").autoFold()).isFalse();
+        assertThat(pattern("selectProducts").match(Collections.singletonList(lamp)).params())
+                .containsEntry("products", "Desk lamp");
+        assertThat(folds(lamp)).isEmpty();
+        assertThat(folds(lamp, addToCartButton())).containsExactly("addToCart");
     }
 
     @Test

@@ -79,7 +79,8 @@ both have a `Product` column, so a row locator on either must also name a column
 | Add a product to the cart (select it, Add to cart; double click it; its row menu ▸ Add to cart; again adds 1 to its line) | act | `addToCart` |
 | Add a product with a quantity | act | `addQtyToCart` |
 | Add several selected products at once (out-of-stock ones are left out) | act | `addProductsToCart` (the outcome lists the products left out) |
-| Add to cart is disabled, with its reason: "Select a product first", "The selected products are out of stock" | check | `buttonIsDisabled`, `buttonIsEnabled`; `addToCart` fails with the reason |
+| Select products without adding them (a click on a row; Cmd/Ctrl for more): Add to cart then shows whether it can add them | act | `selectProducts` (round 2, S13: the runner clicked the Desk lamp row raw; suggest-only: a click on a product row is also the first half of `addToCart`, and a recording folds a run as soon as it fits) |
+| Add to cart is disabled, with its reason: "Select a product first", "The selected products are out of stock" | check | `buttonIsDisabled`, `buttonIsEnabled` (after `selectProducts`); `addToCart` fails with the reason |
 | Show a product in its category (its row menu ▸ Show in category) | act | `showInCategory` |
 | Change a cart line's quantity (its Qty cell: digits and Enter, or the spinner's arrows) | act | `setQuantity` |
 | A quantity below 1 or not a whole number is ignored: the line keeps its quantity | check | `setQuantity`, then `cartLineIs` (Qty) |
