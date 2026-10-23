@@ -190,6 +190,8 @@ public final class OrderDeskSteps {
     /** The answers to "Cancel order ORD-1635?" and "Cancel 2 orders?" ({@link #KEEP_ANSWER} keeps them). */
     static final String CANCEL_ORDER_ANSWER = "Cancel order";
     static final String CANCEL_ORDERS_ANSWER = "Cancel orders";
+    /** The title of that question: "Cancel order" for one order, "Cancel orders" for several (a prefix of both). */
+    static final String CANCEL_QUESTION_TITLE = "Cancel order";
     /** Beside the status filter while Cancel orders… is disabled for the selected orders (fixed text). */
     static final String CANCEL_HINT = "Only placed orders can be cancelled";
 
@@ -197,6 +199,8 @@ public final class OrderDeskSteps {
 
     static final String ORDER_MENU = "Order";
     static final String VIEW_MENU = "View";
+    /** View ▸ Theme: Light, Dark, Lagoon (the app's look; no data changes). */
+    static final String THEME_MENU = "Theme";
     static final String HELP_MENU = "Help";
     static final String EXIT_ITEM = "Exit";
     static final String ABOUT_ITEM = "About Order Desk";
@@ -223,6 +227,8 @@ public final class OrderDeskSteps {
     static final String ORDER_FACTS_ID = "orderFacts";
     /** What parts the customer, the date and the total in that line. */
     static final String FACTS_SEPARATOR = " · ";
+    /** What parts a line of several facts everywhere in the app: the customer's terms, a shipping method's. */
+    static final String PARTS_SEPARATOR = " · ";
     /** The count under the lines on Items, by its code name: "55 units in 3 lines". */
     static final String ITEMS_SUMMARY_ID = "itemsSummary";
     /** What parts the units from the lines in that count. */

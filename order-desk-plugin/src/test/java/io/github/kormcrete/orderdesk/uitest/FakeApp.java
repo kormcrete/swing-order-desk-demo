@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.kormcrete.swingui.client.TracingVerbs;
 import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.driver.Expectation;
+import io.github.kormcrete.swingui.driver.FileChooserState;
 import io.github.kormcrete.swingui.driver.Reason;
 import io.github.kormcrete.swingui.driver.VerbOutcome;
 import io.github.kormcrete.swingui.driver.Verbs;
@@ -195,6 +196,23 @@ class FakeApp implements Verbs {
         return items;
     }
 
+    private FileChooserState chooser;
+
+    /** A file chooser shows, in {@code folder}, its file-name field holding {@code name}; null: none shows. */
+    FakeApp chooser(String folder, String name) {
+        chooser = folder == null ? null : new FileChooserState(folder, name, false, "FlatLaf Light");
+        return this;
+    }
+
+    boolean chooserShowing() {
+        return chooser != null;
+    }
+
+    @Override public FileChooserState fileChooser(Long timeout) {
+        if (chooser == null) throw new DriverException(Reason.NOT_FOUND, "no file chooser is showing");
+        return chooser;
+    }
+
     @Override public CapabilityReport capabilities() { throw Verbs.missing("capabilities"); }
     @Override public Watch watch() { throw Verbs.missing("watch"); }
     private Node windows;
@@ -272,6 +290,7 @@ class FakeApp implements Verbs {
     }
     @Override public VerbOutcome answer(String button, Long timeout) { return trace.answer(button, timeout); }
     @Override public VerbOutcome chooseFile(String path, Boolean approve, Long timeout) {
+        chooser = null;
         return trace.chooseFile(path, approve, timeout);
     }
 

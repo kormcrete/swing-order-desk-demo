@@ -209,7 +209,8 @@ final class OrderDeskOrderTabVocabulary {
                 DomainStep.check("orderDeliveryIs", "The {detail} on order {order}'s Delivery tab is {value}")
                         .about("Reads the order's Delivery tab: the Delivery address (its lines parted by ;, \"Ada"
                                 + " Lindqvist; Torstraße 118; 10119 Berlin; Germany\", or one of them, \"10119 Berlin\"), the"
-                                + " Shipping method (\"Standard · 3–5 business days · €4.90\", \"… · Free\") or the Delivery"
+                                + " Shipping method (\"Standard · 3–5 business days · €4.90\", \"… · Free\", or one part of"
+                                + " it: \"Standard\") or the Delivery"
                                 + " note (\"Ring twice.\"; \"—\" or none when there is none). {detail}: address, shipping"
                                 + " method or note. Shows the Delivery tab for the read, then the tab that showed before. "
                                 + NEEDS_SELECTED)
@@ -234,6 +235,19 @@ final class OrderDeskOrderTabVocabulary {
                         .match(json("{'action':'expect','target':{'scope':%s,'role':'label','name':'{detail}'},'text':'{value}'}",
                                 subTabScope(INVOICE_TAB)))
                         .java(STEPS, "orderInvoiceIs(ui, {order}, {detail}, {value})")
+                        .build(),
+                DomainStep.check("suggestedReceiptFileIs", "Save receipt… on order {order} suggests {file}")
+                        .about("Reads the file name Save receipt… suggests (the order's number, \"ORD-1640.txt\", in the"
+                                + " folder the chooser opens in, the user's home): opens it, reads the file chooser, Cancel,"
+                                + " then shows the tab that showed before; nothing is saved. {file}: the name, with or"
+                                + " without .txt, or the whole path. " + NEEDS_TAB)
+                        .param("order", ParamType.TEXT).choices(orderTabs)
+                        .param("file", ParamType.TEXT)
+                        .code((ui, p) -> OrderDeskOrderTabSteps.suggestedReceiptFileIs(ui, p.text("order"), p.text("file")))
+                        // no pattern: a check of several steps (Save receipt…, the read, Cancel), and the file chooser's
+                        // name is no element a person's Check can record
+                        .autoFold(false)
+                        .java(STEPS, "suggestedReceiptFileIs(ui, {order}, {file})")
                         .build());
     }
 

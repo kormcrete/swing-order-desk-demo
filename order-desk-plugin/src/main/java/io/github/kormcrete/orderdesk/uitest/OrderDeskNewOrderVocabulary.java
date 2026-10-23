@@ -83,8 +83,8 @@ final class OrderDeskNewOrderVocabulary {
                         .build(),
                 DomainStep.check("customerSuggestionsAre", "The customer suggestions are {customers}")
                         .about("Reads the Customer field's suggestions (after Type … into Customer), in order, by the"
-                                + " customers' names " + SEVERAL + ": \"Café Lumen; Fjord Supplies\"; none: \""
-                                + NO_CUSTOMER_MATCHES + "\"")
+                                + " customers' names " + SEVERAL + ": \"Café Lumen; Fjord Supplies\"; none (or the text the"
+                                + " list then shows, \"" + NO_CUSTOMER_MATCHES + "\"): nothing fits")
                         .param("customers", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.customerSuggestionsAre(ui, p.text("customers")))
                         .match(json("{'action':'expect','target':{'window':'popup','role':'list','item':['{customers}']},'shown':true}"))
@@ -102,7 +102,8 @@ final class OrderDeskNewOrderVocabulary {
                         .build(),
                 DomainStep.check("customerTermsAre", "The customer's terms are {terms}")
                         .about("Reads the terms beside the Customer field, e.g. \"Card only\" or \"Account · Invoice 30"
-                                + " days · Credit limit €2,000.00 · Owes €450.00 · PO number required\"; none: no customer chosen")
+                                + " days · Credit limit €2,000.00 · Owes €450.00 · PO number required\": the whole text or one"
+                                + " part between the dots (\"Account\", \"Owes €450.00\"); none: no customer chosen")
                         .param("terms", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskNewOrderSteps.customerTermsAre(ui, p.text("terms")))
                         .match(json("{'action':'expect','target':{'scope':%s,'id':%s},'text':'{terms}'}",
@@ -119,6 +120,18 @@ final class OrderDeskNewOrderVocabulary {
                                 json("{'action':'expect','target':{'window':'popup','role':'menuitem','name':'{customers}'},'shown':true}"))
                         .autoFold(false)
                         .java(STEPS, "recentCustomersAre(ui, {customers})")
+                        .build(),
+                DomainStep.act("openNewOrderFromRecent", "Open a new order for {customer} from the recent customers")
+                        .about("Needs: the main window, no dialog open. Ends: on a new order for that customer (its tab"
+                                + " \"New order · Ada Shop Ltd\"), opened the way the toolbar's ▾ (New order for a recent"
+                                + " customer) does: opens its menu and picks the customer. {customer}: one of the recent"
+                                + " customers (see The recent customers are …), the name or its start; another fails naming"
+                                + " those it offers")
+                        .param("customer", ParamType.TEXT).choices(customers)
+                        .code((ui, p) -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, p.text("customer")))
+                        .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(RECENT_CUSTOMER_BUTTON)),
+                                json("{'action':'pick','path':['{customer}']}"))
+                        .java(STEPS, "openNewOrderFromRecent(ui, {customer})")
                         .build(),
 
                 // ---- products

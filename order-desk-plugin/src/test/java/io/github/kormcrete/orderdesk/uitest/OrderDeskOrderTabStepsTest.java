@@ -83,6 +83,31 @@ class OrderDeskOrderTabStepsTest {
     }
 
     @Test
+    void suggestedReceiptFileIsOpensSaveReceiptReadsTheNameAndCancels() {
+        // started on the Orders tab: Save receipt… on the order's tab, the chooser's name read, Cancel, Orders again
+        OrderTabFake app = new OrderTabFake().showTabs("Orders", "Orders", "ORD-1639");
+
+        OrderDeskOrderTabSteps.suggestedReceiptFileIs(app.client(), "1639", "ORD-1639.txt");
+
+        assertThat(app.steps()).isEqualTo(json("[" + TO_TAB + "," + SAVE + ",{'action':'chooseFile','path':'ORD-1639.txt',"
+                + "'approve':false},{'action':'click','target':{'role':'tab','name':'Orders'}}]"));
+        assertThat(app.chooserShowing()).isFalse();
+    }
+
+    @Test
+    void suggestedReceiptFileIsTakesTheNameWithOrWithoutItsExtensionOrTheWholePath() {
+        OrderTabFake app = new OrderTabFake();
+
+        OrderDeskOrderTabSteps.suggestedReceiptFileIs(app.client(), "ORD-1639", "ord-1639");
+        OrderDeskOrderTabSteps.suggestedReceiptFileIs(app.client(), "ORD-1639", "/home/ada/ORD-1639.txt");
+        Throwable other = catchThrowable(() -> OrderDeskOrderTabSteps.suggestedReceiptFileIs(app.client(), "ORD-1639", "receipt.txt"));
+
+        assertThat(other).isInstanceOf(AssertionError.class)
+                .hasMessage("Save receipt… suggests “ORD-1639.txt” in /home/ada, expected “receipt.txt”");
+        assertThat(app.chooserShowing()).isFalse();
+    }
+
+    @Test
     void theMessageIsReadFromTheTopOfWhatTheActionChanged() {
         // the outcome's text: a nested "message" (a text that changed) is not the dialog's message
         String changed = "{\"texts\":{\"message\":\"x\"},\"opened\":{\"dialogs\":[\"Save receipt\"]},"
@@ -402,6 +427,19 @@ class OrderDeskOrderTabStepsTest {
         OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "Delivery address", "10119 Berlin");
         OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "note", "none");
         OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "Delivery note", "—");
+    }
+
+    @Test
+    void orderDeliveryIsTakesTheShippingMethodWholeOrOneOfItsParts() {
+        // "Standard · 3–5 business days · €4.90": the method's name alone is what a tester says
+        OrderTabFake app = new OrderTabFake().onSubTab("Delivery");
+
+        OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "shipping method", "Standard");
+        OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "method", "€4.90");
+        Throwable other = catchThrowable(() -> OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "method", "Express"));
+
+        assertThat(other).isInstanceOf(AssertionError.class).hasMessage("ORD-1639's Shipping method reads “Standard · 3–5"
+                + " business days · €4.90”, expected “Express”");
     }
 
     @Test

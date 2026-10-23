@@ -3,6 +3,7 @@ package io.github.kormcrete.orderdesk.uitest;
 import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.driver.Reason;
 import io.github.kormcrete.swingui.junit.Client;
+import io.github.kormcrete.swingui.junit.FileChooser;
 import io.github.kormcrete.swingui.junit.Rows;
 import io.github.kormcrete.swingui.junit.Target;
 import io.github.kormcrete.swingui.junit.UiActionFailed;
@@ -33,6 +34,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.resolve;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showing;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shown;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shows;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showsWholeOrPart;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskOrdersSteps.NO_MAIN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskOrdersSteps.requireMain;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.*;
@@ -163,6 +165,35 @@ public final class OrderDeskOrderTabSteps {
         }
     }
 
+    /**
+     * Checks the file name Save receipt… suggests for the order (its number, "ORD-1640.txt", in the folder the chooser
+     * opens in): its tab, Save receipt…, reads the file chooser, then Cancel, and the tab selected before shows again.
+     * {@code file}: the name, with or without .txt, any case, or the whole path (the folder and the name).
+     */
+    public static void suggestedReceiptFileIs(Client ui, String order, String file) {
+        At at = goToOrderTab(ui, order);
+        ui.tab(at.number).button(SAVE_RECEIPT_BUTTON).click();
+        String name;
+        String folder;
+        try {
+            FileChooser chooser = ui.fileChooser();
+            name = chooser.name();
+            folder = chooser.folder();
+        } finally {
+            quietly(() -> ui.chooseFile(at.number + RECEIPT_EXTENSION, false));
+            back(ui, at);
+        }
+        String want = oneLine(file);
+        String shown = name == null ? "" : name;
+        String path = folder == null ? shown : folder + (folder.endsWith("/") || folder.endsWith("\\") ? "" : "/") + shown;
+        boolean fits = want.equalsIgnoreCase(shown) || (want + RECEIPT_EXTENSION).equalsIgnoreCase(shown)
+                || want.equals(path) || want.replace('\\', '/').equals(path.replace('\\', '/'));
+        if (!fits) {
+            throw new AssertionError("Save receipt… suggests " + quoted(shown) + (folder == null ? "" : " in " + folder)
+                    + ", expected " + quoted(want));
+        }
+    }
+
     // ---- cancel the order
 
     /**
@@ -270,7 +301,12 @@ public final class OrderDeskOrderTabSteps {
                 return;
             }
             String expected = DELIVERY_NOTE_LABEL.equals(caption) && isNone(value) ? NO_NOTE : value;
-            shows(tab.label(caption), number + "'s " + caption, expected);
+            if (SHIPPING_METHOD_LABEL.equals(caption)) {
+                // "Standard · 3–5 business days · €4.90": the method's name alone, or another part, passes too
+                showsWholeOrPart(tab.label(caption), number + "'s " + caption, expected, PARTS_SEPARATOR);
+            } else {
+                shows(tab.label(caption), number + "'s " + caption, expected);
+            }
         });
     }
 

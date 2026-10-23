@@ -324,6 +324,32 @@ class OrderDeskMainStepsTest {
         assertThat(app.steps().get(1)).isEqualTo(json("{'action':'answer','button':'Cancel'}"));
     }
 
+    // ---- the theme
+
+    @Test
+    void switchThemeChoosesItInViewTheme() {
+        OrdersFake app = new OrdersFake();
+        app.menu("View > Theme", "Light", "Dark", "Lagoon");
+
+        OrderDeskMainSteps.switchTheme(app.client(), "dark");
+        OrderDeskMainSteps.switchTheme(app.client(), "Light");
+
+        assertThat(app.steps()).isEqualTo(json("[{'action':'menu','path':['View','Theme','Dark']},"
+                + "{'action':'menu','path':['View','Theme','Light']}]"));
+    }
+
+    @Test
+    void switchThemeThatFitsNoneNamesTheThemesAndChoosesNothing() {
+        OrdersFake app = new OrdersFake();
+        app.menu("View > Theme", "Light", "Dark", "Lagoon");
+
+        Throwable none = catchThrowable(() -> OrderDeskMainSteps.switchTheme(app.client(), "Solarized"));
+
+        assertThat(none).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_FOUND: No theme fits “Solarized”. View ▸ Theme offers: Light; Dark; Lagoon");
+        assertThat(app.steps()).isEmpty();
+    }
+
     @Test
     void aboutShowsReadsTheTextAsWholeWordsThenAnswersOk() {
         OrdersFake app = withAbout();

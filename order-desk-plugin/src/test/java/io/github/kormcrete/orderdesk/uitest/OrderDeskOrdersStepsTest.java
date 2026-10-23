@@ -1,5 +1,6 @@
 package io.github.kormcrete.orderdesk.uitest;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.github.kormcrete.swingui.driver.DriverException;
 import org.junit.jupiter.api.Test;
 
@@ -8,6 +9,7 @@ import javax.swing.SortOrder;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableRowSorter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -194,6 +196,76 @@ class OrderDeskOrdersStepsTest {
         assertThat(none).isInstanceOf(DriverException.class)
                 .hasMessage("NOT_FOUND: No status fits “open”. The Status filter offers: All; Placed; Shipped; Cancelled");
         assertThat(app.steps()).isEmpty();
+    }
+
+    // ---- what the list shows, as an act's outcome
+
+    @Test
+    void showOrdersGoesToTheOrdersTabAndSaysWhatItLists() {
+        OrdersFake app = new OrdersFake().tabs("ORD-1639", "Orders", "ORD-1639").listing("", "ORD-1639", "ORD-1634");
+
+        Map<String, Object> shown = OrderDeskOrdersSteps.showOrders(app.client());
+
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS + "]"));
+        assertThat(shown).containsEntry("count", 2);
+        assertThat(shown.get("orders")).isEqualTo(Arrays.asList(
+                order("ORD-1639", "9 Oct 2026", "Ada Shop Ltd", "55", "€95.52", "Placed"),
+                order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled")));
+        assertThat(shown).doesNotContainKey("empty");
+    }
+
+    @Test
+    void showOrdersReadsEveryOrderPastTheFirstRowsOfARead() {
+        OrdersFake app = new OrdersFake().readsFirst(2);
+
+        Map<String, Object> shown = OrderDeskOrdersSteps.showOrders(app.client());
+
+        assertThat(shown).containsEntry("count", 4);
+        assertThat(((List<?>) shown.get("orders")).get(3))
+                .isEqualTo(order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled"));
+    }
+
+    @Test
+    void showOrdersOfAnEmptyListSaysTheTextThatShowsInstead() {
+        OrdersFake app = new OrdersFake().listing("No orders match ‘zz’");
+
+        Map<String, Object> shown = OrderDeskOrdersSteps.showOrders(app.client());
+
+        assertThat(shown).containsEntry("count", 0).containsEntry("orders", Collections.emptyList())
+                .containsEntry("empty", "No orders match ‘zz’");
+    }
+
+    @Test
+    void searchFilterAndClearSayWhatTheListShowsAfterThem() {
+        OrdersFake app = new OrdersFake().listing("", "ORD-1639", "ORD-1636");
+
+        Map<String, Object> searched = OrderDeskOrdersSteps.searchOrders(app.client(), "ada");
+        Map<String, Object> filtered = OrderDeskOrdersSteps.filterOrders(app.client(), "placed");
+        Map<String, Object> cleared = OrderDeskOrdersSteps.clearOrderSearch(app.client());
+
+        for (Map<String, Object> listed : Arrays.asList(searched, filtered, cleared)) {
+            assertThat(listed).containsEntry("count", 2);
+            assertThat(((List<?>) listed.get("orders")).get(1))
+                    .isEqualTo(order("ORD-1636", "3 Oct 2026", "Ada Shop Ltd", "12", "€40.56", "Shipped"));
+        }
+    }
+
+    @Test
+    void sortOrdersSaysTheOrdersInTheirNewOrder() {
+        OrdersFake app = new OrdersFake().sortable();
+
+        Map<String, Object> left = OrderDeskOrdersSteps.sortOrders(app.client(), "Total", "ascending");
+
+        assertThat(left).containsEntry("column", "Total").containsEntry("direction", "ascending").containsEntry("count", 4);
+        List<?> orders = (List<?>) left.get("orders");
+        assertThat(orders.get(0)).isEqualTo(order("ORD-1636", "3 Oct 2026", "Ada Shop Ltd", "12", "€40.56", "Shipped"));
+        assertThat(orders.get(3)).isEqualTo(order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled"));
+    }
+
+    private static Map<String, String> order(String... cells) {
+        Map<String, String> o = new java.util.LinkedHashMap<String, String>();
+        for (int i = 0; i < cells.length; i++) o.put(OrdersFake.COLUMNS.get(i), cells[i]);
+        return o;
     }
 
     @Test
@@ -399,6 +471,62 @@ class OrderDeskOrdersStepsTest {
     }
 
     @Test
+    void cancelQuestionIsAsksReadsTheQuestionThenKeeps() {
+        // the question's whole text, or one of its lines: "Cancel order ORD-1639?" / "Stock is restored …"
+        OrdersFake app = new OrdersFake();
+        cancelQuestion(app, "Cancel order ORD-1639?");
+
+        OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639", "Cancel order ORD-1639?");
+        OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "1639", STOCK_RESTORED);
+        OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639", "Cancel order ORD-1639?  " + STOCK_RESTORED);
+
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + "}"
+                + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
+                + ",{'action':'answer','button':'Keep'}"
+                + "," + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + "}"
+                + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
+                + ",{'action':'answer','button':'Keep'}"
+                + "," + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + "}"
+                + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
+                + ",{'action':'answer','button':'Keep'}]"));
+    }
+
+    @Test
+    void cancelQuestionIsFailsWithExpectedAndActualAndStillKeeps() {
+        OrdersFake app = new OrdersFake();
+        cancelQuestion(app, "Cancel 2 orders?");
+
+        Throwable wrong = catchThrowable(() -> OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639; ORD-1638",
+                "Cancel order ORD-1639?"));
+
+        assertThat(wrong).isInstanceOf(AssertionError.class).hasMessage("Cancelling ORD-1639; ORD-1638 asks “Cancel 2"
+                + " orders? " + STOCK_RESTORED + "”, expected “Cancel order ORD-1639?”");
+        JsonNode steps = app.steps();
+        assertThat(steps.get(steps.size() - 1)).isEqualTo(json("{'action':'answer','button':'Keep'}"));
+    }
+
+    @Test
+    void cancelQuestionIsOfAnOrderThatIsNotPlacedFailsWithTheAppsReasonBeforeClickingTheList() {
+        OrdersFake app = new OrdersFake();
+
+        Throwable shipped = catchThrowable(() -> OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1636", "x"));
+
+        assertThat(shipped).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_ACTIONABLE: Only placed orders can be cancelled: ORD-1636 is shipped");
+        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS + "]"));
+    }
+
+    private static final String STOCK_RESTORED = "Stock is restored and invoice totals are taken off what the customer owes.";
+
+    /** The question the row menu's Cancel orders… asks, as its message pane's labels. */
+    private static void cancelQuestion(OrdersFake app, String first) {
+        app.answer("dialog:Cancel order* label", label("OptionPane.label", first), label("OptionPane.label", STOCK_RESTORED));
+    }
+
+    @Test
     void copyOrderNumbersSelectsThemThenCopies() {
         OrdersFake app = new OrdersFake();
 
@@ -479,6 +607,27 @@ class OrderDeskOrdersStepsTest {
 
         assertThat(total).isInstanceOf(AssertionError.class).hasMessage("ORD-1639's Total reads “€95.52”, expected “€9.99”");
         assertThat(status).isInstanceOf(AssertionError.class).hasMessage("ORD-1639's Status reads “Placed”, expected “cancelled”");
+    }
+
+    @Test
+    void ordersCountIsCountsTheOrdersListed() {
+        OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().client(), 4);
+        OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().readsFirst(2).client(), 4);
+        OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().listing("", "ORD-1638").client(), 1);
+        OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().listing("No orders match ‘zz’").client(), 0);
+    }
+
+    @Test
+    void ordersCountIsFailsWithExpectedAndActual() {
+        Throwable four = catchThrowable(() -> OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().client(), 2));
+        Throwable one = catchThrowable(() -> OrderDeskOrdersSteps.ordersCountIs(new OrdersFake().listing("", "ORD-1638").client(), 0));
+        Throwable none = catchThrowable(() -> OrderDeskOrdersSteps.ordersCountIs(
+                new OrdersFake().listing("No orders match ‘zz’").client(), 1));
+
+        assertThat(four).isInstanceOf(AssertionError.class).hasMessage("The Orders list shows 4 orders, expected 2");
+        assertThat(one).isInstanceOf(AssertionError.class).hasMessage("The Orders list shows 1 order, expected 0");
+        assertThat(none).isInstanceOf(AssertionError.class)
+                .hasMessage("The Orders list shows no orders (“No orders match ‘zz’”), expected 1");
     }
 
     @Test

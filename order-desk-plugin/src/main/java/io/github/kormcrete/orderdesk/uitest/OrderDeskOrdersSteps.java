@@ -28,6 +28,9 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.column;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.isNone;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.join;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.look;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageIs;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageLines;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.oneLine;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.names;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.notShown;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.pick;
@@ -127,33 +130,52 @@ public final class OrderDeskOrdersSteps {
         throw new DriverException(Reason.NOT_ACTIONABLE, "The tab of " + join(shut) + " did not open");
     }
 
-    /** Types {@code text} into the Orders tab's Search: the list shows the orders whose number or customer holds it. */
-    public static void searchOrders(Client ui, String text) {
+    /**
+     * Goes to the Orders tab (a click on it) and returns what the list shows there, as {@link #listing} says it; the
+     * search, the status filter and the sort stay as they were.
+     */
+    public static Map<String, Object> showOrders(Client ui) {
         goToOrders(ui);
-        ordersTab(ui).field(SEARCH_FIELD).type(text);
+        return listing(ui);
     }
 
-    /** Empties the Orders tab's Search with its X; nothing to do when it is empty. */
-    public static void clearOrderSearch(Client ui) {
+    /**
+     * Types {@code text} into the Orders tab's Search: the list shows the orders whose number or customer holds it.
+     * Returns what the list then shows ({@link #listing}).
+     */
+    public static Map<String, Object> searchOrders(Client ui, String text) {
+        goToOrders(ui);
+        ordersTab(ui).field(SEARCH_FIELD).type(text);
+        return listing(ui);
+    }
+
+    /** Empties the Orders tab's Search with its X; nothing to do when it is empty. Returns what the list then shows. */
+    public static Map<String, Object> clearOrderSearch(Client ui) {
         goToOrders(ui);
         Target search = ordersTab(ui).field(SEARCH_FIELD);
         String text = shown(search);
         if (text != null && !text.isEmpty()) search.clearValue();
+        return listing(ui);
     }
 
-    /** Shows the orders of one status: All, Placed, Shipped or Cancelled ("placed", "cancel"), in the Status filter. */
-    public static void filterOrders(Client ui, String status) {
+    /**
+     * Shows the orders of one status: All, Placed, Shipped or Cancelled ("placed", "cancel"), in the Status filter.
+     * Returns what the list then shows ({@link #listing}).
+     */
+    public static Map<String, Object> filterOrders(Client ui, String status) {
         requireMain(ui);
         String s = pick(status, STATUSES, "status", "statuses", "The Status filter offers");
         ui.tab(ORDERS_TAB).click();
         ordersTab(ui).combo(STATUS_COMBO).select(s);
+        return listing(ui);
     }
 
     /**
      * Sorts the orders by {@code column} in {@code direction} (ascending, descending; "newest first" and "oldest first"
      * too): clicks the column's header, which sorts by it, and again while the orders do not read in that direction (a
      * click reverses it; a sort is never undone). Returns the column and the direction the list is left in:
-     * {@code {"column":"Total","direction":"descending"}}; "either" when every order listed has the same value there.
+     * {@code {"column":"Total","direction":"descending"}}; "either" when every order listed has the same value there;
+     * and the orders in their new order ({@link #listing}).
      */
     public static Map<String, Object> sortOrders(Client ui, String column, String direction) {
         requireMain(ui);
@@ -179,6 +201,7 @@ public final class OrderDeskOrdersSteps {
         Map<String, Object> left = new LinkedHashMap<String, Object>();
         left.put("column", col);
         left.put("direction", seen == 0 ? EITHER : word(seen));
+        left.putAll(listing(ui));
         return left;
     }
 
@@ -202,6 +225,30 @@ public final class OrderDeskOrdersSteps {
     public static void keepOrders(Client ui, String orders) {
         askToCancel(ui, orders);
         ui.answer(KEEP_ANSWER);
+    }
+
+    /**
+     * Checks the question the row menu's Cancel orders… asks ("Cancel order ORD-1635?" or "Cancel 2 orders?", then "Stock
+     * is restored and invoice totals are taken off what the customer owes."): selects the orders, Cancel orders…, reads
+     * the question, then answers Keep (also when it differs), so nothing is cancelled. {@code message}: the whole text or
+     * one of its lines. An order that is not Placed fails before anything is clicked, as {@link #keepOrders} does.
+     */
+    public static void cancelQuestionIs(Client ui, String orders, String message) {
+        List<String> numbers = askToCancel(ui, orders);
+        List<String> lines;
+        try {
+            lines = messageLines(ui.dialog(CANCEL_QUESTION_TITLE + "*").label(null));
+        } finally {
+            ui.answer(KEEP_ANSWER);
+        }
+        String all = lines == null ? null : oneLine(String.join(" ", lines));
+        if (all == null) throw new AssertionError("Cancel orders… asked nothing, expected " + quoted(oneLine(message)));
+        try {
+            messageIs(lines, message, "");
+        } catch (AssertionError e) {
+            throw new AssertionError("Cancelling " + join(numbers) + " asks " + quoted(all) + ", expected "
+                    + quoted(oneLine(message)));
+        }
     }
 
     /** Copies the numbers of orders: selects them, then the row menu's Copy order number; the status line says so. */
@@ -257,6 +304,25 @@ public final class OrderDeskOrdersSteps {
     }
 
     /**
+     * Checks how many orders the list shows (0 while its empty text, "No orders match ‘zzz’", replaces them); a list
+     * longer than a read is counted as the table counts its rows.
+     */
+    public static void ordersCountIs(final Client ui, final int count) {
+        requireOrdersList(ui);
+        Integer same = look(() -> orderCount(ui) == count ? Integer.valueOf(count) : null);
+        if (same != null) return;
+        int listed = orderCount(ui);
+        String shows;
+        if (listed == 0) {
+            String empty = shown(ordersTab(ui).byId(ORDERS_EMPTY_ID));
+            shows = "no orders" + (empty == null ? "" : " (" + quoted(empty) + ")");
+        } else {
+            shows = listed + (listed == 1 ? " order" : " orders");
+        }
+        throw new AssertionError("The Orders list shows " + shows + ", expected " + count);
+    }
+
+    /**
      * Checks the text that replaces the orders when none is listed: "No orders match ‘zzz’", "No orders", "No cancelled
      * orders"; {@code none}: orders are listed.
      */
@@ -281,6 +347,41 @@ public final class OrderDeskOrdersSteps {
     }
 
     // ---- what the choices and other screens read
+
+    /**
+     * What the Orders list shows, for an act's outcome: {@code count}, the number of orders listed, and {@code orders},
+     * each order's Order, Date, Customer, Items, Total and Status as the list shows them, top to bottom (every row, past
+     * the first ones of a read too); while no order is listed, also {@code empty}, the text shown instead ("No orders
+     * match ‘zzz’"). E.g. {@code {"count":1,"orders":[{"Order":"ORD-1637","Date":"5 Oct 2026","Customer":"Birch & Co",
+     * "Items":"7","Total":"€141.36","Status":"Placed"}]}}.
+     */
+    static Map<String, Object> listing(Client ui) {
+        List<Map<String, String>> rows = orderRows(ui, COLUMNS.toArray(new String[0]));
+        List<Map<String, String>> orders = new ArrayList<Map<String, String>>();
+        for (Map<String, String> r : rows) {
+            Map<String, String> o = new LinkedHashMap<String, String>();
+            for (String c : COLUMNS) o.put(c, r.get(c));
+            orders.add(o);
+        }
+        Map<String, Object> out = new LinkedHashMap<String, Object>();
+        out.put("count", orders.size());
+        out.put("orders", orders);
+        if (orders.isEmpty()) {
+            String empty = shown(ordersTab(ui).byId(ORDERS_EMPTY_ID));
+            if (empty != null) out.put("empty", empty);
+        }
+        return out;
+    }
+
+    /** How many orders the list shows now: its table's rows, 0 while the empty text replaces it. */
+    private static int orderCount(Client ui) {
+        try {
+            return ordersTable(ui).timeout(java.time.Duration.ofMillis(1)).rowCount();
+        } catch (UiActionFailed e) {
+            if (e.reason() == Reason.NOT_FOUND) return 0;
+            throw e;
+        }
+    }
 
     /** The order numbers the Orders list shows, in order. */
     static List<String> listedOrders(Client ui) {

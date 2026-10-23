@@ -41,6 +41,9 @@ final class OrderDeskOrdersVocabulary {
     private static final String ORDERS = "{orders}: numbers (ORD-1640, or the digits 1640) or a customer's name or its"
             + " start when that customer has one order listed, several parted by ;";
     private static final String NEEDS_MAIN = "Needs: the main window, no dialog open (it goes to the Orders tab itself).";
+    /** What an act that changes what the list shows says it returns. */
+    private static final String LISTED = " The outcome (\"outcome\": true) says what the list then shows: count, and orders,"
+            + " each order's Order, Date, Customer, Items, Total and Status, top to bottom (empty: the text shown instead)";
 
     private final Supplier<List<String>> orders;
 
@@ -52,17 +55,17 @@ final class OrderDeskOrdersVocabulary {
         return Arrays.asList(
                 DomainStep.act("searchOrders", "Search the orders for {text}")
                         .about(NEEDS_MAIN + " Ends: on the Orders tab, listing the orders whose number or customer holds"
-                                + " the text, any case (\"No orders match ‘…’\" when none does)")
+                                + " the text, any case (\"No orders match ‘…’\" when none does)." + LISTED)
                         .param("text", ParamType.TEXT)
-                        .code((ui, p) -> OrderDeskOrdersSteps.searchOrders(ui, p.text("text")))
+                        .codeWithOutcome((ui, p) -> OrderDeskOrdersSteps.searchOrders(ui, p.text("text")))
                         .match(TO_ORDERS, json("{'action':'type','target':{'scope':%s,'role':'text','name':%s},'text':'{text}'}",
                                 ORDERS_SCOPE, text(SEARCH_FIELD)))
                         .java(STEPS, "searchOrders(ui, {text})")
                         .build(),
                 DomainStep.act("clearOrderSearch", "Clear the order search")
                         .about(NEEDS_MAIN + " Ends: on the Orders tab, its Search emptied with its X, every order of the"
-                                + " status filter's choice listed")
-                        .code((ui, p) -> OrderDeskOrdersSteps.clearOrderSearch(ui))
+                                + " status filter's choice listed." + LISTED)
+                        .codeWithOutcome((ui, p) -> OrderDeskOrdersSteps.clearOrderSearch(ui))
                         .match(TO_ORDERS, json("{'action':'click','target':{'scope':[%s,%s],'id':'clear'}}",
                                 text("tab:" + ORDERS_TAB), text("text:" + SEARCH_FIELD)))
                         .java(STEPS, "clearOrderSearch(ui)")
@@ -70,9 +73,9 @@ final class OrderDeskOrdersVocabulary {
                 DomainStep.act("filterOrders", "Filter the orders by status {status}")
                         .about(NEEDS_MAIN + " Ends: on the Orders tab, its Status filter on that status, listing those"
                                 + " orders only. {status}: All, Placed, Shipped or Cancelled, any case or its start"
-                                + " (\"placed\", \"cancel\")")
+                                + " (\"placed\", \"cancel\")." + LISTED)
                         .param("status", ParamType.TEXT).choices(() -> OrderDeskOrdersSteps.STATUSES)
-                        .code((ui, p) -> OrderDeskOrdersSteps.filterOrders(ui, p.text("status")))
+                        .codeWithOutcome((ui, p) -> OrderDeskOrdersSteps.filterOrders(ui, p.text("status")))
                         .match(TO_ORDERS, json("{'action':'select','target':{'scope':%s,'role':'combo','name':%s},'items':['{status}']}",
                                 ORDERS_SCOPE, text(STATUS_COMBO)))
                         .java(STEPS, "filterOrders(ui, {status})")
@@ -84,7 +87,9 @@ final class OrderDeskOrdersVocabulary {
                                 + " {column}: Order, Date, Customer, Items, Total or Status (by the filter's order: Placed,"
                                 + " Shipped, Cancelled). {direction}: ascending or descending (\"newest first\", \"oldest"
                                 + " first\"); left out: ascending. The outcome says the column and the direction it is"
-                                + " left in (either: every order listed has the same value there)")
+                                + " left in (either: every order listed has the same value there), and the orders in their"
+                                + " new order: count, and orders, each order's Order, Date, Customer, Items, Total and Status,"
+                                + " top to bottom (the first is the lowest of an ascending sort)")
                         .param("column", ParamType.TEXT).choices(() -> OrderDeskOrdersSteps.COLUMNS)
                         .param("direction", ParamType.TEXT).optional(OrderDeskOrdersSteps.ASCENDING)
                         .choices(() -> Arrays.asList(OrderDeskOrdersSteps.ASCENDING, OrderDeskOrdersSteps.DESCENDING))
@@ -139,6 +144,15 @@ final class OrderDeskOrdersVocabulary {
                         .autoFold(false)
                         .java(STEPS, "copyOrderNumbers(ui, {orders})")
                         .build(),
+                DomainStep.act("showOrders", "Show the Orders list")
+                        .about(NEEDS_MAIN + " Ends: on the Orders tab, its search, filter and sort as they were. To read"
+                                + " what the list shows without changing it, e.g. before and after something that must not"
+                                + " change the orders." + LISTED)
+                        .codeWithOutcome((ui, p) -> OrderDeskOrdersSteps.showOrders(ui))
+                        // no pattern: a person's click on the Orders tab reads nothing
+                        .autoFold(false)
+                        .java(STEPS, "showOrders(ui)")
+                        .build(),
 
                 // ---- checks (the Orders tab showing)
                 DomainStep.check("orderIs", "The {column} of order {order} is {value}")
@@ -168,6 +182,16 @@ final class OrderDeskOrdersVocabulary {
                         .autoFold(false)
                         .java(STEPS, "ordersListedAre(ui, {orders})")
                         .build(),
+                DomainStep.check("ordersCountIs", "The number of orders listed is {count}")
+                        .about("Reads how many orders the Orders tab lists (after a search or a filter: how many are"
+                                + " left), e.g. 2; 0 while the list's empty text shows instead")
+                        .param("count", ParamType.INT)
+                        .code((ui, p) -> OrderDeskOrdersSteps.ordersCountIs(ui, p.integer("count")))
+                        // as the agent records a row count of the Orders table
+                        .match(json("{'action':'expect','target':{'scope':%s,'role':'table'},'rows':{'op':'eq','value':'{count}'}}",
+                                ORDERS_SCOPE))
+                        .java(STEPS, "ordersCountIs(ui, {count})")
+                        .build(),
                 DomainStep.check("ordersEmptyMessageIs", "The orders list reads {message}")
                         .about("Reads the text that replaces the orders on the Orders tab when none is listed: \"No orders"
                                 + " match ‘zzz’\", \"No orders\", \"No cancelled orders\"; none: orders are listed")
@@ -185,6 +209,21 @@ final class OrderDeskOrdersVocabulary {
                         .match(json("{'action':'expect','target':{%s},'state':['selected']}", orderRow("orders")))
                         .autoFold(false)
                         .java(STEPS, "selectedOrdersAre(ui, {orders})")
+                        .build(),
+                DomainStep.check("cancelQuestionIs", "Asking to cancel the orders {orders} reads {message}")
+                        .about("Reads the question the Orders list's row menu Cancel orders… asks (\"Cancel order"
+                                + " ORD-1635?\" or \"Cancel 2 orders?\", then \"Stock is restored and invoice totals are"
+                                + " taken off what the customer owes.\"): selects the orders, Cancel orders…, reads, answers"
+                                + " Keep, so nothing is cancelled. {message}: the whole text or one of its lines. An order"
+                                + " not Placed fails first: \"" + CANCEL_HINT + "\". Needs: the main window, no dialog open. "
+                                + ORDERS)
+                        .param("orders", ParamType.TEXT).choices(orders)
+                        .param("message", ParamType.TEXT)
+                        .code((ui, p) -> OrderDeskOrdersSteps.cancelQuestionIs(ui, p.text("orders"), p.text("message")))
+                        // no pattern: a check of several steps (the row menu, the read, Keep); the Check menu records
+                        // one step, and an agent runs it as a do step
+                        .autoFold(false)
+                        .java(STEPS, "cancelQuestionIs(ui, {orders}, {message})")
                         .build());
     }
 

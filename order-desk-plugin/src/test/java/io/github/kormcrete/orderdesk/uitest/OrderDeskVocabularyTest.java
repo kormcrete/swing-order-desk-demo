@@ -50,7 +50,7 @@ class OrderDeskVocabularyTest {
                 "expiry", "12/29", "name", "Ada Lindqvist", "section", "Payment", "step", "Address", "answer", "card",
                 "message", "Owes €940.00 now, this order adds €96.60.", "error", "none", "note", "Debit or credit card",
                 "price", "€14.90", "status", "placed", "orders", "ORD-1639", "direction", "descending", "tab", "Orders",
-                "tabs", "Orders", "item", "Close tab", "state", "disabled"};
+                "tabs", "Orders", "item", "Close tab", "state", "disabled", "theme", "Dark", "option", "Invoice"};
         for (int i = 0; i < pairs.length; i += 2) SAMPLE.put(pairs[i], pairs[i + 1]);
     }
 
@@ -78,6 +78,9 @@ class OrderDeskVocabularyTest {
         override("selectedOrdersAre", "orders", "none");
         override("statusLineIs", "message", "Ready");
         override("openOrdersCountIs", "count", "2");
+        override("ordersCountIs", "count", "4");
+        override("cancelQuestionIs", "message", "Cancel order ORD-1639?");
+        override("suggestedReceiptFileIs", "file", "ORD-1639.txt");
         override("exitQuestionIs", "message", "Discard the open new orders?");
         override("aboutShows", "text", "fictional");
         override("saveReceipt", "file", "ORD-1639.txt");
@@ -94,13 +97,14 @@ class OrderDeskVocabularyTest {
     /** The Orders list's steps (openOrder too) and the main window's: they run on {@link OrdersFake}. */
     private static final List<String> ORDERS_LIST = Arrays.asList("openOrder", "searchOrders", "clearOrderSearch",
             "filterOrders", "sortOrders", "selectOrders", "cancelOrders", "keepOrders", "copyOrderNumbers", "orderIs",
-            "ordersListedAre", "ordersEmptyMessageIs", "selectedOrdersAre");
+            "ordersListedAre", "ordersEmptyMessageIs", "selectedOrdersAre", "showOrders", "ordersCountIs", "cancelQuestionIs");
     private static final List<String> MAIN_WINDOW = Arrays.asList("selectTab", "closeTab", "keepTab", "openTabsAre",
-            "selectedTabIs", "menuItemIs", "statusLineIs", "openOrdersCountIs", "cancelExit", "exitQuestionIs", "aboutShows");
+            "selectedTabIs", "menuItemIs", "statusLineIs", "openOrdersCountIs", "cancelExit", "exitQuestionIs", "aboutShows",
+            "switchTheme");
     /** An order's own tab's steps: they run on {@link OrderTabFake}. */
     private static final List<String> ORDER_TAB = Arrays.asList("saveReceipt", "keepExistingReceipt", "cancelOrder",
             "keepOrder", "receiptSaveErrorIs", "orderStatusIs", "orderFactsAre", "orderItemsAre", "orderItemIs",
-            "orderItemsSummaryIs", "orderDeliveryIs", "orderInvoiceIs");
+            "orderItemsSummaryIs", "orderDeliveryIs", "orderInvoiceIs", "suggestedReceiptFileIs");
     /** The main window's steps that need a new order with something in its cart. */
     private static final List<String> ON_A_CART = Arrays.asList("closeTab", "keepTab", "cancelExit", "exitQuestionIs");
 
@@ -114,7 +118,7 @@ class OrderDeskVocabularyTest {
                 "checkoutCustomerIs", "Address", "checkoutStepIs", "Address", "checkoutFieldIs", "Address",
                 "checkoutFieldErrorIs", "Address", "shippingPriceIs", "Shipping", "paymentNoteIs", "Payment",
                 "creditLimitWarningIs", "Payment", "placeOrderConfirmationIs", "Review", "reviewSectionIs", "Review",
-                "reviewLinesAre", "Review", "reviewLineIs", "Review", "reviewAmountIs", "Review"};
+                "reviewLinesAre", "Review", "reviewLineIs", "Review", "reviewAmountIs", "Review", "checkoutChoiceIs", "Payment"};
         for (int i = 0; i < pairs.length; i += 2) CHECKOUT_ON.put(pairs[i], pairs[i + 1]);
     }
 
@@ -137,7 +141,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 86;
+    private static final int CHECKED_PATTERN_ENTRIES = 89;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -157,13 +161,14 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theNewOrderStepsAndChecks() {
-        assertThat(sentences().subList(8, 32)).containsExactly(
+        assertThat(sentences().subList(8, 33)).containsExactly(
                 "chooseCustomer: Choose {customer} as the customer",
                 "typeCustomer: Type {text} into Customer without picking a customer",
                 "customerSuggestionsAre: The customer suggestions are {customers}",
                 "newOrderIsFor: The new order is for {customer}",
                 "customerTermsAre: The customer's terms are {terms}",
                 "recentCustomersAre: The recent customers are {customers}",
+                "openNewOrderFromRecent: Open a new order for {customer} from the recent customers",
                 "browseCategory: Browse category {category}",
                 "selectedCategoryIs: The selected category is {category}",
                 "searchProducts: Search the products for {text}",
@@ -186,7 +191,7 @@ class OrderDeskVocabularyTest {
 
     @Test
     void theCheckoutStepsAndChecks() {
-        assertThat(sentences().subList(32, 55)).containsExactly(
+        assertThat(sentences().subList(33, 57)).containsExactly(
                 "startCheckout: Start the checkout",
                 "setCheckoutField: Set the checkout's {field} to {value}",
                 "chooseShipping: Choose {method} shipping",
@@ -209,13 +214,14 @@ class OrderDeskVocabularyTest {
                 "reviewSectionIs: The review's {section} reads {text}",
                 "reviewLinesAre: The review lists {lines}",
                 "reviewLineIs: The {column} of {product} on the review is {value}",
-                "reviewAmountIs: The review's {amount} is {value}");
+                "reviewAmountIs: The review's {amount} is {value}",
+                "checkoutChoiceIs: {option} is chosen in the checkout");
         assertThat(step("placeOrder").outcomeBody()).isNotNull();
     }
 
     @Test
     void theOrdersListAndMainWindowStepsAndChecks() {
-        assertThat(sentences().subList(55, 78)).containsExactly(
+        assertThat(sentences().subList(57, 84)).containsExactly(
                 "searchOrders: Search the orders for {text}",
                 "clearOrderSearch: Clear the order search",
                 "filterOrders: Filter the orders by status {status}",
@@ -224,10 +230,13 @@ class OrderDeskVocabularyTest {
                 "cancelOrders: Cancel the orders {orders}",
                 "keepOrders: Ask to cancel the orders {orders}, then keep them",
                 "copyOrderNumbers: Copy the order numbers of {orders}",
+                "showOrders: Show the Orders list",
                 "orderIs: The {column} of order {order} is {value}",
                 "ordersListedAre: The orders listed are {orders}",
+                "ordersCountIs: The number of orders listed is {count}",
                 "ordersEmptyMessageIs: The orders list reads {message}",
                 "selectedOrdersAre: The selected orders are {orders}",
+                "cancelQuestionIs: Asking to cancel the orders {orders} reads {message}",
                 "selectTab: Switch to the tab {tab}",
                 "closeTab: Close the selected tab",
                 "keepTab: Ask to close the selected tab, then cancel",
@@ -238,15 +247,19 @@ class OrderDeskVocabularyTest {
                 "openOrdersCountIs: The open orders count reads {count}",
                 "cancelExit: Ask to exit, then cancel",
                 "exitQuestionIs: The exit question reads {message}",
-                "aboutShows: About Order Desk shows {text}");
-        assertThat(step("sortOrders").outcomeBody()).isNotNull();
+                "aboutShows: About Order Desk shows {text}",
+                "switchTheme: Switch the theme to {theme}");
+        for (String id : Arrays.asList("sortOrders", "searchOrders", "clearOrderSearch", "filterOrders", "showOrders")) {
+            assertThat(step(id).outcomeBody()).as(id).isNotNull();
+        }
+        assertThat(step("ordersCountIs").params().get(0).type()).isEqualTo(ParamType.INT);
         assertThat(step("sortOrders").params().get(1).optional()).isTrue();
         assertThat(step("sortOrders").params().get(1).defaultValue()).isEqualTo("ascending");
     }
 
     @Test
     void theOrderTabStepsAndChecks() {
-        assertThat(sentences().subList(78, sentences().size())).containsExactly(
+        assertThat(sentences().subList(84, sentences().size())).containsExactly(
                 "saveReceipt: Save the receipt of order {order} as {file}",
                 "keepExistingReceipt: Ask to save the receipt of order {order} over {file}, then keep the file",
                 "cancelOrder: Cancel order {order} from its tab",
@@ -258,9 +271,10 @@ class OrderDeskVocabularyTest {
                 "orderItemIs: The {column} of {product} on order {order}'s Items tab is {value}",
                 "orderItemsSummaryIs: The units on order {order}'s Items tab read {summary}",
                 "orderDeliveryIs: The {detail} on order {order}'s Delivery tab is {value}",
-                "orderInvoiceIs: The {detail} on order {order}'s Invoice tab is {value}");
+                "orderInvoiceIs: The {detail} on order {order}'s Invoice tab is {value}",
+                "suggestedReceiptFileIs: Save receipt… on order {order} suggests {file}");
         assertThat(step("saveReceipt").outcomeBody()).isNotNull();
-        assertThat(ORDER_TAB).hasSize(sentences().size() - 78);
+        assertThat(ORDER_TAB).hasSize(sentences().size() - 84);
     }
 
     @Test
@@ -294,7 +308,8 @@ class OrderDeskVocabularyTest {
     }
 
     /** The steps a recording never folds into or offers: no pattern at all. */
-    private static final List<String> NO_PATTERN = Collections.singletonList("orderItemsAre");
+    private static final List<String> NO_PATTERN = Arrays.asList("orderItemsAre", "showOrders", "cancelQuestionIs",
+            "suggestedReceiptFileIs");
 
     @Test
     void everyStepNamesItsJavaMethod() throws Exception {
@@ -316,6 +331,8 @@ class OrderDeskVocabularyTest {
         assertThat(step("addProductsToCart").outcomeBody()).isNotNull();
         assertThat(method(OrderDeskNewOrderSteps.class, "addProductsToCart").getReturnType()).isEqualTo(Map.class);
         assertThat(method(OrderDeskOrdersSteps.class, "sortOrders").getReturnType()).isEqualTo(Map.class);
+        assertThat(method(OrderDeskOrdersSteps.class, "showOrders").getReturnType()).isEqualTo(Map.class);
+        assertThat(method(OrderDeskOrdersSteps.class, "searchOrders").getReturnType()).isEqualTo(Map.class);
         assertThat(method(OrderDeskOrderTabSteps.class, "saveReceipt").getReturnType()).isEqualTo(Map.class);
     }
 
@@ -335,7 +352,8 @@ class OrderDeskVocabularyTest {
     @Test
     void eachNewOrderStepFailsFastWhenItsScreenIsNotShowing() {
         // the Orders tab selected, or no new order open: every step of a new order's tab says so within about a second
-        List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre"));
+        List<String> elsewhere = new ArrayList<String>(Arrays.asList("openNewOrder", "recentCustomersAre",
+                "openNewOrderFromRecent"));
         elsewhere.addAll(ORDERS_LIST);
         elsewhere.addAll(MAIN_WINDOW);
         elsewhere.addAll(ORDER_TAB);
@@ -469,16 +487,55 @@ class OrderDeskVocabularyTest {
     // ---- folding: a person's steps as the recorder saw them (the element's scope, role and every cell of its row)
 
     @Test
-    void aNewOrderForARecentCustomerFoldsIntoOpenNewOrder() {
+    void aNewOrderForARecentCustomerFoldsIntoOpenNewOrderFromRecent() {
+        // the toolbar's ▾ and a pick replay exactly as the step that takes the same way, not as File ▸ New order
         JsonNode recent = json("{'action':'click','target':{'window':'main','role':'button',"
                 + "'name':'New order for a recent customer'}}");
         JsonNode pick = json("{'action':'pick','path':['Birch & Co']}");
 
         Pattern.Match m = null;
-        for (Pattern p : patterns("openNewOrder")) if (m == null) m = p.match(Arrays.asList(recent, pick));
+        for (Pattern p : patterns("openNewOrderFromRecent")) if (m == null) m = p.match(Arrays.asList(recent, pick));
+        Pattern.Match fileMenu = null;
+        for (Pattern p : patterns("openNewOrder")) if (fileMenu == null) fileMenu = p.match(Arrays.asList(recent, pick));
 
         assertThat(m).isNotNull();
         assertThat(m.params()).containsEntry("customer", "Birch & Co");
+        assertThat(fileMenu).isNull();
+        assertThat(folds(recent, pick)).containsExactly("openNewOrderFromRecent");
+    }
+
+    @Test
+    void aThemeFromTheViewMenuFoldsIntoSwitchTheme() {
+        JsonNode dark = json("{'action':'menu','path':['View','Theme','Dark']}");
+
+        assertThat(folds(dark)).containsExactly("switchTheme");
+        assertThat(pattern("switchTheme").match(Collections.singletonList(dark)).params()).containsEntry("theme", "Dark");
+    }
+
+    @Test
+    void aClickOnTheOrdersTabThenASearchStillFoldsIntoSearchOrders() {
+        // Show the Orders list has no pattern: a person's click on the Orders tab is no reading
+        JsonNode tab = json("{'action':'click','target':{'window':'main','role':'tab','name':'Orders'}}");
+        JsonNode search = json("{'action':'type','target':{'window':'main','scope':['tab:Orders'],'role':'text','name':'Search'},'text':'ada'}");
+
+        assertThat(folds(tab, search)).containsExactly("searchOrders");
+    }
+
+    @Test
+    void anAgentsRowCountOfTheOrdersFoldsIntoOrdersCountIs() {
+        JsonNode count = json("{'action':'expect','target':{'scope':['tab:Orders'],'role':'table'},'rows':{'op':'eq','value':2}}");
+        JsonNode cart = json("{'action':'expect','target':{'scope':['tab:New order · Ada Shop Ltd'],'role':'table'},"
+                + "'rows':{'op':'eq','value':2}}");
+
+        assertThat(pattern("ordersCountIs").match(Collections.singletonList(count)).params()).containsEntry("count", "2");
+        assertThat(pattern("ordersCountIs").match(Collections.singletonList(cart))).isNull();
+    }
+
+    @Test
+    void aPersonsCheckOfTheChosenRadioFoldsIntoCheckoutChoiceIs() {
+        JsonNode card = json("{'action':'expect','target':{'window':'dialog','role':'radio','name':'Card'},'state':['checked']}");
+
+        assertThat(pattern("checkoutChoiceIs").match(Collections.singletonList(card)).params()).containsEntry("option", "Card");
     }
 
     @Test
@@ -1209,6 +1266,8 @@ class OrderDeskVocabularyTest {
         app.answer("dialog:Exit label", FakeApp.label("OptionPane.label", "Discard the open new orders?"));
         app.answer("dialog:About Order Desk label", FakeApp.label("OptionPane.label", "Order Desk"),
                 FakeApp.label("OptionPane.label", "A small, fictional order-entry app."));
+        app.answer("dialog:Cancel order* label", FakeApp.label("OptionPane.label", "Cancel order ORD-1639?"));
+        app.menu("View > Theme", "Light", "Dark", "Lagoon");
         return app;
     }
 
@@ -1232,6 +1291,7 @@ class OrderDeskVocabularyTest {
         app.answer("element #customerTerms", FakeApp.label("customerTerms", "Card only"));
         app.answer("button 'New order for a recent customer'", FakeApp.node("button", "New order for a recent customer"));
         app.answer("popup menuitem", FakeApp.node("menuitem", "Ada Shop Ltd"));
+        app.answer("tab 'New order · Ada Shop Ltd'", FakeApp.node("tab", "New order · Ada Shop Ltd"));
         app.answer("tree", treeOnDesk());
         app.answer("button 'Remove'", FakeApp.withState(FakeApp.node("button", "Remove"), "disabled"));
         app.answer("label 'Select a cart line first'", FakeApp.label("Select a cart line first"));

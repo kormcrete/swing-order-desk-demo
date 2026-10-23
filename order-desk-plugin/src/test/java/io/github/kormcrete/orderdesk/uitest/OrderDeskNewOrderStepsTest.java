@@ -133,6 +133,103 @@ class OrderDeskNewOrderStepsTest {
     }
 
     @Test
+    void customerSuggestionsAreTakesTheNoMatchTextItselfAsNone() {
+        // the step's own words offer "No customer matches": a tester who gives that text means none
+        newOrderShowing();
+        app.answer("popup label 'No customer matches'", label("No customer matches"));
+
+        OrderDeskNewOrderSteps.customerSuggestionsAre(ui, "No customer matches");
+        OrderDeskNewOrderSteps.customerSuggestionsAre(ui, " no customer matches ");
+
+        assertThat(app.steps()).hasSize(2);
+        assertThat(app.steps().get(0)).isEqualTo(json("{'action':'expect','target':{'window':'popup','role':'label',"
+                + "'name':'No customer matches'},'text':'No customer matches','timeout':1000}"));
+    }
+
+    @Test
+    void customerSuggestionsAreNoMatchTextFailsWhileCustomersAreSuggested() {
+        newOrderShowing();
+        suggestions("Birch & Co Vienna · Account");
+
+        Throwable wrong = catchThrowable(() -> OrderDeskNewOrderSteps.customerSuggestionsAre(ui, "No customer matches"));
+
+        assertThat(wrong).isInstanceOf(AssertionError.class)
+                .hasMessage("The customer suggestions are Birch & Co Vienna · Account, expected none");
+    }
+
+    @Test
+    void customerTermsArePassesOnTheWholeTermsOrOneOfTheirParts() {
+        newOrderShowing();
+        String terms = "Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required";
+        app.answer("element #customerTerms", label("customerTerms", terms));
+
+        OrderDeskNewOrderSteps.customerTermsAre(ui, terms);
+        OrderDeskNewOrderSteps.customerTermsAre(ui, "Account");
+        OrderDeskNewOrderSteps.customerTermsAre(ui, "Owes €450.00");
+        Throwable notAPart = catchThrowable(() -> OrderDeskNewOrderSteps.customerTermsAre(ui, "Invoice"));
+
+        assertThat(notAPart).isInstanceOf(AssertionError.class)
+                .hasMessage("The customer's terms reads “" + terms + "”, expected “Invoice”");
+    }
+
+    @Test
+    void openNewOrderFromRecentClicksTheArrowAndPicksTheCustomer() {
+        recentCustomers("Ada Shop Ltd", "Café Lumen", "Birch & Co");
+        app.answer("tab 'New order · Café Lumen'", node("tab", "New order · Café Lumen"));
+
+        OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "café");
+
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{'role':'button','name':'New order for a recent customer'}},"
+                + "{'action':'pick','path':['Café Lumen']}]"));
+    }
+
+    @Test
+    void openNewOrderFromRecentOnAMissNamesTheRecentCustomersAndClosesTheMenu() {
+        recentCustomers("Ada Shop Ltd", "Café Lumen");
+
+        Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Durand"));
+
+        assertThat(none).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: No recent customer fits “Durand”."
+                + " The toolbar's recent customers: Ada Shop Ltd; Café Lumen. \"Open a new order for <customer>\" takes"
+                + " any customer");
+        assertThat(app.steps()).isEqualTo(json("["
+                + "{'action':'click','target':{'role':'button','name':'New order for a recent customer'}},"
+                + "{'action':'press','keys':'Escape'}]"));
+    }
+
+    @Test
+    void openNewOrderFromRecentOnTwoMatchesFailsNamingBoth() {
+        recentCustomers("Birch & Co", "Birchwood Bakery");
+
+        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "birch"));
+
+        assertThat(two).isInstanceOf(DriverException.class)
+                .hasMessage("AMBIGUOUS: “birch” fits 2 recent customers: Birch & Co; Birchwood Bakery. Give more of the name");
+    }
+
+    @Test
+    void openNewOrderFromRecentFailsWhenTheNewOrderDoesNotOpen() {
+        recentCustomers("Ada Shop Ltd");
+
+        Throwable shut = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Ada Shop Ltd"));
+
+        assertThat(shut).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_ACTIONABLE: No new order for Ada Shop Ltd opened (no tab “New order · Ada Shop Ltd”)");
+    }
+
+    @Test
+    void openNewOrderFromRecentFailsFastWhenItsScreenIsNotShowing() {
+        long start = System.currentTimeMillis();
+
+        Throwable gone = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Ada Shop Ltd"));
+
+        assertThat(System.currentTimeMillis() - start).isLessThan(2000);
+        assertThat(gone).isInstanceOf(DriverException.class).hasMessageContaining("New order for a recent customer (▾) is not showing");
+        assertThat(app.steps()).isEmpty();
+    }
+
+    @Test
     void newOrderIsForReadsTheSelectedTabsTitle() {
         newOrderShowing();
         app.answer("tab 'Orders'", label("Orders", "New order · Ada Shop Ltd"));
@@ -787,6 +884,14 @@ class OrderDeskNewOrderStepsTest {
 
     private void suggestions(String... items) {
         app.answer("popup list", items("list", Arrays.asList(items), 0));
+    }
+
+    /** The toolbar's ▾ and the customers its menu offers. */
+    private void recentCustomers(String... names) {
+        app.answer("button 'New order for a recent customer'", node("button", "New order for a recent customer"));
+        Node[] offered = new Node[names.length];
+        for (int i = 0; i < names.length; i++) offered[i] = node("menuitem", names[i]);
+        app.answer("popup menuitem", offered);
     }
 
     /** The products table: A4 paper, two gel pens, the Stapler (4 left) and the Desk lamp (out of stock). */

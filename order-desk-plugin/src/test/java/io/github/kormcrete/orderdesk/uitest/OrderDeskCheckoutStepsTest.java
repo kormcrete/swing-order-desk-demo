@@ -488,6 +488,56 @@ class OrderDeskCheckoutStepsTest {
     }
 
     @Test
+    void checkoutFieldErrorIsTakesAnEmptyErrorAsNone() {
+        // a tester who writes "" for "no error" means none, as the about says
+        CheckoutFake app = new CheckoutFake("Address");
+
+        OrderDeskCheckoutSteps.checkoutFieldErrorIs(app.client(), "Postal code", "");
+        OrderDeskCheckoutSteps.checkoutFieldErrorIs(app.client(), "Postal code", "  ");
+
+        assertThat(app.steps()).hasSize(2);
+        assertThat(app.steps().get(0).has("absent")).isTrue();
+    }
+
+    @Test
+    void checkoutChoiceIsReadsWhichShippingOrPaymentIsChosen() {
+        CheckoutFake shipping = new CheckoutFake("Shipping");
+        CheckoutFake payment = new CheckoutFake("Payment");
+
+        OrderDeskCheckoutSteps.checkoutChoiceIs(shipping.client(), "standard");
+        OrderDeskCheckoutSteps.checkoutChoiceIs(shipping.client(), "Standard · 3–5 business days");
+        OrderDeskCheckoutSteps.checkoutChoiceIs(payment.client(), "Invoice");
+        Throwable express = catchThrowable(() -> OrderDeskCheckoutSteps.checkoutChoiceIs(shipping.client(), "Express"));
+        Throwable card = catchThrowable(() -> OrderDeskCheckoutSteps.checkoutChoiceIs(payment.client(), "card"));
+
+        assertThat(express).isInstanceOf(AssertionError.class).hasMessage("Standard is chosen, expected Express");
+        assertThat(card).isInstanceOf(AssertionError.class).hasMessage("Invoice is chosen, expected Card");
+        assertThat(shipping.steps()).isEmpty();
+        assertThat(payment.steps()).isEmpty();
+    }
+
+    @Test
+    void checkoutChoiceIsOfAnotherStepFailsSayingWhereTheCheckoutIs() {
+        CheckoutFake app = new CheckoutFake("Address");
+
+        Throwable elsewhere = catchThrowable(() -> OrderDeskCheckoutSteps.checkoutChoiceIs(app.client(), "Card"));
+
+        assertThat(elsewhere).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: The way to pay is on the"
+                + " checkout's Payment step, and the checkout shows its Address step: go on with \"Go on to the next"
+                + " checkout step\"");
+    }
+
+    @Test
+    void checkoutChoiceIsFitsNoneNamesTheChoices() {
+        CheckoutFake app = new CheckoutFake("Payment");
+
+        Throwable none = catchThrowable(() -> OrderDeskCheckoutSteps.checkoutChoiceIs(app.client(), "cash"));
+
+        assertThat(none).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: No shipping method or way to pay"
+                + " fits “cash”. The checkout's choices: Standard; Express; Invoice; Card");
+    }
+
+    @Test
     void shippingPriceIsFailsWithExpectedAndActual() {
         CheckoutFake app = new CheckoutFake("Shipping");
 

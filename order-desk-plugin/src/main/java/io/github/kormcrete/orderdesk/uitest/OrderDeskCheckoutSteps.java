@@ -20,6 +20,7 @@ import java.util.regex.Pattern;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.LOOK;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.column;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.isNone;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.isNoneOrEmpty;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.join;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.look;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageIs;
@@ -108,6 +109,8 @@ public final class OrderDeskCheckoutSteps {
     static final String INVOICE = "Invoice";
     static final String CARD = "Card";
     static final List<String> PAYMENT_METHODS = Collections.unmodifiableList(Arrays.asList(INVOICE, CARD));
+    /** What can be chosen in the checkout: the shipping methods, then the ways to pay. */
+    static final List<String> CHOICES = Collections.unmodifiableList(Arrays.asList(STANDARD, EXPRESS, INVOICE, CARD));
     static final List<String> SECTIONS = Collections.unmodifiableList(Arrays.asList(
             DELIVERY_ADDRESS_SECTION, SHIPPING_SECTION, PAYMENT_SECTION));
     static final List<String> CREDIT_ANSWERS = Collections.unmodifiableList(Arrays.asList(
@@ -374,14 +377,47 @@ public final class OrderDeskCheckoutSteps {
         shows(fieldTarget(ui, f), "The checkout's " + f.name, isNone(value) ? "" : value);
     }
 
-    /** Checks the error under a checkout field ("Postal code is required"); {@code none}: no error shows. */
+    /** Checks the error under a checkout field ("Postal code is required"); {@code none} (or nothing): no error shows. */
     public static void checkoutFieldErrorIs(Client ui, String field, String error) {
         Field f = field(field);
         if (f.errorId == null) throw new DriverException(Reason.BAD_INPUT, f.name + " shows no error of its own");
         requireOn(ui, f.step, f.name);
         Target label = ui.dialog().byId(f.errorId);
-        if (isNone(error)) notShown(label, "The checkout's " + f.name + " error");
+        if (isNoneOrEmpty(error)) notShown(label, "The checkout's " + f.name + " error");
         else shows(label, "The checkout's " + f.name + " error", error);
+    }
+
+    /**
+     * Checks which shipping method or way to pay is chosen: Standard or Express on the Shipping step, Invoice or Card on
+     * the Payment step (the name, its start, or the radio's label). Read only: the step must show.
+     */
+    public static void checkoutChoiceIs(final Client ui, String option) {
+        Map<String, String> words = new LinkedHashMap<String, String>();
+        for (String m : SHIPPING_METHODS) words.put(m, m);
+        words.put(STANDARD_RADIO, STANDARD);
+        words.put(EXPRESS_RADIO, EXPRESS);
+        for (String m : PAYMENT_METHODS) words.put(m, m);
+        words.put(INVOICE_RADIO, INVOICE);
+        final String wanted = resolve(option, words, "shipping method or way to pay", "shipping methods and ways to pay",
+                "The checkout's choices");
+        boolean shipping = SHIPPING_METHODS.contains(wanted);
+        requireOn(ui, shipping ? Step.SHIPPING : Step.PAYMENT, shipping ? "The shipping method" : "The way to pay");
+        final List<String> group = shipping ? SHIPPING_METHODS : PAYMENT_METHODS;
+        String chosen = look(() -> {
+            for (String m : group) {
+                if (ui.dialog().radio(choiceRadio(m)).states().contains("checked")) return m;
+            }
+            return null;
+        });
+        if (!wanted.equals(chosen)) {
+            throw new AssertionError((chosen == null ? "Nothing" : chosen) + " is chosen, expected " + wanted);
+        }
+    }
+
+    private static String choiceRadio(String option) {
+        if (STANDARD.equals(option)) return STANDARD_RADIO;
+        if (EXPRESS.equals(option)) return EXPRESS_RADIO;
+        return INVOICE.equals(option) ? INVOICE_RADIO : CARD_RADIO;
     }
 
     /** Checks a shipping price on the Shipping step: Standard (€4.90, "Free" from €100.00) or Express (€14.90). */

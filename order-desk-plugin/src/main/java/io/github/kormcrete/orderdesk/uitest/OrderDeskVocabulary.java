@@ -35,7 +35,6 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PO_NUMBER_FIEL
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PO_NUMBER_OPTIONAL_FIELD;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.PRODUCT_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.QTY_COLUMN;
-import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.RECENT_CUSTOMER_BUTTON;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.SKU_COLUMN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.TOTAL_LABEL;
 
@@ -103,8 +102,6 @@ public final class OrderDeskVocabulary implements Vocabulary {
                                 json("{'action':'type','target':{'scope':[%s],'role':'text','name':%s},'text':'{customer}'}",
                                         text("tab:" + NEW_ORDER_TAB), text(CUSTOMER_FIELD)),
                                 json("{'action':'press','keys':'Enter'}"))
-                        .matchAlso(json("{'action':'click','target':{'role':'button','name':%s}}", text(RECENT_CUSTOMER_BUTTON)),
-                                json("{'action':'pick','path':['{customer}']}"))
                         .java(STEPS, "openNewOrder(ui, {customer})")
                         .build(),
                 DomainStep.act("addToCart", "Add {product} to the cart")

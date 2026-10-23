@@ -21,6 +21,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageIs;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.messageLines;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.names;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.oneLine;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.pick;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quoted;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.resolve;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showing;
@@ -33,7 +34,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.*;
 /**
  * The steps and checks of Order Desk's main window, as Java: its tabs (switch, close, which are open), its menus (which
  * items are enabled), the status bar (the status line, the open orders), the questions File ▸ Close tab and File ▸ Exit
- * ask, and Help ▸ About Order Desk. {@link OrderDeskMainVocabulary} runs them for a recorded test's {@code do} steps; a
+ * ask, Help ▸ About Order Desk, and View ▸ Theme. {@link OrderDeskMainVocabulary} runs them for a recorded test's {@code do} steps; a
  * Java UI test calls them directly.
  *
  * <p>Every step first looks, for about a second, for the main window (an act: with no dialog over it) and says so in
@@ -50,6 +51,8 @@ public final class OrderDeskMainSteps {
     /** Where an item a row menu holds is opened: the Orders list's rows. */
     private static final String ROW_MENU = "the Orders list's row menu";
     static final List<String> STATES = Collections.unmodifiableList(Arrays.asList("enabled", "disabled"));
+    /** What View ▸ Theme offers, in its order (the step reads the menu itself). */
+    static final List<String> THEMES = Collections.unmodifiableList(Arrays.asList("Light", "Dark", "Lagoon"));
 
     private OrderDeskMainSteps() {
     }
@@ -243,6 +246,19 @@ public final class OrderDeskMainSteps {
         if (want.isEmpty() || !wordsAt(all, want)) {
             throw new AssertionError("About Order Desk reads " + quoted(all) + ", expected it to show " + quoted(want));
         }
+    }
+
+    // ---- the theme
+
+    /**
+     * Switches the app's theme: View ▸ Theme ▸ {@code theme} (Light, Dark, Lagoon; any case or its start, read from the
+     * menu). Only the look changes: every tab and value stays as it was.
+     */
+    public static void switchTheme(Client ui, String theme) {
+        requireMain(ui);
+        String name = pick(theme, ui.menuItems(VIEW_MENU, THEME_MENU), "theme", "themes",
+                "View ▸ " + THEME_MENU + " offers");
+        ui.menu(VIEW_MENU, THEME_MENU, name);
     }
 
     // ---- what the choices read

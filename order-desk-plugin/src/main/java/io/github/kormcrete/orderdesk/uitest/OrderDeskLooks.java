@@ -37,6 +37,11 @@ final class OrderDeskLooks {
         return value != null && value.trim().equalsIgnoreCase(NONE);
     }
 
+    /** {@link #isNone}, or nothing at all ({@code ""}): what a tester writes for "no error shows". */
+    static boolean isNoneOrEmpty(String value) {
+        return value == null || value.trim().isEmpty() || isNone(value);
+    }
+
     /** The names in {@code values}, parted by {@link #SEPARATOR}, trimmed, the empty ones left out. */
     static List<String> names(String values) {
         List<String> out = new ArrayList<String>();
@@ -192,6 +197,27 @@ final class OrderDeskLooks {
             throw new AssertionError(actual == null ? what + " is not shown, expected " + quoted(expected)
                     : what + " reads " + quoted(actual) + ", expected " + quoted(expected));
         }
+    }
+
+    /**
+     * Checks that {@code target} shows {@code expected} or one of its parts: a line of several facts parted by
+     * {@code separator} ("Account · Invoice 30 days · …": "Account" passes). The whole text is checked as
+     * {@link #shows} does (an {@code expect} that waits); a part that shows now passes at once, read only.
+     */
+    static void showsWholeOrPart(Target target, String what, String expected, String separator) {
+        String actual = shown(target);
+        if (actual != null && isPart(actual, expected, separator)) return;
+        shows(target, what, expected);
+    }
+
+    /** {@code expected} is one of {@code text}'s parts (parted by {@code separator}), white space aside, not the whole. */
+    static boolean isPart(String text, String expected, String separator) {
+        String want = oneLine(expected);
+        if (want.isEmpty()) return false;
+        String[] parts = text.split(java.util.regex.Pattern.quote(separator.trim()));
+        if (parts.length < 2) return false;
+        for (String part : parts) if (oneLine(part).equals(want)) return true;
+        return false;
     }
 
     /** Checks that {@code target} is not shown; when it is, the failure says what it shows. */

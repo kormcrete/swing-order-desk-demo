@@ -27,11 +27,13 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quietly;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.names;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.namesAre;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.notShown;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.oneLine;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.pick;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quoted;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shown;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shows;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showing;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showsWholeOrPart;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.*;
 import static io.github.kormcrete.swingui.junit.UiAssertions.assertThat;
 
@@ -113,12 +115,12 @@ public final class OrderDeskNewOrderSteps {
 
     /**
      * Checks the Customer field's suggestions, in order, by the customers' names ({@code "Café Lumen; Fjord Supplies"});
-     * {@code none}: "No customer matches".
+     * {@code none}, or the text the app shows then, "No customer matches": nothing fits.
      */
     public static void customerSuggestionsAre(Client ui, String customers) {
         requireNewOrder(ui);
         List<String> offered = suggestions(ui);
-        if (isNone(customers)) {
+        if (isNone(customers) || oneLine(customers).equalsIgnoreCase(NO_CUSTOMER_MATCHES)) {
             if (!offered.isEmpty()) throw new AssertionError("The customer suggestions are " + join(offered) + ", expected none");
             shows(ui.popup().label(NO_CUSTOMER_MATCHES), "The customer suggestions", NO_CUSTOMER_MATCHES);
             return;
@@ -158,12 +160,16 @@ public final class OrderDeskNewOrderSteps {
         }
     }
 
-    /** Checks the customer's terms beside the Customer field ("Card only"); {@code none}: no customer, no terms. */
+    /**
+     * Checks the customer's terms beside the Customer field ("Card only", "Account · Invoice 30 days · Credit limit
+     * €2,000.00 · Owes €450.00 · PO number required"): the whole text or one of its parts ("Account", "Owes €450.00");
+     * {@code none}: no customer, no terms.
+     */
     public static void customerTermsAre(Client ui, String terms) {
         requireNewOrder(ui);
         Target card = newOrder(ui).byId(CUSTOMER_TERMS_ID);
         if (isNone(terms)) notShown(card, "The customer's terms");
-        else shows(card, "The customer's terms", terms);
+        else showsWholeOrPart(card, "The customer's terms", terms, PARTS_SEPARATOR);
     }
 
     /**
@@ -186,6 +192,38 @@ public final class OrderDeskNewOrderSteps {
             ui.press("Escape");
         }
         namesAre(offered == null ? Collections.<String>emptyList() : offered, names(customers), "The recent customers are");
+    }
+
+    /**
+     * Opens a new order for one of the recent customers the toolbar's ▾ (New order for a recent customer) offers: opens
+     * its menu and picks the customer (the name or its start, any case). Ends on the new order, titled "New order · Ada
+     * Shop Ltd". A customer the menu does not offer fails naming those it offers, the menu closed again (Escape).
+     */
+    public static void openNewOrderFromRecent(final Client ui, String customer) {
+        Target opener = ui.button(RECENT_CUSTOMER_BUTTON);
+        if (!showing(opener)) {
+            throw new DriverException(Reason.NOT_FOUND, "The toolbar's New order for a recent customer (▾) is not showing");
+        }
+        opener.click();
+        String name;
+        try {
+            List<String> offered = look(() -> {
+                List<String> items = ui.popup().menuitem(null).texts();
+                return items.isEmpty() ? null : items;
+            });
+            name = pick(customer, offered == null ? Collections.<String>emptyList() : offered, "recent customer",
+                    "recent customers", "The toolbar's recent customers");
+        } catch (DriverException e) {
+            quietly(() -> ui.press("Escape"));
+            if (e.reason() != Reason.NOT_FOUND) throw e;
+            throw new DriverException(Reason.NOT_FOUND, DriverException.stripReason(e.getMessage(), Reason.NOT_FOUND)
+                    + ". \"Open a new order for <customer>\" takes any customer");
+        }
+        ui.pick(name);
+        String title = NEW_ORDER_TAB + TITLE_SEPARATOR + name;
+        if (!showing(ui.tab(title))) {
+            throw new DriverException(Reason.NOT_ACTIONABLE, "No new order for " + name + " opened (no tab " + quoted(title) + ")");
+        }
     }
 
     // ---- products

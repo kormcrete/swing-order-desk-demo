@@ -18,12 +18,14 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.HELP_MENU;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.OK_ANSWER;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.OPEN_ORDERS_LABEL;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.STATUS_MESSAGE_ID;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.THEME_MENU;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.VIEW_MENU;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskVocabulary.json;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskVocabulary.text;
 
 /**
  * The main window's steps and checks: its tabs, its menus' items, the status bar, the questions File ▸ Close tab and
- * File ▸ Exit ask, and Help ▸ About Order Desk. Each body calls {@link OrderDeskMainSteps}. No step ends the app.
+ * File ▸ Exit ask, Help ▸ About Order Desk, and View ▸ Theme. Each body calls {@link OrderDeskMainSteps}. No step ends the app.
  *
  * <p>Every body looks at the app first, so each says its {@code match}. A tab click or a tab check also fits an order's
  * own Items, Delivery and Invoice, which the bodies take too; a click on one of two tabs with the same title cannot be
@@ -161,6 +163,17 @@ final class OrderDeskMainVocabulary {
                                 json("{'action':'answer','button':%s}", text(OK_ANSWER)))
                         .autoFold(false)
                         .java(STEPS, "aboutShows(ui, {text})")
+                        .build(),
+
+                // ---- the theme
+                DomainStep.act("switchTheme", "Switch the theme to {theme}")
+                        .about(NEEDS_MAIN + " Ends: the whole app in that theme (View ▸ Theme), every tab and value as it"
+                                + " was: only the look changes (a screenshot shows it). {theme}: Light (the theme at start),"
+                                + " Dark or Lagoon, any case or its start")
+                        .param("theme", ParamType.TEXT).choices(() -> OrderDeskMainSteps.THEMES)
+                        .code((ui, p) -> OrderDeskMainSteps.switchTheme(ui, p.text("theme")))
+                        .match(json("{'action':'menu','path':[%s,%s,'{theme}']}", text(VIEW_MENU), text(THEME_MENU)))
+                        .java(STEPS, "switchTheme(ui, {theme})")
                         .build());
     }
 }

@@ -150,6 +150,8 @@ class OrderTabFake extends OrdersFake {
             showTabs(target.name, open.toArray(new String[0]));
         } else if ("button".equals(target.role) && "Cancel order".equals(target.name) && "Placed".equals(status)) {
             dialog = "Cancel order " + number + "?";
+        } else if ("button".equals(target.role) && "Save receipt…".equals(target.name)) {
+            chooser(HOME, number + ".txt");
         }
         return out;
     }
@@ -157,6 +159,7 @@ class OrderTabFake extends OrdersFake {
     @Override
     public VerbOutcome chooseFile(String path, Boolean approve, Long timeout) {
         VerbOutcome out = super.chooseFile(path, approve, timeout);
+        if (Boolean.FALSE.equals(approve)) return out;   // Cancel: nothing saved, nothing asked
         String file = abs(path);
         if (!file.toLowerCase(java.util.Locale.ROOT).endsWith(".txt")) file += ".txt";
         lastFile = file;

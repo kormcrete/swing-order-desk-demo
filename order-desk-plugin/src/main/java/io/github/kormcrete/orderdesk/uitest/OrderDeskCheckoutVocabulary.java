@@ -207,7 +207,7 @@ final class OrderDeskCheckoutVocabulary {
                 DomainStep.check("checkoutFieldErrorIs", "The checkout's {field} error reads {error}")
                         .about("Reads the red error under a checkout field, once it was left (at once for the customer's"
                                 + " own incomplete address), e.g. Postal code \"Postal code is required\" or \"Germany uses"
-                                + " a 5-digit postal code\", Expiry \"This card has expired\"; none: no error")
+                                + " a 5-digit postal code\", Expiry \"This card has expired\"; none (or nothing): no error")
                         .param("field", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.FIELD_NAMES)
                         .param("error", ParamType.TEXT)
                         .code((ui, p) -> OrderDeskCheckoutSteps.checkoutFieldErrorIs(ui, p.text("field"), p.text("error")))
@@ -309,6 +309,17 @@ final class OrderDeskCheckoutVocabulary {
                         .match(json("{'action':'expect','target':{%s,'scope':[%s],'role':'label','name':'{amount}'},'text':'{value}'}",
                                 DIALOG, text("id:" + TOTALS_ID)))
                         .java(STEPS, "reviewAmountIs(ui, {amount}, {value})")
+                        .build(),
+                DomainStep.check("checkoutChoiceIs", "{option} is chosen in the checkout")
+                        .about("Reads which shipping method or way to pay is chosen: Standard or Express on the Shipping"
+                                + " step, Invoice or Card on the Payment step (the step must show), e.g. Card is chosen after"
+                                + " \"Pay by card instead\" on the credit-limit warning, or for a card-only customer")
+                        .param("option", ParamType.TEXT).choices(() -> OrderDeskCheckoutSteps.CHOICES)
+                        .code((ui, p) -> OrderDeskCheckoutSteps.checkoutChoiceIs(ui, p.text("option")))
+                        // as the Check menu records a chosen radio: its label (Standard's and Express's hold their
+                        // delivery time; the body takes those too)
+                        .match(json("{'action':'expect','target':{%s,'role':'radio','name':'{option}'},'state':['checked']}", DIALOG))
+                        .java(STEPS, "checkoutChoiceIs(ui, {option})")
                         .build());
     }
 }

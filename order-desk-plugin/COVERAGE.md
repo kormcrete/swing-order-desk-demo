@@ -14,7 +14,7 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 |---|---|---|
 | The app starts on the Orders list, no other tab open (no login, nothing to navigate to by name) | start | `reset` |
 | Open a new order (File ▸ New order, Ctrl/Cmd+N, toolbar New order) | act | `openNewOrder` |
-| Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrder` |
+| Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrderFromRecent` (the ▾, then the customer picked from its menu; a person's ▾ and pick fold into it; `openNewOrder` reaches any customer through File ▸ New order) |
 | The recent customers the toolbar ▾ offers, newest first | check | `recentCustomersAre` |
 | Close the selected tab (File ▸ Close tab, Ctrl/Cmd+W, the tab's X) | act | `closeTab` (File ▸ Close tab; the tab's X has no node, the menu covers it; another tab: `selectTab` first) |
 | Closing a new order with something in its cart asks "Discard this new order?" (Discard, Cancel) | act | `closeTab` (Discard), `keepTab` (Cancel) |
@@ -27,7 +27,7 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 | Exit asks "Discard the open new orders?" while a new order has something in its cart (File ▸ Exit, closing the window, Cmd+Q) | check | `exitQuestionIs` (chooses File ▸ Exit only while a new order with something in its cart shows, reads, answers Cancel; else fails and chooses nothing) |
 | Keep working after all: Cancel on that question leaves the app and its tabs as they were | act | `cancelExit` (same guard: never ends the app) |
 | Exit the app (Discard and exit; File ▸ Exit with no unsaved new order) | act | Gap: not a tester's concern (it ends the app under test: no run continues past it) |
-| Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | Gap: not a tester's concern |
+| Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | `switchTheme` (round 1, S24: a tester asks for it; only the look changes, a screenshot shows it, `showOrders` before and after shows the data stayed) |
 | About Order Desk (Help ▸ About Order Desk, a message, OK): its text | check | `aboutShows` (ruling R23: a check of the text, whole words of it; opens, reads, OK) |
 | The splash while the app starts | check | Gap: not a tester's concern |
 
@@ -45,9 +45,12 @@ The pinned Orders tab (`OrdersPanel`). Its table is the only table on the tab: `
 | Sort by a column (click its header; again reverses; Order, newest first, at start) | act | `sortOrders` (clicks the header until the column's values read in the asked direction; outcome: the column and direction left, `either` when every value is the same) |
 | An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed"; the Order cell too, as the Check menu offers it) |
 | Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one) |
+| What the list shows, to tell or to compare (every order's Order, Date, Customer, Items, Total, Status, top to bottom; the empty text instead) | check | the outcome of `searchOrders`, `clearOrderSearch`, `filterOrders`, `sortOrders` (with `"outcome": true`), and `showOrders` (goes to the Orders tab, changes nothing) for a read before and after something else (round 1: S01, S04, S24 read the table raw) |
+| How many orders are listed (after a search or a filter: how many are left) | check | `ordersCountIs` (0 while the empty text shows; an agent's row count of the Orders table folds into it) |
 | Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | `ordersEmptyMessageIs` (by id `ordersEmpty`), `ordersListedAre` with `none` |
 | Select one or several orders | act | `selectOrders` (Cmd/Ctrl for the others), `selectedOrdersAre` |
 | Cancel orders (row menu ▸ Cancel orders…, then "Cancel order ORD-1635?" or "Cancel 2 orders?" with Cancel order(s) / Keep) | act | `cancelOrders`, `keepOrders` |
+| The question's text: "Cancel order ORD-1635?" / "Cancel 2 orders?", then "Stock is restored and invoice totals are taken off what the customer owes." | check | `cancelQuestionIs` (asks, reads, answers Keep; the whole text or one line) |
 | Cancel orders… is disabled unless every selected order is Placed; "Only placed orders can be cancelled" shows beside the filter | check | `menuItemIs` (Cancel orders…, disabled: opens the selected orders' row menu, reads, Escape; checks the hint too); `cancelOrders` fails with that reason before clicking the list |
 | Copy order numbers (row menu ▸ Copy order number; the status line says "Copied ORD-1633, ORD-1634") | act | `copyOrderNumbers`, then `statusLineIs` |
 | The clipboard holds the copied numbers | check | Gap: the OS owns it |
@@ -62,11 +65,11 @@ both have a `Product` column, so a row locator on either must also name a column
 |---|---|---|
 | Pick the customer: type a name or city, Enter takes the highlighted suggestion (Down/Up move it, a click picks one, Esc hides them) | act | `openNewOrder`, `chooseCustomer` (the suggestion whose name starts with what was typed, or the only one) |
 | A tester's partial name that fits two customers fails naming both, never takes the first by chance (live: "am" fits Café Lumen in Amsterdam and Fjord Supplies in Hamburg; the app matches anywhere in the name or the city). Note: the example "Ada" fits only Ada Shop Ltd: Ada Lindqvist is the contact on its delivery address, not a customer | act | `openNewOrder`, `chooseCustomer` (fail as AMBIGUOUS naming the suggestions that fit; no fit: NOT_FOUND naming every customer the field offers) |
-| A name that fits no customer: "No customer matches" | check | `typeCustomer`, then `customerSuggestionsAre` with `none` |
+| A name that fits no customer: "No customer matches" | check | `typeCustomer`, then `customerSuggestionsAre` with `none` or the text itself (round 1, S10: the text failed although the step's own words offered it; fixed) |
 | The suggestions for what was typed (name, then "Berlin · Account" or "… · Card only") | check | `customerSuggestionsAre` |
 | Editing the Customer text forgets the chosen customer (tab back to "New order", Checkout… blocked) | act | `typeCustomer` (then `newOrderIsFor` `none`, `buttonIsDisabled` Checkout…) |
 | The tab's title: "New order", then "New order · Ada Shop Ltd" | check | `newOrderIsFor` |
-| The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` |
+| The customer's terms beside the field ("Account · Invoice 30 days · Credit limit €2,000.00 · Owes €450.00 · PO number required", "Card only") | check | `customerTermsAre` (the whole text or one part between the dots: "Account") |
 | Browse a category (Categories: All products, Office ▸ Paper, Pens, Desk, Coffee ▸ Beans, Machines, Cleaning) | act | `browseCategory`, `selectedCategoryIs` |
 | Search products by SKU or name (Search; its X clears it) | act | `searchProducts`, `clearProductSearch` |
 | The products listed, with SKU, Product, Price and Stock ("Out of stock" at 0, the row greyed) | check | `productsListedAre`, `productIs` (the product by name or SKU) |
@@ -116,7 +119,7 @@ that gets there; while the credit-limit warning or Place order's question is ope
 |---|---|---|
 | The delivery address, filled in from the customer: Name, Street, Postal code, City, Country, Phone (optional) | check | `checkoutFieldIs` (a text field's content; Country: the combo's value) |
 | Change the delivery address (any field; Country: Germany, Austria, Netherlands, France) | act | `setCheckoutField` (types, then Tab so the field's error shows; Country: chosen from its list; `none` empties) |
-| A field's error under it ("Street is required", "Germany uses a 5-digit postal code", "The Netherlands use the form 1234 AB", "Only +, digits and spaces, 6–20 characters"), once the field was left, or at once when the customer's own address is incomplete (Elm Street Studio has no postal code) | check | `checkoutFieldErrorIs` (by id `<field>Error`; `none`: absent) |
+| A field's error under it ("Street is required", "Germany uses a 5-digit postal code", "The Netherlands use the form 1234 AB", "Only +, digits and spaces, 6–20 characters"), once the field was left, or at once when the customer's own address is incomplete (Elm Street Studio has no postal code) | check | `checkoutFieldErrorIs` (by id `<field>Error`; `none` or nothing: absent) |
 
 ### Shipping step
 
@@ -125,6 +128,7 @@ that gets there; while the credit-limit warning or Place order's question is ope
 | Choose Standard or Express | act | `chooseShipping` ("express", "standard" or the radio's label; Express outside Germany/Austria fails with the app's reason) |
 | The prices: Standard €4.90, free from €100.00 after the discount; Express €14.90 | check | `shippingPriceIs` (ids `standardPrice`, `expressPrice`) |
 | Express is disabled outside Germany and Austria: "Express delivers to Germany and Austria only" | check | `buttonIsDisabled` with Express (radio state; the reason by its fixed text) |
+| Which shipping method is chosen (Standard at first) | check | `checkoutChoiceIs` (a person's "Is checked" on the radio folds into it) |
 | Write a delivery note | act | `setCheckoutField` with Delivery note; read back with `checkoutFieldIs` |
 
 ### Payment step
@@ -137,6 +141,7 @@ that gets there; while the credit-limit warning or Place order's question is ope
 | The Card choice's hint "Debit or credit card" (fixed text under Card) | check | `paymentNoteIs` with Card (found by its text) |
 | A card-only customer: Invoice is disabled, "Café Lumen pays by card", no PO number field | check | `buttonIsDisabled` with Invoice (reason: the invoice note), `paymentNoteIs` Invoice; `payByInvoice` and `checkoutWithPo` fail with that note |
 | The invoice note: "Credit limit €2,000.00 · owes €450.00" | check | `paymentNoteIs` with Invoice (id `invoiceNote`) |
+| Which way to pay is chosen (Invoice at first; Card for a card-only customer and after "Pay by card instead") | check | `checkoutChoiceIs` |
 | A field's error: "PO number is required", "Enter the 16 digits of the card", "Use MM/YY", "Month must be 01–12", "This card has expired", "Name on card is required" | check | `checkoutFieldErrorIs` (`poNumberError`, `cardNumberError`, `expiryError`, `nameOnCardError`) |
 | Next on an invoice over the credit limit warns ("This order takes Birch & Co to €1,036.60 of its €1,000.00 credit limit." / "Owes €940.00 now, this order adds €96.60."): Pay by card instead (Card gets chosen) or Continue with invoice | act | `checkoutNext` (or `checkoutWithPo`) ends on the warning; `answerCreditLimit` ("card", "continue"); `creditLimitWarningIs` reads it (message, detail or both) |
 
@@ -166,10 +171,11 @@ add `tab:Items` and so on.
 | Switch between Items, Delivery and Invoice | act | `selectTab` (while the order's tab shows); each check of Items, Delivery or Invoice also shows that tab for its read, then the one that showed before |
 | Items: SKU, Product, Qty, Price, Line total | check | `orderItemsAre` (the lines in order, by name or its start; no pattern), `orderItemIs` (one cell; the product by name, start or SKU; the Check menu keys a line by SKU) |
 | "11 units in 2 lines" under the items | check | `orderItemsSummaryIs` (whole, or "11 units" / "2 lines") |
-| Delivery: the address, the shipping method ("Standard · 3–5 business days · €4.90"), the delivery note ("—" when none) | check | `orderDeliveryIs` (address: its lines parted by ; or one line; shipping method; note, none or "—" for none). Suggest-only: see the note below |
+| Delivery: the address, the shipping method ("Standard · 3–5 business days · €4.90"), the delivery note ("—" when none) | check | `orderDeliveryIs` (address: its lines parted by ; or one line; shipping method, whole or one part: "Standard"; note, none or "—" for none). Suggest-only: see the note below |
 | Invoice: the payment ("Invoice (30 days) · PO PO-T3"), the order date | check | `orderInvoiceIs` (Payment, Order date) |
 | Invoice: Subtotal, Volume discount, Shipping, VAT (20%), Total | check | `orderInvoiceIs` (an amount by its caption; Volume discount none while it does not show) |
 | Save the receipt (Save receipt…, a file chooser "Save receipt", ".txt" added when missing; the status line says "Receipt saved to <path>") | act | `saveReceipt` (outcome: path, replaced; suggest-only, see the folding note); the status line: `statusLineIs` |
+| The name the file chooser suggests ("ORD-1640.txt", in the user's home) | check | `suggestedReceiptFileIs` (Save receipt…, reads the chooser, Cancel; the name with or without .txt, or the whole path) |
 | Saving over a file asks "ORD-1640.txt already exists." / "Do you want to replace it?" (Replace, Cancel) | act | `saveReceipt` answers Replace; `keepExistingReceipt` answers Cancel (fails, saying the receipt was saved, when the file did not exist: the app asks nothing then) |
 | Saving fails: "The receipt could not be saved: …" | check | `receiptSaveErrorIs` (whole text, the sentence before the colon or the reason after it; answers OK); `saveReceipt` fails with the app's message. Provoked live: a path in a folder that does not exist |
 | The saved receipt's text | check | Gap: not a tester's concern (every fact in the file shows on the order tab: number, date, status and customer in its header, the lines on Items, address, shipping method and note on Delivery, payment and totals on Invoice; covered there. The file only words some differently: a title line "Order Desk — receipt", free shipping as "€0.00" where the tab says "Free", the method without its price, no SKU, no Note line when there is none) |
@@ -259,6 +265,14 @@ add `tab:Items` and so on.
 - Cancel order's state: the Check menu offers `buttonIsEnabled` for an order tab's enabled Cancel order or Save receipt…
   (one step). A disabled Cancel order with its reason is two reads, which no single check the menu records can be:
   `buttonIsDisabled` reads both when an agent runs it.
+
+- Round 1 of the evaluation (Task 9a): a tester's agent read the Orders list raw (`read`) to say which orders a search
+  left, which order a sort put first and last, and that a theme switch changed no data. The acts that change what the
+  list shows (`searchOrders`, `clearOrderSearch`, `filterOrders`, `sortOrders`) now say in their outcome what it then
+  shows (count, every order's six values, the empty text), and `showOrders` reads it without changing it (an act: it
+  goes to the Orders tab; a check's outcome is always empty). `cancelQuestionIs` and `suggestedReceiptFileIs` are checks
+  of several steps (they ask, read and answer Cancel or Keep): like `orderItemsAre` they have no pattern, and
+  `showOrders` has none either (a person's click on the Orders tab reads nothing).
 
 ## Reach fixes needed
 
