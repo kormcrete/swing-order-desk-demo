@@ -181,15 +181,19 @@ another. The `release` workflow checks every download that way: the Java tests a
 
 ## The plugin
 
-`order-desk-plugin/` resets the app for each test and names the app's own steps once: `openNewOrder`, `addToCart`,
-`setQuantity`, `addQtyToCart`, `checkoutWithPo`, `placeOrder`, `openOrder` and the check `cartTotalIs`. It drives the
-app through the agent's client only, so it needs no app classes.
+`order-desk-plugin/` resets the app for each test and names the app's own steps once: 98 steps and checks that cover
+every screen. Starting an order (`openNewOrder`, `chooseCustomer`), the cart (`addToCart`, `addQtyToCart`,
+`selectProducts`, `cartTotalIs`), checkout (`checkoutWithPo`, `chooseShipping`, `payByInvoice`, `placeOrder`), an
+order's tab (`openOrder`, `saveReceipt`, `orderStatusIs`), the Orders list (`searchOrders`, `filterOrders`,
+`showOrders`) and the main window (`selectTab`, `statusLineIs`, `switchTheme`); `vocabulary {"op":"list"}` gives all of
+them. A coding agent wrote it from the app's source, and `order-desk-plugin/COVERAGE.md` lists every action and value
+of the app and the step that covers it. It drives the app through the agent's client only, so it needs no app classes.
 
 - **The reset** (`OrderDeskApp`) closes every order tab, last first, answers Discard for a new order with something in
   its cart, and shows the Orders list. Every test, recorded or Java, starts there, whatever the test before it left
   open. Placed orders stay: each test creates the data it checks.
 
-- **The agent** runs a step in one call, for example "Add 10 × Gel pen, black to the cart".
+- **The agent** runs a step in one call, for example "Add 10 × Gel pen, black to the cart", and a tester's whole request as one batch.
 - **A recording** folds the clicks that make a step into it, so a person's recorded test reads in the app's words:
   [`uitest/cart-with-steps.json`](uitest/cart-with-steps.json) is Ada's cart (the same as `cart-totals`) in `do`
   steps. It needs the plugin to run: start the app with `plugins=…` as above.
