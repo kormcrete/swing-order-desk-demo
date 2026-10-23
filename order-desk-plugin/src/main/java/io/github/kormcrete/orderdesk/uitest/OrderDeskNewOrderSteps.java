@@ -33,7 +33,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.quoted;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shown;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shows;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showing;
-import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showsWholeOrPart;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.partsShow;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.*;
 import static io.github.kormcrete.swingui.junit.UiAssertions.assertThat;
 
@@ -169,7 +169,7 @@ public final class OrderDeskNewOrderSteps {
         requireNewOrder(ui);
         Target card = newOrder(ui).byId(CUSTOMER_TERMS_ID);
         if (isNone(terms)) notShown(card, "The customer's terms");
-        else showsWholeOrPart(card, "The customer's terms", terms, PARTS_SEPARATOR);
+        else partsShow(card, terms, PARTS_SEPARATOR, "The customer's terms read");
     }
 
     /**
@@ -197,9 +197,11 @@ public final class OrderDeskNewOrderSteps {
     /**
      * Opens a new order for one of the recent customers the toolbar's ▾ (New order for a recent customer) offers: opens
      * its menu and picks the customer (the name or its start, any case). Ends on the new order, titled "New order · Ada
-     * Shop Ltd". A customer the menu does not offer fails naming those it offers, the menu closed again (Escape).
+     * Shop Ltd", a new tab, selected. A customer the menu does not offer fails naming those it offers, the menu closed
+     * again (Escape). Needs the main window with no dialog over it.
      */
     public static void openNewOrderFromRecent(final Client ui, String customer) {
+        OrderDeskOrdersSteps.requireMain(ui);
         Target opener = ui.button(RECENT_CUSTOMER_BUTTON);
         if (!showing(opener)) {
             throw new DriverException(Reason.NOT_FOUND, "The toolbar's New order for a recent customer (▾) is not showing");
@@ -219,10 +221,16 @@ public final class OrderDeskNewOrderSteps {
             throw new DriverException(Reason.NOT_FOUND, DriverException.stripReason(e.getMessage(), Reason.NOT_FOUND)
                     + ". \"Open a new order for <customer>\" takes any customer");
         }
+        final String title = NEW_ORDER_TAB + TITLE_SEPARATOR + name;
+        // a new order for this customer may be open already: the step's own is one more tab of that title, selected
+        final int had = Collections.frequency(OrderDeskMainSteps.mainTabs(ui), title);
         ui.pick(name);
-        String title = NEW_ORDER_TAB + TITLE_SEPARATOR + name;
-        if (!showing(ui.tab(title))) {
-            throw new DriverException(Reason.NOT_ACTIONABLE, "No new order for " + name + " opened (no tab " + quoted(title) + ")");
+        Boolean opened = look(() -> title.equals(OrderDeskMainSteps.selectedTab(ui))
+                && Collections.frequency(OrderDeskMainSteps.mainTabs(ui), title) > had ? Boolean.TRUE : null);
+        if (opened == null) {
+            String selected = OrderDeskMainSteps.selectedTab(ui);
+            throw new DriverException(Reason.NOT_ACTIONABLE, "No new order for " + name + " opened (no new tab "
+                    + quoted(title) + " selected; " + (selected == null ? "no tab" : selected) + " is)");
         }
     }
 

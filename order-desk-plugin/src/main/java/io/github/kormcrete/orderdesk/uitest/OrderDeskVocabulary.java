@@ -77,7 +77,7 @@ public final class OrderDeskVocabulary implements Vocabulary {
     public List<DomainStep> steps() {
         List<DomainStep> steps = new ArrayList<DomainStep>(firstSteps());
         steps.addAll(new OrderDeskNewOrderVocabulary(this::knownCustomers, this::productNames, this::cartLines,
-                this::categories).steps());
+                this::categories, this::recentCustomers).steps());
         steps.addAll(new OrderDeskCheckoutVocabulary(this::knownCustomers, this::reviewProducts).steps());
         steps.addAll(new OrderDeskOrdersVocabulary(this::listedOrders).steps());
         steps.addAll(new OrderDeskMainVocabulary(this::openTabs, this::menuItems).steps());
@@ -285,6 +285,24 @@ public final class OrderDeskVocabulary implements Vocabulary {
             throw notShowing(e, "the customers are listed on the Orders tab, or in a new order's Customer suggestions;"
                     + " neither is showing");
         }
+    }
+
+    /**
+     * The customers the toolbar's ▾ offers, as the app picks them from the orders (newest first, at most 4), read from
+     * the Orders list without opening the menu; while a search or a filter hides orders, from those listed.
+     */
+    private List<String> recentCustomers() {
+        List<String> recent;
+        try {
+            recent = OrderDeskOrdersSteps.recentCustomers(live.timeout(READ));
+        } catch (UiActionFailed e) {
+            throw notShowing(e, "the recent customers are read from the Orders list, and it is not showing");
+        }
+        if (recent.isEmpty()) {
+            throw new IllegalStateException("the recent customers are read from the Orders list, and it lists no order"
+                    + " now (another tab selected, or a search or filter that hides them all)");
+        }
+        return recent;
     }
 
     /** A Client on the app, once a new order shows; else why the choices cannot be read. */

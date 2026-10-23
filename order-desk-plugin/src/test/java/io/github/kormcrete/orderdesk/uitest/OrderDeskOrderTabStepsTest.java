@@ -413,9 +413,8 @@ class OrderDeskOrderTabStepsTest {
 
         OrderDeskOrderTabSteps.orderDeliveryIs(app.client(), "ORD-1639", "shipping", "Standard · 3–5 business days · €4.90");
 
-        assertThat(app.steps()).isEqualTo(json("[" + subTab("Delivery") + ","
-                + "{'action':'expect','target':{'scope':['tab:ORD-1639','tab:Delivery'],'role':'label','name':'Shipping method'},"
-                + "'text':'Standard · 3–5 business days · €4.90','timeout':1000}," + subTab("Items") + "]"));
+        // the shipping method is read (its whole text or one part), as the facts are: no expect step
+        assertThat(app.steps()).isEqualTo(json("[" + subTab("Delivery") + "," + subTab("Items") + "]"));
     }
 
     @Test

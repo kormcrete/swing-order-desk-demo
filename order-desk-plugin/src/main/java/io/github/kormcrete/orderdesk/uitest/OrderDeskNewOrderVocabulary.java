@@ -48,9 +48,12 @@ final class OrderDeskNewOrderVocabulary {
     private final Supplier<List<String>> products;
     private final Supplier<List<String>> cartLines;
     private final Supplier<List<String>> categories;
+    private final Supplier<List<String>> recentCustomers;
 
     OrderDeskNewOrderVocabulary(Supplier<List<String>> customers, Supplier<List<String>> products,
-                                Supplier<List<String>> cartLines, Supplier<List<String>> categories) {
+                                Supplier<List<String>> cartLines, Supplier<List<String>> categories,
+                                Supplier<List<String>> recentCustomers) {
+        this.recentCustomers = recentCustomers;
         this.customers = customers;
         this.products = products;
         this.cartLines = cartLines;
@@ -127,7 +130,7 @@ final class OrderDeskNewOrderVocabulary {
                                 + " customer) does: opens its menu and picks the customer. {customer}: one of the recent"
                                 + " customers (see The recent customers are …), the name or its start; another fails naming"
                                 + " those it offers")
-                        .param("customer", ParamType.TEXT).choices(customers)
+                        .param("customer", ParamType.TEXT).choices(recentCustomers)
                         .code((ui, p) -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, p.text("customer")))
                         .match(json("{'action':'click','target':{'role':'button','name':%s}}", text(RECENT_CUSTOMER_BUTTON)),
                                 json("{'action':'pick','path':['{customer}']}"))

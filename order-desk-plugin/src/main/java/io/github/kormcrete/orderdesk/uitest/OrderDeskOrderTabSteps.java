@@ -1,5 +1,6 @@
 package io.github.kormcrete.orderdesk.uitest;
 
+import io.github.kormcrete.orderdesk.uitest.OrderDeskMainSteps.TabAt;
 import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.driver.Reason;
 import io.github.kormcrete.swingui.junit.Client;
@@ -34,7 +35,7 @@ import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.resolve;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showing;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shown;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.shows;
-import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.showsWholeOrPart;
+import static io.github.kormcrete.orderdesk.uitest.OrderDeskLooks.partsShow;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskOrdersSteps.NO_MAIN;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskOrdersSteps.requireMain;
 import static io.github.kormcrete.orderdesk.uitest.OrderDeskSteps.*;
@@ -303,7 +304,7 @@ public final class OrderDeskOrderTabSteps {
             String expected = DELIVERY_NOTE_LABEL.equals(caption) && isNone(value) ? NO_NOTE : value;
             if (SHIPPING_METHOD_LABEL.equals(caption)) {
                 // "Standard · 3–5 business days · €4.90": the method's name alone, or another part, passes too
-                showsWholeOrPart(tab.label(caption), number + "'s " + caption, expected, PARTS_SEPARATOR);
+                partsShow(tab.label(caption), expected, PARTS_SEPARATOR, number + "'s " + caption + " reads");
             } else {
                 shows(tab.label(caption), number + "'s " + caption, expected);
             }
@@ -394,9 +395,9 @@ public final class OrderDeskOrderTabSteps {
     /** Where an act started: the order's number, and the tab selected before it clicked that order's tab. */
     private static final class At {
         final String number;
-        final String before;
+        final TabAt before;
 
-        At(String number, String before) {
+        At(String number, TabAt before) {
             this.number = number;
             this.before = before;
         }
@@ -405,7 +406,7 @@ public final class OrderDeskOrderTabSteps {
     /** The main window with no dialog over it, then a click on the order's tab (open, by its number or digits). */
     private static At goToOrderTab(Client ui, String order) {
         requireMain(ui);
-        String before = OrderDeskMainSteps.selectedTab(ui);
+        TabAt before = OrderDeskMainSteps.selectedTabAt(ui);
         String number = openOrderTab(ui, order);
         ui.tab(number).click();
         return new At(number, before);
@@ -413,7 +414,7 @@ public final class OrderDeskOrderTabSteps {
 
     /** After a failure: the tab that was selected before the act clicked the order's, selected again. */
     private static void back(final Client ui, final At at) {
-        if (at.before != null && !at.before.equals(at.number)) quietly(() -> ui.tab(at.before).click());
+        if (at.before != null && !at.before.title.equals(at.number)) quietly(() -> OrderDeskMainSteps.select(ui, at.before));
     }
 
     /** The open order tab {@code order} names: its number, any case, or its digits; none fails naming the open ones. */
@@ -555,25 +556,6 @@ public final class OrderDeskOrderTabSteps {
         if (!same) {
             throw new AssertionError(number + "'s delivery address " + (actual.isEmpty() ? "is not shown"
                     : "reads " + quoted(join(actual))) + ", expected " + quoted(join(wanted)));
-        }
-    }
-
-    /** {@code target} shows {@code expected}: its whole text or one of its parts (parted by {@code separator}), white space aside. */
-    private static void partsShow(final Target target, String expected, final String separator, String what) {
-        final String want = oneLine(expected);
-        String fits = look(() -> {
-            String actual = shown(target);
-            if (actual == null) return null;
-            String all = oneLine(actual);
-            if (all.equals(want)) return all;
-            for (String part : all.split(java.util.regex.Pattern.quote(separator))) {
-                if (oneLine(part).equals(want)) return all;
-            }
-            return null;
-        });
-        if (fits == null) {
-            String actual = shown(target);
-            throw new AssertionError(what + " " + (actual == null ? "nothing" : quoted(oneLine(actual))) + ", expected " + quoted(want));
         }
     }
 

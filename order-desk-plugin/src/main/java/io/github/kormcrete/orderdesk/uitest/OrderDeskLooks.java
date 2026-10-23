@@ -200,24 +200,27 @@ final class OrderDeskLooks {
     }
 
     /**
-     * Checks that {@code target} shows {@code expected} or one of its parts: a line of several facts parted by
-     * {@code separator} ("Account · Invoice 30 days · …": "Account" passes). The whole text is checked as
-     * {@link #shows} does (an {@code expect} that waits); a part that shows now passes at once, read only.
+     * Checks that {@code target} shows {@code expected}: its whole text or one of its parts (parted by {@code separator},
+     * "Account · Invoice 30 days · …": "Account"), white space aside, waiting up to {@link #LOOK} for either. Read only:
+     * no {@code expect} step. A miss fails with {@code what}, what shows and what was expected:
+     * "The customer's terms read “Card only”, expected “Account”".
      */
-    static void showsWholeOrPart(Target target, String what, String expected, String separator) {
-        String actual = shown(target);
-        if (actual != null && isPart(actual, expected, separator)) return;
-        shows(target, what, expected);
-    }
-
-    /** {@code expected} is one of {@code text}'s parts (parted by {@code separator}), white space aside, not the whole. */
-    static boolean isPart(String text, String expected, String separator) {
-        String want = oneLine(expected);
-        if (want.isEmpty()) return false;
-        String[] parts = text.split(java.util.regex.Pattern.quote(separator.trim()));
-        if (parts.length < 2) return false;
-        for (String part : parts) if (oneLine(part).equals(want)) return true;
-        return false;
+    static void partsShow(final Target target, String expected, final String separator, String what) {
+        final String want = oneLine(expected);
+        String fits = look(() -> {
+            String actual = shown(target);
+            if (actual == null) return null;
+            String all = oneLine(actual);
+            if (all.equals(want)) return all;
+            for (String part : all.split(java.util.regex.Pattern.quote(separator))) {
+                if (oneLine(part).equals(want)) return all;
+            }
+            return null;
+        });
+        if (fits == null) {
+            String actual = shown(target);
+            throw new AssertionError(what + " " + (actual == null ? "nothing" : quoted(oneLine(actual))) + ", expected " + quoted(want));
+        }
     }
 
     /** Checks that {@code target} is not shown; when it is, the failure says what it shows. */

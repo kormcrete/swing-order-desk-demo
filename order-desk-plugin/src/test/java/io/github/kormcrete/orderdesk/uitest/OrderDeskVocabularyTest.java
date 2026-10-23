@@ -141,7 +141,7 @@ class OrderDeskVocabularyTest {
     }
 
     /** Written-pattern entries compared with their body's steps (autoFold steps whose body takes steps). */
-    private static final int CHECKED_PATTERN_ENTRIES = 89;
+    private static final int CHECKED_PATTERN_ENTRIES = 88;
 
     @Test
     void theFirstEightStepsKeepTheirSentences() {
@@ -1235,6 +1235,11 @@ class OrderDeskVocabularyTest {
 
     /** The steps that run takes on the app {@code s} needs; a failure after them (a trace's unanswered read) counts. */
     private static JsonNode traced(DomainStep s, Body body) {
+        if ("openNewOrderFromRecent".equals(s.id())) {
+            RecentFake recent = new RecentFake("Ada Shop Ltd");
+            body.run(recent.client());
+            return recent.steps();
+        }
         if (CHECKOUT_ON.containsKey(s.id())) {
             CheckoutFake checkout = new CheckoutFake(CHECKOUT_ON.get(s.id()));
             if (CREDIT_WARNING_STEPS.contains(s.id())) checkout.creditWarning();

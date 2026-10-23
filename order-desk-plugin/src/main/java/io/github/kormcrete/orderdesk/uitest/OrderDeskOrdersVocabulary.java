@@ -43,7 +43,8 @@ final class OrderDeskOrdersVocabulary {
     private static final String NEEDS_MAIN = "Needs: the main window, no dialog open (it goes to the Orders tab itself).";
     /** What an act that changes what the list shows says it returns. */
     private static final String LISTED = " The outcome (\"outcome\": true) says what the list then shows: count, and orders,"
-            + " each order's Order, Date, Customer, Items, Total and Status, top to bottom (empty: the text shown instead)";
+            + " by number top to bottom, each with its Date, Customer, Items, Total and Status (empty: the text shown"
+            + " instead)";
 
     private final Supplier<List<String>> orders;
 
@@ -88,8 +89,8 @@ final class OrderDeskOrdersVocabulary {
                                 + " Shipped, Cancelled). {direction}: ascending or descending (\"newest first\", \"oldest"
                                 + " first\"); left out: ascending. The outcome says the column and the direction it is"
                                 + " left in (either: every order listed has the same value there), and the orders in their"
-                                + " new order: count, and orders, each order's Order, Date, Customer, Items, Total and Status,"
-                                + " top to bottom (the first is the lowest of an ascending sort)")
+                                + " new order: count, and orders, by number top to bottom, each with its Date, Customer, Items,"
+                                + " Total and Status (the first is the lowest of an ascending sort)")
                         .param("column", ParamType.TEXT).choices(() -> OrderDeskOrdersSteps.COLUMNS)
                         .param("direction", ParamType.TEXT).optional(OrderDeskOrdersSteps.ASCENDING)
                         .choices(() -> Arrays.asList(OrderDeskOrdersSteps.ASCENDING, OrderDeskOrdersSteps.DESCENDING))
@@ -214,7 +215,7 @@ final class OrderDeskOrdersVocabulary {
                         .about("Reads the question the Orders list's row menu Cancel orders… asks (\"Cancel order"
                                 + " ORD-1635?\" or \"Cancel 2 orders?\", then \"Stock is restored and invoice totals are"
                                 + " taken off what the customer owes.\"): selects the orders, Cancel orders…, reads, answers"
-                                + " Keep, so nothing is cancelled. {message}: the whole text or one of its lines. An order"
+                                + " Keep, so nothing is cancelled; then selects the orders and the tab selected before again. {message}: the whole text or one of its lines. An order"
                                 + " not Placed fails first: \"" + CANCEL_HINT + "\". Needs: the main window, no dialog open. "
                                 + ORDERS)
                         .param("orders", ParamType.TEXT).choices(orders)

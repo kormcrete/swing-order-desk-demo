@@ -14,7 +14,7 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 |---|---|---|
 | The app starts on the Orders list, no other tab open (no login, nothing to navigate to by name) | start | `reset` |
 | Open a new order (File ▸ New order, Ctrl/Cmd+N, toolbar New order) | act | `openNewOrder` |
-| Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrderFromRecent` (the ▾, then the customer picked from its menu; a person's ▾ and pick fold into it; `openNewOrder` reaches any customer through File ▸ New order) |
+| Open a new order for a recent customer (toolbar ▾, one of the 4 customers with the newest orders) | act | `openNewOrderFromRecent` (the ▾, then the customer picked from its menu; ends on a new tab, selected; a person's ▾ and pick fold into it; `openNewOrder` reaches any customer through File ▸ New order; its choices are the recent customers as the app takes them from the orders, read from the Orders list) |
 | The recent customers the toolbar ▾ offers, newest first | check | `recentCustomersAre` |
 | Close the selected tab (File ▸ Close tab, Ctrl/Cmd+W, the tab's X) | act | `closeTab` (File ▸ Close tab; the tab's X has no node, the menu covers it; another tab: `selectTab` first) |
 | Closing a new order with something in its cart asks "Discard this new order?" (Discard, Cancel) | act | `closeTab` (Discard), `keepTab` (Cancel) |
@@ -27,7 +27,7 @@ is empty (no reason, no error shown) is not in the tree, so its read is NOT_FOUN
 | Exit asks "Discard the open new orders?" while a new order has something in its cart (File ▸ Exit, closing the window, Cmd+Q) | check | `exitQuestionIs` (chooses File ▸ Exit only while a new order with something in its cart shows, reads, answers Cancel; else fails and chooses nothing) |
 | Keep working after all: Cancel on that question leaves the app and its tabs as they were | act | `cancelExit` (same guard: never ends the app) |
 | Exit the app (Discard and exit; File ▸ Exit with no unsaved new order) | act | Gap: not a tester's concern (it ends the app under test: no run continues past it) |
-| Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | `switchTheme` (round 1, S24: a tester asks for it; only the look changes, a screenshot shows it, `showOrders` before and after shows the data stayed) |
+| Switch the theme (View ▸ Theme ▸ Light, Dark, Lagoon) | act | `switchTheme` (round 1, S24: a tester asks for it; only the look changes, a screenshot shows it, `showOrders` before and after shows the data stayed). The reset puts Light back after `switchTheme` chose another theme in the app's JVM (recorded tests, the agent's steps); a theme chosen in the menu by hand, or by a Java test's own JVM, stays until switched back: the menu cannot say which is chosen without opening it, and choosing Light on every reset costs 0.6-1 s |
 | About Order Desk (Help ▸ About Order Desk, a message, OK): its text | check | `aboutShows` (ruling R23: a check of the text, whole words of it; opens, reads, OK) |
 | The splash while the app starts | check | Gap: not a tester's concern |
 
@@ -45,12 +45,12 @@ The pinned Orders tab (`OrdersPanel`). Its table is the only table on the tab: `
 | Sort by a column (click its header; again reverses; Order, newest first, at start) | act | `sortOrders` (clicks the header until the column's values read in the asked direction; outcome: the column and direction left, `either` when every value is the same) |
 | An order's Date, Customer, Items, Total or Status (one check for any order and column) | check | `orderIs` (Status any case: "placed"; the Order cell too, as the Check menu offers it) |
 | Which orders are listed, in which order (after a search, filter or sort) | check | `ordersListedAre` (past 20 rows read one by one) |
-| What the list shows, to tell or to compare (every order's Order, Date, Customer, Items, Total, Status, top to bottom; the empty text instead) | check | the outcome of `searchOrders`, `clearOrderSearch`, `filterOrders`, `sortOrders` (with `"outcome": true`), and `showOrders` (goes to the Orders tab, changes nothing) for a read before and after something else (round 1: S01, S04, S24 read the table raw) |
+| What the list shows, to tell or to compare (every order's Order, Date, Customer, Items, Total, Status, top to bottom; the empty text instead) | check | the outcome of `searchOrders`, `clearOrderSearch`, `filterOrders`, `sortOrders` (with `"outcome": true`), and `showOrders` (goes to the Orders tab, changes nothing) for a read before and after something else (round 1: S01, S04, S24 read the table raw). `orders` is keyed by number, in the list's order: a recording links a later step to a value at its path, and a place in a list would name another order once the list changes |
 | How many orders are listed (after a search or a filter: how many are left) | check | `ordersCountIs` (0 while the empty text shows; an agent's row count of the Orders table folds into it) |
 | Nothing listed: "No orders match ‘zzz’", "No orders", "No cancelled orders" | check | `ordersEmptyMessageIs` (by id `ordersEmpty`), `ordersListedAre` with `none` |
 | Select one or several orders | act | `selectOrders` (Cmd/Ctrl for the others), `selectedOrdersAre` |
 | Cancel orders (row menu ▸ Cancel orders…, then "Cancel order ORD-1635?" or "Cancel 2 orders?" with Cancel order(s) / Keep) | act | `cancelOrders`, `keepOrders` |
-| The question's text: "Cancel order ORD-1635?" / "Cancel 2 orders?", then "Stock is restored and invoice totals are taken off what the customer owes." | check | `cancelQuestionIs` (asks, reads, answers Keep; the whole text or one line) |
+| The question's text: "Cancel order ORD-1635?" / "Cancel 2 orders?", then "Stock is restored and invoice totals are taken off what the customer owes." | check | `cancelQuestionIs` (asks, reads, answers Keep; the whole text or one line; then the orders and the tab selected before, selected again, also when it fails) |
 | Cancel orders… is disabled unless every selected order is Placed; "Only placed orders can be cancelled" shows beside the filter | check | `menuItemIs` (Cancel orders…, disabled: opens the selected orders' row menu, reads, Escape; checks the hint too); `cancelOrders` fails with that reason before clicking the list |
 | Copy order numbers (row menu ▸ Copy order number; the status line says "Copied ORD-1633, ORD-1634") | act | `copyOrderNumbers`, then `statusLineIs` |
 | The clipboard holds the copied numbers | check | Gap: the OS owns it |

@@ -169,15 +169,14 @@ class OrderDeskNewOrderStepsTest {
         Throwable notAPart = catchThrowable(() -> OrderDeskNewOrderSteps.customerTermsAre(ui, "Invoice"));
 
         assertThat(notAPart).isInstanceOf(AssertionError.class)
-                .hasMessage("The customer's terms reads “" + terms + "”, expected “Invoice”");
+                .hasMessage("The customer's terms read “" + terms + "”, expected “Invoice”");
     }
 
     @Test
     void openNewOrderFromRecentClicksTheArrowAndPicksTheCustomer() {
-        recentCustomers("Ada Shop Ltd", "Café Lumen", "Birch & Co");
-        app.answer("tab 'New order · Café Lumen'", node("tab", "New order · Café Lumen"));
+        RecentFake app = new RecentFake("Ada Shop Ltd", "Café Lumen", "Birch & Co");
 
-        OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "café");
+        OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "café");
 
         assertThat(app.steps()).isEqualTo(json("["
                 + "{'action':'click','target':{'role':'button','name':'New order for a recent customer'}},"
@@ -185,10 +184,34 @@ class OrderDeskNewOrderStepsTest {
     }
 
     @Test
-    void openNewOrderFromRecentOnAMissNamesTheRecentCustomersAndClosesTheMenu() {
-        recentCustomers("Ada Shop Ltd", "Café Lumen");
+    void openNewOrderFromRecentOpensANewTabBesideOneForTheSameCustomer() {
+        // a second new order for Ada: the tab of the first does not count as the one this step opened
+        RecentFake app = new RecentFake("Ada Shop Ltd");
+        app.tabs("Orders", "Orders", "New order · Ada Shop Ltd");
 
-        Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Durand"));
+        OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "Ada");
+
+        assertThat(app.steps()).hasSize(2);
+    }
+
+    @Test
+    void openNewOrderFromRecentFailsWhenNoNewTabOpens() {
+        // a new order for Ada was open already, and the pick opened none
+        RecentFake app = new RecentFake("Ada Shop Ltd").opensNothing();
+        app.tabs("Orders", "Orders", "New order · Ada Shop Ltd");
+
+        Throwable shut = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "Ada Shop Ltd"));
+
+        assertThat(shut).isInstanceOf(DriverException.class)
+                .hasMessage("NOT_ACTIONABLE: No new order for Ada Shop Ltd opened (no new tab “New order · Ada Shop Ltd”"
+                        + " selected; Orders is)");
+    }
+
+    @Test
+    void openNewOrderFromRecentOnAMissNamesTheRecentCustomersAndClosesTheMenu() {
+        RecentFake app = new RecentFake("Ada Shop Ltd", "Café Lumen");
+
+        Throwable none = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "Durand"));
 
         assertThat(none).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: No recent customer fits “Durand”."
                 + " The toolbar's recent customers: Ada Shop Ltd; Café Lumen. \"Open a new order for <customer>\" takes"
@@ -200,22 +223,12 @@ class OrderDeskNewOrderStepsTest {
 
     @Test
     void openNewOrderFromRecentOnTwoMatchesFailsNamingBoth() {
-        recentCustomers("Birch & Co", "Birchwood Bakery");
+        RecentFake app = new RecentFake("Birch & Co", "Birchwood Bakery");
 
-        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "birch"));
+        Throwable two = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "birch"));
 
         assertThat(two).isInstanceOf(DriverException.class)
                 .hasMessage("AMBIGUOUS: “birch” fits 2 recent customers: Birch & Co; Birchwood Bakery. Give more of the name");
-    }
-
-    @Test
-    void openNewOrderFromRecentFailsWhenTheNewOrderDoesNotOpen() {
-        recentCustomers("Ada Shop Ltd");
-
-        Throwable shut = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Ada Shop Ltd"));
-
-        assertThat(shut).isInstanceOf(DriverException.class)
-                .hasMessage("NOT_ACTIONABLE: No new order for Ada Shop Ltd opened (no tab “New order · Ada Shop Ltd”)");
     }
 
     @Test
@@ -225,8 +238,27 @@ class OrderDeskNewOrderStepsTest {
         Throwable gone = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(ui, "Ada Shop Ltd"));
 
         assertThat(System.currentTimeMillis() - start).isLessThan(2000);
-        assertThat(gone).isInstanceOf(DriverException.class).hasMessageContaining("New order for a recent customer (▾) is not showing");
+        assertThat(gone).isInstanceOf(DriverException.class).hasMessage("NOT_FOUND: " + OrderDeskOrdersSteps.NO_MAIN);
         assertThat(app.steps()).isEmpty();
+    }
+
+    @Test
+    void openNewOrderFromRecentFailsFastWhileADialogIsOpen() {
+        RecentFake app = new RecentFake("Ada Shop Ltd");
+        app.windows(FakeApp.modal("Checkout — Ada Shop Ltd", "Address"));
+
+        Throwable blocked = catchThrowable(() -> OrderDeskNewOrderSteps.openNewOrderFromRecent(app.client(), "Ada"));
+
+        assertThat(blocked).isInstanceOf(DriverException.class).hasMessage("NOT_ACTIONABLE: A dialog is open over the main"
+                + " window (Checkout — Ada Shop Ltd: Address): answer or close it first");
+        assertThat(app.steps()).isEmpty();
+    }
+
+    @Test
+    void theRecentCustomersAreTheCustomersOfTheNewestOrdersAsTheAppTakesThem() {
+        // the app's toolbar ▾: orders by date, then number, newest first, each customer once, at most 4
+        assertThat(OrderDeskOrdersSteps.recentCustomers(new OrdersFake().client()))
+                .containsExactly("Ada Shop Ltd", "Café Lumen", "Birch & Co");
     }
 
     @Test
@@ -886,13 +918,6 @@ class OrderDeskNewOrderStepsTest {
         app.answer("popup list", items("list", Arrays.asList(items), 0));
     }
 
-    /** The toolbar's ▾ and the customers its menu offers. */
-    private void recentCustomers(String... names) {
-        app.answer("button 'New order for a recent customer'", node("button", "New order for a recent customer"));
-        Node[] offered = new Node[names.length];
-        for (int i = 0; i < names.length; i++) offered[i] = node("menuitem", names[i]);
-        app.answer("popup menuitem", offered);
-    }
 
     /** The products table: A4 paper, two gel pens, the Stapler (4 left) and the Desk lamp (out of stock). */
     private void products() {

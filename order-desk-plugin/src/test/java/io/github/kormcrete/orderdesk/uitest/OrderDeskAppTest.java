@@ -26,6 +26,41 @@ class OrderDeskAppTest {
     private final Tabs app = new Tabs();
     private final OrderDeskApp orderDesk = new OrderDeskApp(app);
 
+    @org.junit.jupiter.api.BeforeEach
+    void noThemeChosenYet() {
+        OrderDeskMainSteps.forgetChosenTheme();
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void noThemeLeftChosen() {
+        OrderDeskMainSteps.forgetChosenTheme();
+    }
+
+    @Test
+    void resetPutsTheLightThemeBackAfterAThemeWasSwitched() {
+        // Light is the theme at start: a test that switched to Dark must not leave the next one dark
+        OrdersFake main = new OrdersFake();
+        main.menu("View > Theme", "Light", "Dark", "Lagoon");
+        OrderDeskMainSteps.switchTheme(main.client(), "Dark");
+
+        orderDesk.reset(ResetSpec.alias(null));
+        orderDesk.reset(ResetSpec.alias(null));
+
+        // once: the second reset knows Light is back
+        assertThat(app.log).containsExactly("menu [View, Theme, Light]");
+    }
+
+    @Test
+    void resetLeavesTheThemeAloneWhenLightIsTheOneChosen() {
+        OrdersFake main = new OrdersFake();
+        main.menu("View > Theme", "Light", "Dark", "Lagoon");
+        OrderDeskMainSteps.switchTheme(main.client(), "light");
+
+        orderDesk.reset(ResetSpec.alias(null));
+
+        assertThat(app.log).isEmpty();
+    }
+
     @Test
     void resetClosesEveryOrderTabDiscardingNewOrdersAndShowsTheOrdersList() {
         app.open("ORD-1640", false);
@@ -145,6 +180,7 @@ class OrderDeskAppTest {
         @Override
         public VerbOutcome menu(List<String> path, Long timeout) {
             log.add("menu " + path);
+            if (path.equals(Arrays.asList("View", "Theme", "Light"))) return new VerbOutcome();
             assertThat(path).isEqualTo(Arrays.asList("File", "Close tab"));
             if (selected == 0) throw new DriverException(Reason.NOT_ACTIONABLE, "Close tab is disabled");
             VerbOutcome out = new VerbOutcome();

@@ -169,7 +169,8 @@ final class OrderDeskMainVocabulary {
                 DomainStep.act("switchTheme", "Switch the theme to {theme}")
                         .about(NEEDS_MAIN + " Ends: the whole app in that theme (View ▸ Theme), every tab and value as it"
                                 + " was: only the look changes (a screenshot shows it). {theme}: Light (the theme at start),"
-                                + " Dark or Lagoon, any case or its start")
+                                + " Dark or Lagoon, any case or its start. The reset puts Light back after this step chose"
+                                + " another (not after a theme chosen in the menu by hand)")
                         .param("theme", ParamType.TEXT).choices(() -> OrderDeskMainSteps.THEMES)
                         .code((ui, p) -> OrderDeskMainSteps.switchTheme(ui, p.text("theme")))
                         .match(json("{'action':'menu','path':[%s,%s,'{theme}']}", text(VIEW_MENU), text(THEME_MENU)))

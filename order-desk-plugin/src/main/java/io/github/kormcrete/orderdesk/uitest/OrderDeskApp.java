@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Order Desk as the app plugin: its reset brings every test to the same start, the Orders list with no order tab
- * open, so recorded tests run one after another on one app. A New order tab with something in its cart asks "Discard
+ * open (and the Light theme again after a "Switch the theme to …" chose another), so recorded tests run one after another on one app. A New order tab with something in its cart asks "Discard
  * this new order?" before it closes; the reset answers Discard. Order Desk has no login and nothing to navigate to by
  * name: tests open what they need with the menu or a {@code do} step. Placed orders stay (they are the app's data,
  * and each test creates its own).
@@ -59,6 +59,11 @@ final class OrderDeskApp implements StepHost, AppHooks {
             throw new DriverException(Reason.APP_ERROR, "reset: tabs still open after " + MAX_CLOSES + " closes");
         }
         if (!tabs.get(0).hasState("selected")) select(tabs, 0);
+        // the theme at start is Light: put it back after a "Switch the theme to …" chose another one
+        if (OrderDeskMainSteps.themeToPutBack()) {
+            verbs.menu(Arrays.asList(OrderDeskSteps.VIEW_MENU, OrderDeskSteps.THEME_MENU, OrderDeskMainSteps.LIGHT), TIMEOUT_MS);
+            OrderDeskMainSteps.forgetChosenTheme();
+        }
     }
 
     /** File ▸ Close tab on the selected tab; a new order's "Discard this new order?" is answered Discard. */

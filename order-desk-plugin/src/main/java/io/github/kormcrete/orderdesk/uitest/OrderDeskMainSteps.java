@@ -52,7 +52,8 @@ public final class OrderDeskMainSteps {
     private static final String ROW_MENU = "the Orders list's row menu";
     static final List<String> STATES = Collections.unmodifiableList(Arrays.asList("enabled", "disabled"));
     /** What View ▸ Theme offers, in its order (the step reads the menu itself). */
-    static final List<String> THEMES = Collections.unmodifiableList(Arrays.asList("Light", "Dark", "Lagoon"));
+    static final String LIGHT = "Light";
+    static final List<String> THEMES = Collections.unmodifiableList(Arrays.asList(LIGHT, "Dark", "Lagoon"));
 
     private OrderDeskMainSteps() {
     }
@@ -259,6 +260,25 @@ public final class OrderDeskMainSteps {
         String name = pick(theme, ui.menuItems(VIEW_MENU, THEME_MENU), "theme", "themes",
                 "View ▸ " + THEME_MENU + " offers");
         ui.menu(VIEW_MENU, THEME_MENU, name);
+        chosenTheme = name;
+    }
+
+    /**
+     * The theme this step chose last in this JVM (the app's, where a recorded test's and the agent's steps run), or null:
+     * the reset puts {@link #LIGHT} back when another one was chosen. The menu cannot say which is chosen without opening
+     * View ▸ Theme, and choosing Light again costs a whole repaint of the app (about 0.6-1 s) on every reset.
+     */
+    private static volatile String chosenTheme;
+
+    /** True when this step chose a theme other than Light since the last reset that put it back. */
+    static boolean themeToPutBack() {
+        String t = chosenTheme;
+        return t != null && !LIGHT.equals(t);
+    }
+
+    /** After the reset chose Light again, or for a test: nothing to put back. */
+    static void forgetChosenTheme() {
+        chosenTheme = null;
     }
 
     // ---- what the choices read
@@ -311,6 +331,43 @@ public final class OrderDeskMainSteps {
                     + " is selected)");
         }
         ui.menu(FILE_MENU, EXIT_ITEM);
+    }
+
+    /** A main tab: its title, and which of the tabs with that title it is (two new orders for one customer share one). */
+    static final class TabAt {
+        final String title;
+        final int nth;
+        final boolean shared;
+
+        TabAt(String title, int nth, boolean shared) {
+            this.title = title;
+            this.nth = nth;
+            this.shared = shared;
+        }
+    }
+
+    /** The selected main tab, told apart from others with its title; null when none is read. */
+    static TabAt selectedTabAt(Client ui) {
+        String title = selectedTab(ui);
+        if (title == null) return null;
+        int same = Collections.frequency(mainTabs(ui), title);
+        if (same <= 1) return new TabAt(title, 0, false);
+        for (int i = 0; i < same; i++) {
+            try {
+                if (ui.tab(title).nth(i).timeout(java.time.Duration.ofMillis(1)).states().contains("selected")) {
+                    return new TabAt(title, i, true);
+                }
+            } catch (UiActionFailed e) {
+                // not this one
+            }
+        }
+        return new TabAt(title, same - 1, true);
+    }
+
+    /** Selects that tab again: a click on it (the nth of its title when others share it). */
+    static void select(Client ui, TabAt at) {
+        if (at.shared) ui.tab(at.title).nth(at.nth).click();
+        else ui.tab(at.title).click();
     }
 
     /** The selected tab's title (the main tabs'), or null. */

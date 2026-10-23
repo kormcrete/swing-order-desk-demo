@@ -1,5 +1,6 @@
 package io.github.kormcrete.orderdesk.uitest;
 
+import io.github.kormcrete.orderdesk.uitest.OrderDeskMainSteps.TabAt;
 import io.github.kormcrete.swingui.driver.DriverException;
 import io.github.kormcrete.swingui.driver.Reason;
 import io.github.kormcrete.swingui.junit.Client;
@@ -96,7 +97,7 @@ public final class OrderDeskOrdersSteps {
      * selected before are selected again, and the tab selected before shows again.
      */
     public static void openOrder(final Client ui, String order) {
-        String before = goToOrders(ui);
+        TabAt before = goToOrders(ui);
         List<Map<String, String>> rows = orderRows(ui);
         final List<String> numbers = resolveOrders(ui, order, before, rows);
         List<String> selected = selectedNumbers(ui, rows);
@@ -181,7 +182,7 @@ public final class OrderDeskOrdersSteps {
         requireMain(ui);
         String col = sortColumn(column);
         int wanted = direction(direction);
-        String before = OrderDeskMainSteps.selectedTab(ui);
+        TabAt before = OrderDeskMainSteps.selectedTabAt(ui);
         ui.tab(ORDERS_TAB).click();
         List<Map<String, String>> start = orderRows(ui);
         Integer seen = null;
@@ -207,7 +208,7 @@ public final class OrderDeskOrdersSteps {
 
     /** Selects orders: the first by a click on its row, the others with Cmd or Ctrl held (one named twice counts once). */
     public static void selectOrders(Client ui, String orders) {
-        String before = goToOrders(ui);
+        TabAt before = goToOrders(ui);
         select(ui, resolveOrders(ui, orders, before));
     }
 
@@ -233,13 +234,22 @@ public final class OrderDeskOrdersSteps {
      * the question, then answers Keep (also when it differs), so nothing is cancelled. {@code message}: the whole text or
      * one of its lines. An order that is not Placed fails before anything is clicked, as {@link #keepOrders} does.
      */
-    public static void cancelQuestionIs(Client ui, String orders, String message) {
-        List<String> numbers = askToCancel(ui, orders);
+    public static void cancelQuestionIs(final Client ui, String orders, String message) {
+        final TabAt before = goToOrders(ui);
+        final List<String> selected = selectedNumbers(ui, orderRows(ui));
+        final List<String> numbers = askToCancel(ui, orders, before);
         List<String> lines;
         try {
             lines = messageLines(ui.dialog(CANCEL_QUESTION_TITLE + "*").label(null));
+            // no question showing: nothing to answer, and the miss below says so
+            if (lines != null) ui.answer(KEEP_ANSWER);
+        } catch (RuntimeException e) {
+            quietly(() -> ui.answer(KEEP_ANSWER));
+            throw e;
         } finally {
-            ui.answer(KEEP_ANSWER);
+            // the screen as found: the orders selected before (none: the clicked rows unselected), the tab before
+            quietly(() -> reselect(ui, selected, numbers));
+            back(ui, before);
         }
         String all = lines == null ? null : oneLine(String.join(" ", lines));
         if (all == null) throw new AssertionError("Cancel orders… asked nothing, expected " + quoted(oneLine(message)));
@@ -253,7 +263,7 @@ public final class OrderDeskOrdersSteps {
 
     /** Copies the numbers of orders: selects them, then the row menu's Copy order number; the status line says so. */
     public static void copyOrderNumbers(Client ui, String orders) {
-        String before = goToOrders(ui);
+        TabAt before = goToOrders(ui);
         List<String> numbers = resolveOrders(ui, orders, before);
         select(ui, numbers);
         row(ui, numbers.get(0)).rightClick(COPY_ORDER_NUMBER_ITEM);
@@ -357,11 +367,14 @@ public final class OrderDeskOrdersSteps {
      */
     static Map<String, Object> listing(Client ui) {
         List<Map<String, String>> rows = orderRows(ui, COLUMNS.toArray(new String[0]));
-        List<Map<String, String>> orders = new ArrayList<Map<String, String>>();
+        // keyed by number, not a list: a recording takes every value an outcome holds as something a later step may be
+        // linked to, at its path; ".step.orders.ORD-1639.Customer" stays that order's customer, a place in a list
+        // (".step.orders[3].Customer") would be another order's once the list changes
+        Map<String, Map<String, String>> orders = new LinkedHashMap<String, Map<String, String>>();
         for (Map<String, String> r : rows) {
             Map<String, String> o = new LinkedHashMap<String, String>();
-            for (String c : COLUMNS) o.put(c, r.get(c));
-            orders.add(o);
+            for (String c : CHECK_COLUMNS) o.put(c, r.get(c));
+            orders.put(r.get(ORDER_COLUMN), o);
         }
         Map<String, Object> out = new LinkedHashMap<String, Object>();
         out.put("count", orders.size());
@@ -371,6 +384,26 @@ public final class OrderDeskOrdersSteps {
             if (empty != null) out.put("empty", empty);
         }
         return out;
+    }
+
+    /**
+     * The customers the toolbar's ▾ (New order for a recent customer) offers, as the app takes them: the orders by date,
+     * then number, newest first, each customer once, at most 4. Read from the Orders list (the orders a search or the
+     * status filter hides are left out): a hint for choices, not a check.
+     */
+    static List<String> recentCustomers(Client ui) {
+        List<Map<String, String>> rows = new ArrayList<Map<String, String>>(orderRows(ui, DATE_COLUMN, CUSTOMER_COLUMN));
+        final Comparator<String> byDate = comparator(DATE_COLUMN);
+        rows.sort((a, b) -> {
+            int d = byDate.compare(b.get(DATE_COLUMN), a.get(DATE_COLUMN));
+            return d != 0 ? d : String.valueOf(b.get(ORDER_COLUMN)).compareTo(String.valueOf(a.get(ORDER_COLUMN)));
+        });
+        Set<String> out = new LinkedHashSet<String>();
+        for (Map<String, String> r : rows) {
+            if (out.size() == 4) break;
+            if (r.get(CUSTOMER_COLUMN) != null) out.add(r.get(CUSTOMER_COLUMN));
+        }
+        return new ArrayList<String>(out);
     }
 
     /** How many orders the list shows now: its table's rows, 0 while the empty text replaces it. */
@@ -513,25 +546,25 @@ public final class OrderDeskOrdersSteps {
      * The main window with no dialog over it, then a click on the Orders tab; returns the tab selected before, for
      * {@link #back}.
      */
-    private static String goToOrders(Client ui) {
+    private static TabAt goToOrders(Client ui) {
         requireMain(ui);
-        String before = OrderDeskMainSteps.selectedTab(ui);
+        TabAt before = OrderDeskMainSteps.selectedTabAt(ui);
         ui.tab(ORDERS_TAB).click();
         return before;
     }
 
     /** After a failure before anything on the list was clicked: the tab that was selected before, selected again. */
-    private static void back(final Client ui, final String before) {
-        if (before != null && !ORDERS_TAB.equals(before)) quietly(() -> ui.tab(before).click());
+    private static void back(final Client ui, final TabAt before) {
+        if (before != null && !ORDERS_TAB.equals(before.title)) quietly(() -> OrderDeskMainSteps.select(ui, before));
     }
 
     /** {@link #resolveOrders} on the list as it shows; a miss selects the tab {@code before} again. */
-    private static List<String> resolveOrders(Client ui, String orders, String before) {
+    private static List<String> resolveOrders(Client ui, String orders, TabAt before) {
         return resolveOrders(ui, orders, before, orderRows(ui));
     }
 
     /** {@link #resolveOrders} on {@code rows}, the list as it shows; a miss selects the tab {@code before} again. */
-    private static List<String> resolveOrders(Client ui, String orders, String before, List<Map<String, String>> rows) {
+    private static List<String> resolveOrders(Client ui, String orders, TabAt before, List<Map<String, String>> rows) {
         try {
             return resolveOrders(ui, orders, rows);
         } catch (RuntimeException e) {
@@ -616,7 +649,11 @@ public final class OrderDeskOrdersSteps {
      * status, as the app's reason does.
      */
     private static List<String> askToCancel(Client ui, String orders) {
-        String before = goToOrders(ui);
+        return askToCancel(ui, orders, goToOrders(ui));
+    }
+
+    /** {@link #askToCancel(Client, String)} once on the Orders tab; {@code before}: the tab selected before. */
+    private static List<String> askToCancel(Client ui, String orders, TabAt before) {
         List<Map<String, String>> rows = orderRows(ui, CUSTOMER_COLUMN, STATUS_COLUMN);
         List<String> numbers = resolveOrders(ui, orders, before);
         List<String> notPlaced = new ArrayList<String>();

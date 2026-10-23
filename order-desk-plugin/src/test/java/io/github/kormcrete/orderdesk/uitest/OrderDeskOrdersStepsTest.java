@@ -2,6 +2,7 @@ package io.github.kormcrete.orderdesk.uitest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.kormcrete.swingui.driver.DriverException;
+import io.github.kormcrete.swingui.driver.model.Node;
 import org.junit.jupiter.api.Test;
 
 import javax.swing.RowSorter;
@@ -208,9 +209,11 @@ class OrderDeskOrdersStepsTest {
 
         assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS + "]"));
         assertThat(shown).containsEntry("count", 2);
-        assertThat(shown.get("orders")).isEqualTo(Arrays.asList(
+        assertThat(shown.get("orders")).isEqualTo(orders(
                 order("ORD-1639", "9 Oct 2026", "Ada Shop Ltd", "55", "€95.52", "Placed"),
                 order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled")));
+        // keyed by number, in the list's order
+        assertThat(((Map<?, ?>) shown.get("orders")).keySet()).containsExactly("ORD-1639", "ORD-1634");
         assertThat(shown).doesNotContainKey("empty");
     }
 
@@ -221,8 +224,8 @@ class OrderDeskOrdersStepsTest {
         Map<String, Object> shown = OrderDeskOrdersSteps.showOrders(app.client());
 
         assertThat(shown).containsEntry("count", 4);
-        assertThat(((List<?>) shown.get("orders")).get(3))
-                .isEqualTo(order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled"));
+        assertThat(((Map<?, ?>) shown.get("orders")).get("ORD-1634"))
+                .isEqualTo(order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled").getValue());
     }
 
     @Test
@@ -231,7 +234,7 @@ class OrderDeskOrdersStepsTest {
 
         Map<String, Object> shown = OrderDeskOrdersSteps.showOrders(app.client());
 
-        assertThat(shown).containsEntry("count", 0).containsEntry("orders", Collections.emptyList())
+        assertThat(shown).containsEntry("count", 0).containsEntry("orders", Collections.emptyMap())
                 .containsEntry("empty", "No orders match ‘zz’");
     }
 
@@ -245,8 +248,9 @@ class OrderDeskOrdersStepsTest {
 
         for (Map<String, Object> listed : Arrays.asList(searched, filtered, cleared)) {
             assertThat(listed).containsEntry("count", 2);
-            assertThat(((List<?>) listed.get("orders")).get(1))
-                    .isEqualTo(order("ORD-1636", "3 Oct 2026", "Ada Shop Ltd", "12", "€40.56", "Shipped"));
+            assertThat(((Map<?, ?>) listed.get("orders")).keySet()).containsExactly("ORD-1639", "ORD-1636");
+            assertThat(((Map<?, ?>) listed.get("orders")).get("ORD-1636"))
+                    .isEqualTo(order("ORD-1636", "3 Oct 2026", "Ada Shop Ltd", "12", "€40.56", "Shipped").getValue());
         }
     }
 
@@ -257,15 +261,41 @@ class OrderDeskOrdersStepsTest {
         Map<String, Object> left = OrderDeskOrdersSteps.sortOrders(app.client(), "Total", "ascending");
 
         assertThat(left).containsEntry("column", "Total").containsEntry("direction", "ascending").containsEntry("count", 4);
-        List<?> orders = (List<?>) left.get("orders");
-        assertThat(orders.get(0)).isEqualTo(order("ORD-1636", "3 Oct 2026", "Ada Shop Ltd", "12", "€40.56", "Shipped"));
-        assertThat(orders.get(3)).isEqualTo(order("ORD-1634", "1 Oct 2026", "Birch & Co", "3", "€542.58", "Cancelled"));
+        assertThat(((Map<?, ?>) left.get("orders")).keySet()).containsExactly("ORD-1636", "ORD-1639", "ORD-1638", "ORD-1634");
     }
 
-    private static Map<String, String> order(String... cells) {
+    @Test
+    void aListOutcomeOffersARecordingNoValueByItsPlaceInTheList() {
+        // the recorder takes every value a domain step returns, at its path, as a source a later step may be linked
+        // to (Outcomes.newValues): a path by position (".step.orders[3].Customer") would name another order once the
+        // list changes; keyed by number, a value names its own order, and the number itself is no value
+        OrdersFake app = new OrdersFake();
+        Map<String, Object> outcome = new java.util.LinkedHashMap<String, Object>();
+        outcome.put("step", OrderDeskOrdersSteps.showOrders(app.client()));
+
+        Map<String, String> sources = io.github.kormcrete.swingui.driver.outcome.Outcomes.newValues(
+                io.github.kormcrete.swingui.driver.outcome.UiReading.builder().build(), outcome);
+
+        assertThat(sources).isNotEmpty();
+        for (Map.Entry<String, String> e : sources.entrySet()) {
+            assertThat(e.getValue()).as(e.getKey()).doesNotMatch(".*\\[\\d+\\].*");
+            assertThat(e.getKey()).as(e.getValue()).doesNotStartWith("ORD-");
+        }
+        assertThat(sources).containsEntry("Birch & Co", ".step.orders.ORD-1634.Customer");
+    }
+
+    /** One order of a list outcome: its number, and its other five values by column. */
+    private static Map.Entry<String, Map<String, String>> order(String... cells) {
         Map<String, String> o = new java.util.LinkedHashMap<String, String>();
-        for (int i = 0; i < cells.length; i++) o.put(OrdersFake.COLUMNS.get(i), cells[i]);
-        return o;
+        for (int i = 1; i < cells.length; i++) o.put(OrdersFake.COLUMNS.get(i), cells[i]);
+        return new java.util.AbstractMap.SimpleEntry<String, Map<String, String>>(cells[0], o);
+    }
+
+    @SafeVarargs
+    private static Map<String, Map<String, String>> orders(Map.Entry<String, Map<String, String>>... entries) {
+        Map<String, Map<String, String>> out = new java.util.LinkedHashMap<String, Map<String, String>>();
+        for (Map.Entry<String, Map<String, String>> e : entries) out.put(e.getKey(), e.getValue());
+        return out;
     }
 
     @Test
@@ -480,18 +510,73 @@ class OrderDeskOrdersStepsTest {
         OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "1639", STOCK_RESTORED);
         OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639", "Cancel order ORD-1639?  " + STOCK_RESTORED);
 
-        assertThat(app.steps()).isEqualTo(json("[" + TO_ORDERS
+        // nothing was selected before: each run unselects the row it clicked again
+        String once = TO_ORDERS
                 + ",{'action':'click','target':" + row("ORD-1639") + "}"
                 + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
                 + ",{'action':'answer','button':'Keep'}"
-                + "," + TO_ORDERS
+                + ",{'action':'click','target':" + row("ORD-1639") + ",'modifiers':['Mod']}";
+        assertThat(app.steps()).isEqualTo(json("[" + once + "," + once + "," + once + "]"));
+    }
+
+    @Test
+    void cancelQuestionIsLeavesTheTabAndTheSelectionAsItFoundThemWhenItPassesAndWhenItFails() {
+        // started on a new order's tab with ORD-1634 selected on the Orders list
+        String newOrder = "New order · Ada Shop Ltd";
+        String expected = "[" + TO_ORDERS
                 + ",{'action':'click','target':" + row("ORD-1639") + "}"
                 + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
                 + ",{'action':'answer','button':'Keep'}"
-                + "," + TO_ORDERS
-                + ",{'action':'click','target':" + row("ORD-1639") + "}"
-                + ",{'action':'contextMenu','target':" + row("ORD-1639") + ",'path':['Cancel orders…']}"
-                + ",{'action':'answer','button':'Keep'}]"));
+                + ",{'action':'click','target':" + row("ORD-1634") + "}"
+                + ",{'action':'click','target':{'role':'tab','name':'" + newOrder + "'}}]";
+        OrdersFake pass = new OrdersFake().tabs(newOrder, "Orders", newOrder).selecting(3);
+        OrdersFake fail = new OrdersFake().tabs(newOrder, "Orders", newOrder).selecting(3);
+        cancelQuestion(pass, "Cancel order ORD-1639?");
+        cancelQuestion(fail, "Cancel order ORD-1639?");
+
+        OrderDeskOrdersSteps.cancelQuestionIs(pass.client(), "ORD-1639", "Cancel order ORD-1639?");
+        Throwable wrong = catchThrowable(() -> OrderDeskOrdersSteps.cancelQuestionIs(fail.client(), "ORD-1639", "x"));
+
+        assertThat(pass.steps()).isEqualTo(json(expected));
+        assertThat(wrong).isInstanceOf(AssertionError.class).hasMessageStartingWith("Cancelling ORD-1639 asks");
+        assertThat(fail.steps()).isEqualTo(json(expected));
+    }
+
+    @Test
+    void cancelQuestionIsSelectsAgainTheOneOfTwoTabsWithOneTitleThatWasSelected() {
+        // two new orders for Ada: the left one (the first of that title) was selected, not the newest
+        final String ada = "New order · Ada Shop Ltd";
+        OrdersFake app = new OrdersFake() {
+            @Override
+            public Node read(io.github.kormcrete.swingui.driver.model.Locator target, Integer maxRows) {
+                if ("tab".equals(target.role) && ada.equals(target.name) && target.nth != null) {
+                    Node tab = node("tab", ada);
+                    if (target.nth == 0) tab.state = new ArrayList<String>(Collections.singletonList("selected"));
+                    return tab;
+                }
+                return super.read(target, maxRows);
+            }
+        };
+        app.tabs(ada, "Orders", ada, ada);
+        cancelQuestion(app, "Cancel order ORD-1639?");
+
+        OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639", "Cancel order ORD-1639?");
+
+        JsonNode steps = app.steps();
+        assertThat(steps.get(steps.size() - 1)).isEqualTo(json("{'action':'click','target':{'role':'tab','name':'" + ada
+                + "','nth':0}}"));
+    }
+
+    @Test
+    void cancelQuestionIsThatSeesNoQuestionSaysSoAndLeavesTheScreenAsFound() {
+        OrdersFake app = new OrdersFake();
+
+        Throwable none = catchThrowable(() -> OrderDeskOrdersSteps.cancelQuestionIs(app.client(), "ORD-1639", "x"));
+
+        assertThat(none).isInstanceOf(AssertionError.class).hasMessage("Cancel orders… asked nothing, expected “x”");
+        JsonNode steps = app.steps();
+        assertThat(steps.get(steps.size() - 1)).isEqualTo(json("{'action':'click','target':" + row("ORD-1639")
+                + ",'modifiers':['Mod']}"));
     }
 
     @Test
@@ -504,8 +589,10 @@ class OrderDeskOrdersStepsTest {
 
         assertThat(wrong).isInstanceOf(AssertionError.class).hasMessage("Cancelling ORD-1639; ORD-1638 asks “Cancel 2"
                 + " orders? " + STOCK_RESTORED + "”, expected “Cancel order ORD-1639?”");
+        // Keep, then both rows unselected again (nothing was selected before)
         JsonNode steps = app.steps();
-        assertThat(steps.get(steps.size() - 1)).isEqualTo(json("{'action':'answer','button':'Keep'}"));
+        assertThat(steps.get(4)).isEqualTo(json("{'action':'answer','button':'Keep'}"));
+        assertThat(steps).hasSize(7);
     }
 
     @Test
