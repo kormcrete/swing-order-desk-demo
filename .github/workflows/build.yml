@@ -25,8 +25,8 @@ jobs:
       - name: Check out the Lagoon theme
         uses: actions/checkout@v7
         with:
-          repository: kormcrete/swing-flatlaf-lagoon-theme
-          path: swing-flatlaf-lagoon-theme
+          repository: kormcrete/lagoon-theme
+          path: lagoon-theme
       - uses: actions/setup-java@v6
         with:
           distribution: zulu
@@ -35,7 +35,7 @@ jobs:
       - name: Install swing-ui-agent
         run: mvn -B -f swing-ui-agent/pom.xml install -DskipTests
       - name: Install the Lagoon theme
-        run: mvn -B -f swing-flatlaf-lagoon-theme/pom.xml install -DskipTests
+        run: mvn -B -f lagoon-theme/pom.xml install -DskipTests
       - name: Build and install the Order Desk plugin (its domain steps; the app's UI tests use it)
         run: mvn -B -f order-desk-plugin/pom.xml install
       - name: Build and test
