@@ -329,7 +329,7 @@ class OrderDeskMainStepsTest {
     @Test
     void switchThemeChoosesItInViewTheme() {
         OrdersFake app = new OrdersFake();
-        app.menu("View > Theme", "Light", "Dark", "Lagoon");
+        app.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
 
         OrderDeskMainSteps.switchTheme(app.client(), "dark");
         OrderDeskMainSteps.switchTheme(app.client(), "Light");
@@ -339,14 +339,28 @@ class OrderDeskMainStepsTest {
     }
 
     @Test
+    void switchThemeTakesAWholeNameOverTheLongerOnesItStarts() {
+        OrdersFake app = new OrdersFake();
+        app.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
+
+        OrderDeskMainSteps.switchTheme(app.client(), "lagoon");
+        OrderDeskMainSteps.switchTheme(app.client(), "lagoon dark");
+        OrderDeskMainSteps.switchTheme(app.client(), "Lagoon Soft D");
+
+        assertThat(app.steps()).isEqualTo(json("[{'action':'menu','path':['View','Theme','Lagoon']},"
+                + "{'action':'menu','path':['View','Theme','Lagoon Dark']},"
+                + "{'action':'menu','path':['View','Theme','Lagoon Soft Dark']}]"));
+    }
+
+    @Test
     void switchThemeThatFitsNoneNamesTheThemesAndChoosesNothing() {
         OrdersFake app = new OrdersFake();
-        app.menu("View > Theme", "Light", "Dark", "Lagoon");
+        app.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
 
         Throwable none = catchThrowable(() -> OrderDeskMainSteps.switchTheme(app.client(), "Solarized"));
 
         assertThat(none).isInstanceOf(DriverException.class)
-                .hasMessage("NOT_FOUND: No theme fits “Solarized”. View ▸ Theme offers: Light; Dark; Lagoon");
+                .hasMessage("NOT_FOUND: No theme fits “Solarized”. View ▸ Theme offers: Light; Dark; Lagoon; Lagoon Soft; Lagoon Dark; Lagoon Soft Dark");
         assertThat(app.steps()).isEmpty();
     }
 

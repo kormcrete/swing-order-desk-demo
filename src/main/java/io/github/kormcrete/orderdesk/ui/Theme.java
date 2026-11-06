@@ -4,16 +4,20 @@ import com.formdev.flatlaf.FlatDarkLaf;
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
 import com.formdev.flatlaf.ui.FlatEmptyBorder;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonDarkLaf;
 import io.github.kormcrete.flatlaf.lagoon.FlatLagoonLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonSoftDarkLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonSoftLaf;
 
 import javax.swing.UIDefaults;
 import javax.swing.UIManager;
 import javax.swing.plaf.ColorUIResource;
 import javax.swing.plaf.InsetsUIResource;
+import java.awt.Color;
 import java.awt.Dimension;
 
 /**
- * FlatLaf Light, Dark or Kormcrete's Lagoon, switched live from View ▸ Theme. {@code FlatLaf.setup} resets every
+ * FlatLaf Light, Dark or Kormcrete's Lagoon (Gloss or Soft, light or dark), switched live from View ▸ Theme. {@code FlatLaf.setup} resets every
  * default, so the Order Desk values below are put again on each switch: the app's own colour keys
  * ({@code OrderDesk.*}) that styles refer to as {@code $OrderDesk.muted}, and in every theme roomier tables and
  * controls, and tables with lines between the rows only. Light and Dark also get a grey header and tab strip and a
@@ -41,13 +45,48 @@ final class Theme {
         apply(new FlatDarkLaf());
     }
 
-    /** Not {@code FlatLagoonLaf.setup()}: that puts Lagoon's font into UIManager, where it would outlive a switch. */
     static void lagoon() {
-        FlatLaf.setup(new FlatLagoonLaf());
+        lagoon(new FlatLagoonLaf());
+    }
+
+    static void lagoonSoft() {
+        lagoon(new FlatLagoonSoftLaf());
+    }
+
+    static void lagoonDark() {
+        lagoon(new FlatLagoonDarkLaf());
+    }
+
+    static void lagoonSoftDark() {
+        lagoon(new FlatLagoonSoftDarkLaf());
+    }
+
+    /**
+     * Not {@code FlatLagoonLaf.setup()}: that puts Lagoon's font into UIManager, where it would outlive a switch. The
+     * dark Lagoons get Order Desk's colours from their own palette, so the captions and the terms card stay as calm as
+     * their text.
+     */
+    private static void lagoon(FlatLaf laf) {
+        FlatLaf.setup(laf);
         UIDefaults defaults = UIManager.getLookAndFeelDefaults();
-        colors(defaults, false);
+        if (laf.isDark()) {
+            Color text = defaults.getColor("Label.foreground");
+            Color ground = defaults.getColor("Panel.background");
+            defaults.put(MUTED, new ColorUIResource(mix(text, ground, .7f)));
+            defaults.put(CARD_BACKGROUND, new ColorUIResource(mix(text, ground, .06f)));
+            defaults.put(SOFT_BORDER, new ColorUIResource(defaults.getColor("Table.gridColor")));
+        } else {
+            colors(defaults, false);
+        }
         sizes(defaults);
         FlatLaf.updateUI();
+    }
+
+    /** {@code a} weighted {@code wa}, {@code b} the rest. */
+    private static Color mix(Color a, Color b, float wa) {
+        return new Color(Math.round(a.getRed() * wa + b.getRed() * (1 - wa)),
+                Math.round(a.getGreen() * wa + b.getGreen() * (1 - wa)),
+                Math.round(a.getBlue() * wa + b.getBlue() * (1 - wa)));
     }
 
     /**

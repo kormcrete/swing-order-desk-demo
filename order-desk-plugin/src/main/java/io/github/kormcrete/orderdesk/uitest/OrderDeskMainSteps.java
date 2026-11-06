@@ -53,7 +53,8 @@ public final class OrderDeskMainSteps {
     static final List<String> STATES = Collections.unmodifiableList(Arrays.asList("enabled", "disabled"));
     /** What View ▸ Theme offers, in its order (the step reads the menu itself). */
     static final String LIGHT = "Light";
-    static final List<String> THEMES = Collections.unmodifiableList(Arrays.asList(LIGHT, "Dark", "Lagoon"));
+    static final List<String> THEMES = Collections.unmodifiableList(Arrays.asList(LIGHT, "Dark", "Lagoon", "Lagoon Soft",
+            "Lagoon Dark", "Lagoon Soft Dark"));
 
     private OrderDeskMainSteps() {
     }
@@ -252,8 +253,9 @@ public final class OrderDeskMainSteps {
     // ---- the theme
 
     /**
-     * Switches the app's theme: View ▸ Theme ▸ {@code theme} (Light, Dark, Lagoon; any case or its start, read from the
-     * menu). Only the look changes: every tab and value stays as it was.
+     * Switches the app's theme: View ▸ Theme ▸ {@code theme} (Light, Dark, Lagoon, Lagoon Soft, Lagoon Dark, Lagoon Soft
+     * Dark; any case or its start, read from the menu: a whole name wins, so "Lagoon" is Lagoon). Only the look
+     * changes: every tab and value stays as it was.
      */
     public static void switchTheme(Client ui, String theme) {
         requireMain(ui);

@@ -1,7 +1,10 @@
 package io.github.kormcrete.orderdesk.ui;
 
 import com.formdev.flatlaf.FlatLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonDarkLaf;
 import io.github.kormcrete.flatlaf.lagoon.FlatLagoonLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonSoftDarkLaf;
+import io.github.kormcrete.flatlaf.lagoon.FlatLagoonSoftLaf;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -107,6 +110,37 @@ class ThemeTest {
     }
 
     @Test
+    void everyLagoonGetsOrderDesksSizesAndTheDarkOnesCalmCaptions() {
+        Edt.run(() -> {
+            Object[][] lagoons = {{(Runnable) Theme::lagoonSoft, FlatLagoonSoftLaf.class},
+                    {(Runnable) Theme::lagoonDark, FlatLagoonDarkLaf.class},
+                    {(Runnable) Theme::lagoonSoftDark, FlatLagoonSoftDarkLaf.class}};
+            for (Object[] lagoon : lagoons) {
+                ((Runnable) lagoon[0]).run();
+                assertThat(UIManager.getLookAndFeel().getClass()).isEqualTo(lagoon[1]);
+                assertThat(UIManager.getInt("Table.rowHeight")).isEqualTo(26);
+                assertThat(UIManager.getInsets("Button.margin")).isEqualTo(new Insets(5, 14, 5, 14));
+                assertThat(UIManager.getBoolean(Theme.BOXED_TABS)).isFalse();
+                Color ground = UIManager.getColor("Panel.background");
+                Color text = UIManager.getColor("Label.foreground");
+                Color muted = UIManager.getColor(Theme.MUTED);
+                if (FlatLaf.isLafDark()) {
+                    // grey captions between the ground and the (soft) text, never brighter than the text
+                    assertThat(brightness(muted)).isBetween(brightness(ground), brightness(text));
+                    assertThat(brightness(UIManager.getColor(Theme.CARD_BACKGROUND))).isLessThan(brightness(text));
+                    assertThat(UIManager.getColor(Theme.SOFT_BORDER)).isEqualTo(UIManager.getColor("Table.gridColor"));
+                } else {
+                    assertThat(muted).isEqualTo(new Color(0x6e6e6e));
+                }
+            }
+        });
+    }
+
+    private static int brightness(Color c) {
+        return c.getRed() + c.getGreen() + c.getBlue();
+    }
+
+    @Test
     void lightAndDarkComeBackCleanAfterLagoon() {
         String[] keys = {"defaultFont", "Table.rowHeight", "Button.margin", "TabbedPane.foreground",
                 "TabbedPane.tabAreaInsets", "Component.borderColor", "Panel.background", "TableHeader.background"};
@@ -116,7 +150,9 @@ class ThemeTest {
                 Map<String, Object> before = values(keys);
                 Theme.lagoon();
                 theme.run();
-                Theme.lagoon();
+                Theme.lagoonDark();
+                theme.run();
+                Theme.lagoonSoftDark();
                 theme.run();
                 assertThat(values(keys)).isEqualTo(before);
             }

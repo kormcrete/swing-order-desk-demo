@@ -199,7 +199,7 @@ public final class OrderDeskSteps {
 
     static final String ORDER_MENU = "Order";
     static final String VIEW_MENU = "View";
-    /** View ▸ Theme: Light, Dark, Lagoon (the app's look; no data changes). */
+    /** View ▸ Theme: Light, Dark, Lagoon, Lagoon Soft, Lagoon Dark, Lagoon Soft Dark (the app's look; no data changes). */
     static final String THEME_MENU = "Theme";
     static final String HELP_MENU = "Help";
     static final String EXIT_ITEM = "Exit";

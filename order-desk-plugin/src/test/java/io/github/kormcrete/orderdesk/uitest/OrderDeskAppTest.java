@@ -40,7 +40,7 @@ class OrderDeskAppTest {
     void resetPutsTheLightThemeBackAfterAThemeWasSwitched() {
         // Light is the theme at start: a test that switched to Dark must not leave the next one dark
         OrdersFake main = new OrdersFake();
-        main.menu("View > Theme", "Light", "Dark", "Lagoon");
+        main.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
         OrderDeskMainSteps.switchTheme(main.client(), "Dark");
 
         orderDesk.reset(ResetSpec.alias(null));
@@ -53,7 +53,7 @@ class OrderDeskAppTest {
     @Test
     void resetLeavesTheThemeAloneWhenLightIsTheOneChosen() {
         OrdersFake main = new OrdersFake();
-        main.menu("View > Theme", "Light", "Dark", "Lagoon");
+        main.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
         OrderDeskMainSteps.switchTheme(main.client(), "light");
 
         orderDesk.reset(ResetSpec.alias(null));

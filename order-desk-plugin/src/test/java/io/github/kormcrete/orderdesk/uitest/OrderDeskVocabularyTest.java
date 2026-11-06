@@ -1333,7 +1333,7 @@ class OrderDeskVocabularyTest {
         app.answer("dialog:About Order Desk label", FakeApp.label("OptionPane.label", "Order Desk"),
                 FakeApp.label("OptionPane.label", "A small, fictional order-entry app."));
         app.answer("dialog:Cancel order* label", FakeApp.label("OptionPane.label", "Cancel order ORD-1639?"));
-        app.menu("View > Theme", "Light", "Dark", "Lagoon");
+        app.menu("View > Theme", "Light", "Dark", "Lagoon", "Lagoon Soft", "Lagoon Dark", "Lagoon Soft Dark");
         return app;
     }
 

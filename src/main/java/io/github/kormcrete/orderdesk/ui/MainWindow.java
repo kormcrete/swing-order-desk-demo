@@ -145,16 +145,27 @@ public final class MainWindow extends JFrame implements Workspace {
         JRadioButtonMenuItem light = new JRadioButtonMenuItem("Light", true);
         JRadioButtonMenuItem dark = new JRadioButtonMenuItem("Dark");
         JRadioButtonMenuItem lagoon = new JRadioButtonMenuItem("Lagoon");
+        JRadioButtonMenuItem lagoonSoft = new JRadioButtonMenuItem("Lagoon Soft");
+        JRadioButtonMenuItem lagoonDark = new JRadioButtonMenuItem("Lagoon Dark");
+        JRadioButtonMenuItem lagoonSoftDark = new JRadioButtonMenuItem("Lagoon Soft Dark");
         ButtonGroup themes = new ButtonGroup();
-        themes.add(light);
-        themes.add(dark);
-        themes.add(lagoon);
+        for (JRadioButtonMenuItem item : new JRadioButtonMenuItem[] {light, dark, lagoon, lagoonSoft, lagoonDark,
+                lagoonSoftDark}) {
+            themes.add(item);
+        }
         light.addActionListener(e -> Theme.light());
         dark.addActionListener(e -> Theme.dark());
         lagoon.addActionListener(e -> Theme.lagoon());
+        lagoonSoft.addActionListener(e -> Theme.lagoonSoft());
+        lagoonDark.addActionListener(e -> Theme.lagoonDark());
+        lagoonSoftDark.addActionListener(e -> Theme.lagoonSoftDark());
         theme.add(light);
         theme.add(dark);
+        theme.addSeparator();
         theme.add(lagoon);
+        theme.add(lagoonSoft);
+        theme.add(lagoonDark);
+        theme.add(lagoonSoftDark);
         view.add(theme);
 
         JMenu help = new JMenu("Help");
